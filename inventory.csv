@@ -1,0 +1,974 @@
+DO_Number,Last_4,Supervisor_Phone,Status,Date_Issued,Warehouse_Name,Remarks,Created_By
+SP-26-11756,1756,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11757,1757,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11766,1766,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11767,1767,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11788,1788,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11822,1822,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11824,1824,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11837,1837,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11840,1840,972000000000.0,Dispatched,19/05/2026, DIP,Standard Delivery,
+SP-26-11755,1755,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11758,1758,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11759,1759,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11764,1764,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11765,1765,972000000000.0,Pending,19/05/2026, Al Quoz,Favas bhai told to keep DO,
+SP-26-11778,1778,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11783,1783,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11792,1792,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11794,1794,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11795,1795,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11800,1800,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11801,1801,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11802,1802,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11804,1804,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11805,1805,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11807,1807,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11808,1808,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11810,1810,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11811,1811,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11812,1812,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11813,1813,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11814,1814,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11815,1815,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11817,1817,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11818,1818,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11820,1820,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11823,1823,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11825,1825,972000000000.0,Return,19/05/2026, Al Quoz,Return (0693),
+SP-26-11826,1826,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11827,1827,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11829,1829,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11834,1834,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11836,1836,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11842,1842,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11849,1849,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11851,1851,972000000000.0,Dispatched,19/05/2026, Al Quoz,Standard Delivery,
+SP-26-11777,1777,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11780,1780,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11786,1786,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11789,1789,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11809,1809,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11831,1831,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11843,1843,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11847,1847,972000000000.0,Dispatched,19/05/2026, Abu Dhabi,Standard Delivery,
+SP-26-11854,1854,972000000000.0,Return,20/05/2026,Al Quoz,Return (0688),
+SP-26-11855,1855,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11856,1856,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11857,1857,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11865,1865,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11872,1872,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11876,1876,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11881,1881,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11885,1885,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11886,1886,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11892,1892,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11896,1896,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11899,1899,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11901,1901,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11907,1907,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11912,1912,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11913,1913,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11914,1914,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11919,1919,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11921,1921,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11922,1922,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11932,1932,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11938,1938,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11942,1942,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11946,1946,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11948,1948,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11955,1955,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11959,1959,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11961,1961,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11963,1963,972000000000.0,Dispatched,20/05/2026,Al Quoz,Standard Delivery,
+SP-26-11858,1858,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11863,1863,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11869,1869,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11894,1894,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11897,1897,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11898,1898,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11900,1900,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11903,1903,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11915,1915,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11935,1935,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11950,1950,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11951,1951,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11954,1954,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11957,1957,972000000000.0,Dispatched,20/05/2026,DIP,Standard Delivery,
+SP-26-11866,1866,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11877,1877,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11893,1893,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11904,1904,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11908,1908,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11924,1924,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11925,1925,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11928,1928,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11929,1929,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11930,1930,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11931,1931,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11934,1934,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11939,1939,972000000000.0,Dispatched,20/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11965,1965,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11966,1966,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11967,1967,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11969,1969,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11974,1974,972000000000.0,Return,21/05/2026,Al Quoz,Return (0711),
+SP-26-11986,1986,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11987,1987,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11988,1988,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11989,1989,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11990,1990,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11995,1995,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11996,1996,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-11998,1998,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12000,2000,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12002,2002,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12008,2008,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12018,2018,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12023,2023,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12025,2025,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12026,2026,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12027,2027,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12028,2028,972000000000.0,Return,21/05/2026,Al Quoz,Partial Return (0720),
+SP-26-12032,2032,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12034,2034,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12039,2039,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12045,2045,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12046,2046,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12048,2048,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12049,2049,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12052,2052,972000000000.0,Dispatched,21/05/2026,Al Quoz,Standard Delivery,
+SP-26-12054,2054,972000000000.0,Return,21/05/2026,Al Quoz,Return (0733),
+SP-26-11968,1968,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11970,1970,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11972,1972,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11992,1992,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11994,1994,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12005,2005,972000000000.0,Pending,21/05/2026,Abu Dhabi,Waiting customer,
+SP-26-12006,2006,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12041,2041,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12042,2042,972000000000.0,Dispatched,21/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-11971,1971,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-11979,1979,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-12017,2017,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-12019,2019,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-12020,2020,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-12029,2029,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-12044,2044,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-12050,2050,972000000000.0,Dispatched,21/05/2026,DIP,Standard Delivery,
+SP-26-12059,2059,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12061,2061,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12065,2065,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12070,2070,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12071,2071,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12072,2072,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12073,2073,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12075,2075,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12078,2078,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12080,2080,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12082,2082,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12084,2084,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12086,2086,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12087,2087,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12088,2088,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12089,2089,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12091,2091,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12092,2092,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12097,2097,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12099,2099,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12100,2100,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12103,2103,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12107,2107,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12112,2112,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12114,2114,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12115,2115,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12119,2119,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12120,2120,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12129,2129,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12133,2133,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12137,2137,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12139,2139,972000000000.0,Dispatched,22/05/2026,Al Quoz,Standard Delivery,
+SP-26-12072,2072,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12081,2081,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12083,2083,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12085,2085,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12090,2090,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12094,2094,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12095,2095,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12096,2096,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12098,2098,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12101,2101,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12102,2102,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12111,2111,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12121,2121,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12122,2122,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12123,2123,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12128,2128,972000000000.0,Dispatched,22/05/2026,DIP,Standard Delivery,
+SP-26-12072,2072,972000000000.0,Dispatched,22/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12079,2079,972000000000.0,Dispatched,22/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12116,2116,972000000000.0,Dispatched,22/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12134,2134,972000000000.0,Dispatched,22/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12135,2135,972000000000.0,Dispatched,22/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12154,2154,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12155,2155,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12157,2157,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12158,2158,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12159,2159,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12160,2160,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12161,2161,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12170,2170,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12171,2171,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12174,2174,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12184,2184,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12186,2186,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12189,2189,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12190,2190,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12193,2193,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12196,2196,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12209,2209,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12210,2210,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12213,2213,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12215,2215,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12218,2218,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12231,2231,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12232,2232,972000000000.0,Dispatched,23/05/2026,Sharjah,Standard Delivery,
+SP-26-12147,2147,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12148,2148,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12231,2231,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12151,2151,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12152,2152,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12153,2153,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12156,2156,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12162,2162,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12163,2163,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12164,2164,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12166,2166,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12168,2168,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12172,2172,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12182,2182,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12187,2187,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12188,2188,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12197,2197,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12199,2199,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12200,2200,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12202,2202,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12204,2204,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12205,2205,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12206,2206,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12208,2208,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12211,2211,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12212,2212,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12214,2214,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12216,2216,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12217,2217,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12219,2219,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12222,2222,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12223,2223,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12224,2224,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12225,2225,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12227,2227,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12228,2228,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12230,2230,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12233,2233,972000000000.0,Dispatched,23/05/2026,Al Quoz,Standard Delivery,
+SP-26-12146,2146,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12165,2165,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12167,2167,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12191,2191,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12192,2192,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12195,2195,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12207,2207,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12220,2220,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12221,2221,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12229,2229,972000000000.0,Dispatched,23/05/2026,DIP,Standard Delivery,
+SP-26-12150,2150,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12169,2169,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12173,2173,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12176,2176,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12177,2177,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12181,2181,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12183,2183,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12198,2198,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12201,2201,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12226,2226,972000000000.0,Dispatched,23/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12245,2245,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12247,2247,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12249,2249,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12250,2250,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12257,2257,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12266,2266,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12268,2268,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12279,2279,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12280,2280,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12281,2281,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12290,2290,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12291,2291,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12292,2292,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12295,2295,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12298,2298,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12299,2299,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12302,2302,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12303,2303,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12308,2308,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12309,2309,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+SP-26-12319,2319,972000000000.0,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,
+DLNS:SP-26-12241,2241,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12263,2263,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12264,2264,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12265,2265,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12270,2270,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12276,2276,,Dispatched,25/05/2026, DIP,Standard Delivery,jay
+DLNS:SP-26-12307,2307,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12311,2311,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12315,2315,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12316,2316,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12318,2318,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12320,2320,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12321,2321,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12330,2330,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12331,2331,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12334,2334,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12342,2342,,Dispatched,25/05/2026, DIP,Standard Delivery,Anand
+DLNS:SP-26-12248,2248,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12251,2251,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12253,2253,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12255,2255,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12260,2260,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12262,2262,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12272,2272,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12273,2273,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12283,2283,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12284,2284,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12289,2289,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12293,2293,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12297,2297,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12300,2300,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12301,2301,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12304,2304,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12305,2305,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12310,2310,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12317,2317,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12322,2322,,Dispatched,25/05/2026,Sharjah,Standard Delivery,kalpesh
+DLNS:SP-26-12323,2323,,Dispatched,25/05/2026,Sharjah,Standard Delivery,kalpesh
+DLNS:SP-26-12325,2325,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12327,2327,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12333,2333,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12336,2336,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12337,2337,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12340,2340,,Dispatched,25/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12341,2341,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12343,2343,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12344,2344,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12346,2346,,Dispatched,25/05/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12348,2348,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12234,2234,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12235,2235,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12236,2236,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12240,2240,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12256,2256,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12258,2258,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12261,2261,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12267,2267,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12269,2269,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12271,2271,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12274,2274,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12275,2275,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12277,2277,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12278,2278,,Dispatched,25/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12285,2285,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12287,2287,,Return,25/05/2026,Al Quoz,Return (0715),jay
+DLNS:SP-26-12288,2288,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12296,2296,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12306,2306,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12312,2312,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12313,2313,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12324,2324,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12326,2326,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12328,2328,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12329,2329,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12332,2332,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12335,2335,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12338,2338,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12339,2339,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12345,2345,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12347,2347,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12349,2349,,Dispatched,25/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12357,2357,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12360,2360,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12361,2361,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12374,2374,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12375,2375,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12380,2380,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12383,2383,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12384,2384,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12386,2386,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12387,2387,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12391,2391,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12394,2394,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12395,2395,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12398,2398,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12399,2399,,Dispatched,30/05/2026,Sharjah,Standard Delivery,jay
+DLNS:SP-26-12402,2402,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12404,2404,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12408,2408,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12409,2409,,Dispatched,30/05/2026,Sharjah,Standard Delivery,jay
+DLNS:SP-26-12412,2412,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12416,2416,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12417,2417,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12350,2350,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12351,2351,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12353,2353,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12358,2358,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12359,2359,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12364,2364,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12366,2366,,Dispatched,30/05/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12368,2368,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12371,2371,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12372,2372,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12376,2376,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12377,2377,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12378,2378,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12379,2379,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12388,2388,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12389,2389,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12396,2396,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12397,2397,,Return,30/05/2026,Al Quoz,Return (0728),jay
+DLNS:SP-26-12400,2400,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12403,2403,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12407,2407,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12410,2410,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12413,2413,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12414,2414,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12415,2415,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12418,2418,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12419,2419,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12420,2420,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12421,2421,,Dispatched,30/05/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12352,2352,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12354,2354,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12355,2355,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12356,2356,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12365,2365,,Dispatched,30/05/2026,DIP,Standard Delivery,jay
+DLNS:SP-26-12382,2382,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12390,2390,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12392,2392,,Return,30/05/2026,DIP,Return (0726),Anand
+DLNS:SP-26-12393,2393,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12401,2401,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12422,2422,,Dispatched,30/05/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12362,2362,,Dispatched,30/05/2026,Abu Dhabi,Standard Delivery,kalpesh
+DLNS:SP-26-12363,2363,,Dispatched,30/05/2026,Abu Dhabi,Standard Delivery,kalpesh
+DLNS:SP-26-12381,2381,,Dispatched,30/05/2026,Abu Dhabi,Standard Delivery,kalpesh
+DLNS:SP-26-12385,2385,,Dispatched,30/05/2026,Abu Dhabi,Standard Delivery,kalpesh
+DLNS:SP-26-12411,2411,,Dispatched,30/05/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12433,2433,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12438,2438,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12439,2439,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12455,2455,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12457,2457,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12471,2471,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12473,2473,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12474,2474,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12491,2491,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12492,2492,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12493,2493,,Return,01/06/2026,DIP,Return (0736),Anand
+DLNS:SP-26-12495,2495,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12514,2514,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12520,2520,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12521,2521,,Dispatched,01/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12426,2426,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12431,2431,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12434,2434,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12437,2437,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12441,2441,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12444,2444,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12449,2449,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12458,2458,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12459,2459,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12460,2460,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12462,2462,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12466,2466,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12472,2472,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12475,2475,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12476,2476,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12477,2477,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12478,2478,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12482,2482,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12484,2484,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12485,2485,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12486,2486,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,Shaman
+DLNS:SP-26-12494,2494,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12501,2501,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12502,2502,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12503,2503,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12512,2512,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12513,2513,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12516,2516,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12517,2517,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12523,2523,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12524,2524,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12526,2526,,Dispatched,01/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12527,2527,,Return,01/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12424,2424,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12440,2440,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12442,2442,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12443,2443,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12445,2445,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12446,2446,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12448,2448,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12450,2450,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12451,2451,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12452,2452,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12453,2453,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12454,2454,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12456,2456,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12461,2461,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12463,2463,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12464,2464,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12467,2467,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12479,2479,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12480,2480,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12481,2481,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12483,2483,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12490,2490,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12496,2496,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12497,2497,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12498,2498,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12499,2499,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12500,2500,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12504,2504,,Dispatched,01/06/2026,Sharjah,Standard Delivery (05/06),jay
+DLNS:SP-26-12506,2506,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12509,2509,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12511,2511,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12515,2515,,Dispatched,01/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12518,2518,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12519,2519,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12432,2432,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12447,2447,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12465,2465,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12468,2468,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12469,2469,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12470,2470,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12487,2487,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12488,2488,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12489,2489,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12505,2505,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12510,2510,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12525,2525,,Dispatched,01/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12530,2530,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12531,2531,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12574,2574,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12575,2575,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12576,2576,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12577,2577,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12599,2599,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12608,2608,,Dispatched,02/06/2026,DIP,Standard Delivery,jay
+DLNS:SP-26-12620,2620,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12630,2630,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12632,2632,,Dispatched,02/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12542,2542,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12543,2543,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12544,2544,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12545,2545,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12546,2546,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12547,2547,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12551,2551,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12556,2556,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12560,2560,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12562,2562,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12568,2568,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12569,2569,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12570,2570,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12571,2571,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12579,2579,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12582,2582,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12583,2583,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12588,2588,,Dispatched,02/06/2026,Sharjah,Standard Delivery,jay
+DLNS:SP-26-12593,2593,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12594,2594,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12595,2595,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12597,2597,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12602,2602,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12612,2612,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12618,2618,,Dispatched,02/06/2026,Sharjah,Standard Delivery,jay
+DLNS:SP-26-12622,2622,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12627,2627,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Anand
+DLNS:SP-26-12629,2629,,Dispatched,02/06/2026,Sharjah,Standard Delivery,Anand
+DLNS:SP-26-12528,2528,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12529,2529,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12532,2532,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12533,2533,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12536,2536,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12537,2537,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12538,2538,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12541,2541,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12548,2548,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12549,2549,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12552,2552,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12553,2553,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12554,2554,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12555,2555,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12557,2557,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12559,2559,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12572,2572,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12573,2573,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12578,2578,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12590,2590,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12591,2591,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12592,2592,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12596,2596,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12598,2598,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12600,2600,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12601,2601,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12603,2603,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12604,2604,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12605,2605,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12606,2606,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12609,2609,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12610,2610,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12611,2611,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12613,2613,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12614,2614,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12615,2615,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12616,2616,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12621,2621,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12623,2623,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,Shaman
+DLNS:SP-26-12626,2626,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12628,2628,,Dispatched,02/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12535,2535,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12539,2539,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12540,2540,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12550,2550,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12558,2558,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,jay
+DLNS:SP-26-12566,2566,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12567,2567,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,jay
+DLNS:SP-26-12580,2580,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12581,2581,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12584,2584,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12585,2585,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12586,2586,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12587,2587,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12589,2589,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12607,2607,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12617,2617,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,jay
+DLNS:SP-26-12619,2619,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,jay
+DLNS:SP-26-12624,2624,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12631,2631,,Dispatched,02/06/2026,Abu Dhabi,Standard Delivery,Anand
+DLNS:SP-26-12640,2640,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12644,2644,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12645,2645,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12650,2650,,Pending,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12651,2651,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12652,2652,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12654,2654,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12664,2664,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12665,2665,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12666,2666,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12672,2672,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12678,2678,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12684,2684,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12691,2691,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12692,2692,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12698,2698,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12699,2699,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12701,2701,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12703,2703,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12704,2704,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12705,2705,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Anand
+DLNS:SP-26-12706,2706,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12719,2719,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12721,2721,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12723,2723,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12738,2738,,Dispatched,03/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12636,2636,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12641,2641,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12642,2642,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12647,2647,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12653,2653,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12656,2656,,Pending,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12658,2658,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12660,2660,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12662,2662,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12663,2663,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12667,2667,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12673,2673,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12674,2674,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12675,2675,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12676,2676,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12681,2681,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12683,2683,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12685,2685,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12693,2693,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12694,2694,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12695,2695,,Return,03/06/2026,Al Quoz,Return (0747),jay
+DLNS:SP-26-12696,2696,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12697,2697,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12700,2700,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12702,2702,,Return,03/06/2026,Al Quoz,Return (0748),jay
+DLNS:SP-26-12710,2710,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12714,2714,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12718,2718,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12722,2722,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12724,2724,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12725,2725,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12726,2726,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12727,2727,,Return,03/06/2026,Al Quoz,Return (0753),jay
+DLNS:SP-26-12728,2728,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12731,2731,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12732,2732,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12734,2734,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12739,2739,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12740,2740,,Dispatched,03/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12638,2638,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12643,2643,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12648,2648,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12649,2649,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12655,2655,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Anand
+DLNS:SP-26-12657,2657,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12677,2677,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12679,2679,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12680,2680,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12682,2682,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12707,2707,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12708,2708,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12709,2709,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12711,2711,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12712,2712,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12713,2713,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12715,2715,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12720,2720,,Dispatched,03/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12633,2633,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12634,2634,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12635,2635,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12661,2661,,Pending,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12670,2670,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12671,2671,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12688,2688,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12690,2690,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12716,2716,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12717,2717,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12729,2729,,Dispatched,03/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12748,2748,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12752,2752,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12754,2754,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12755,2755,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12756,2756,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Anand
+DLNS:SP-26-12764,2764,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12768,2768,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12773,2773,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12774,2774,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12778,2778,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12780,2780,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12786,2786,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12789,2789,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Anand
+DLNS:SP-26-12793,2793,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12796,2796,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12802,2802,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12803,2803,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12808,2808,,Pending,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12811,2811,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12816,2816,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12820,2820,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12821,2821,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Shaman
+DLNS:SP-26-12834,2834,,Dispatched,04/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12744,2744,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12750,2750,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12753,2753,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12757,2757,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12758,2758,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12759,2759,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12760,2760,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Shaman
+DLNS:SP-26-12766,2766,,Pending,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12767,2767,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12769,2769,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12770,2770,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12771,2771,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12775,2775,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12783,2783,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12784,2784,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12787,2787,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12788,2788,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12791,2791,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12794,2794,,Return,04/06/2026,Al Quoz,Return (0762),Anand
+DLNS:SP-26-12795,2795,,Return,04/06/2026,Al Quoz,Return (0763),Anand
+DLNS:SP-26-12797,2797,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12798,2798,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12799,2799,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12804,2804,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12805,2805,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12806,2806,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12807,2807,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12809,2809,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12810,2810,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12813,2813,,Return,04/06/2026,Al Quoz,Return (0754),jay
+DLNS:SP-26-12814,2814,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12815,2815,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12817,2817,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12819,2819,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12823,2823,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12824,2824,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12825,2825,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12831,2831,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Shaman
+DLNS:SP-26-12832,2832,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Shaman
+DLNS:SP-26-12833,2833,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Shaman
+DLNS:SP-26-12835,2835,,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12742,2742,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12743,2743,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12749,2749,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12761,2761,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12763,2763,,Dispatched,04/06/2026,DIP,Standard Delivery,Shaman
+DLNS:SP-26-12772,2772,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12776,2776,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12779,2779,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12790,2790,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12792,2792,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12818,2818,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12836,2836,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12837,2837,,Dispatched,04/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12741,2741,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12751,2751,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12762,2762,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12765,2765,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Anand
+DLNS:SP-26-12777,2777,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12781,2781,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12782,2782,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12785,2785,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12800,2800,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12801,2801,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12826,2826,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12827,2827,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12829,2829,,Dispatched,04/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12844,2844,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12845,2845,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12846,2846,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12848,2848,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12849,2849,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12850,2850,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12852,2852,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12855,2855,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12859,2859,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12870,2870,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12872,2872,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12879,2879,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12883,2883,,Dispatched,05/06/2026,Sharjah,Standard Delivery,kalpesh
+DLNS:SP-26-12884,2884,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12893,2893,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12897,2897,,Dispatched,05/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12841,2841,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12842,2842,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12843,2843,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12847,2847,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12856,2856,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12857,2857,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12860,2860,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12861,2861,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12862,2862,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12863,2863,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12864,2864,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12865,2865,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,Shaman
+DLNS:SP-26-12869,2869,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12871,2871,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12874,2874,,Pending,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12876,2876,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12877,2877,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12878,2878,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12882,2882,,Pending,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12885,2885,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12888,2888,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12891,2891,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12892,2892,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12894,2894,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12895,2895,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12901,2901,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12903,2903,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12904,2904,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12906,2906,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12909,2909,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12910,2910,,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12858,2858,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12875,2875,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12880,2880,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12881,2881,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12887,2887,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12890,2890,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12896,2896,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12899,2899,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12900,2900,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12902,2902,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12907,2907,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12908,2908,,Dispatched,05/06/2026,DIP,Standard Delivery,Anand
+DLNS:SP-26-12838,2838,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12839,2839,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12851,2851,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12853,2853,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12854,2854,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12867,2867,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12886,2886,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12889,2889,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12905,2905,,Dispatched,05/06/2026,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12914,2914,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12922,2922,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12923,2923,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12924,2924,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12925,2925,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12926,2926,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12927,2927,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12928,2928,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12931,2931,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12933,2933,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12940,2940,,Dispatched,06/06/2026,Sharjah,Standard Delivery,jay
+DLNS:SP-26-12941,2941,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12957,2957,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12958,2958,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12959,2959,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12961,2961,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12964,2964,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12966,2966,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12969,2969,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12974,2974,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12975,2975,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12979,2979,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12987,2987,,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin
+DLNS:SP-26-12918,2918,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12921,2921,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12930,2930,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12932,2932,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12937,2937,,Pending,06/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12938,2938,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12939,2939,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12944,2944,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12945,2945,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12948,2948,,Pending,06/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12949,2949,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12951,2951,,Pending,06/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12960,2960,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12965,2965,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12967,2967,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12968,2968,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12970,2970,,Pending,06/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12971,2971,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12972,2972,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12976,2976,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12977,2977,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12978,2978,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12983,2983,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12984,2984,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12985,2985,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12986,2986,,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12916,2916,,Dispatched,2026-06-06,DIP,Standard Delivery,Anand
+DLNS:SP-26-12917,2917,,Dispatched,2026-06-06,DIP,Standard Delivery,Anand
+DLNS:SP-26-12919,2919,,Dispatched,2026-06-06,DIP,Standard Delivery,Anand
+DLNS:SP-26-12929,2929,,Dispatched,2026-06-06,DIP,Standard Delivery,Anand
+DLNS:SP-26-12962,2962,,Dispatched,2026-06-06,DIP,Standard Delivery,Anand
+DLNS:SP-26-12980,2980,,Dispatched,2026-06-06,DIP,Standard Delivery,Anand
+DLNS:SP-26-12911,2911,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12913,2913,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12936,2936,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12950,2950,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12952,2952,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12953,2953,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12954,2954,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12955,2955,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12956,2956,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12973,2973,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12981,2981,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
+DLNS:SP-26-12982,2982,,Dispatched,2026-06-06,Abu Dhabi,Standard Delivery,Shaman
