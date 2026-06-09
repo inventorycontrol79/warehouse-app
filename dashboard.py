@@ -90,11 +90,13 @@ st.markdown("""
     div[data-testid="stMetric"] { 
         background: rgba(10, 15, 30, 0.7) !important;
         backdrop-filter: blur(20px);
-        padding: 24px !important; 
+        padding: 20px !important; 
         border-radius: 12px !important; 
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    
+    /* Neon Borders Setup for 5-Column Grid Layout */
     div[data-testid="stCol"]:nth-of-type(1) div[data-testid="stMetric"] { border: 1px solid rgba(6, 182, 212, 0.3) !important; }
     div[data-testid="stCol"]:nth-of-type(1) div[data-testid="stMetric"]:hover { border-color: #06b6d4 !important; box-shadow: 0 0 20px rgba(6, 182, 212, 0.25); }
     
@@ -104,12 +106,15 @@ st.markdown("""
     div[data-testid="stCol"]:nth-of-type(3) div[data-testid="stMetric"] { border: 1px solid rgba(16, 185, 129, 0.3) !important; }
     div[data-testid="stCol"]:nth-of-type(3) div[data-testid="stMetric"]:hover { border-color: #10b981 !important; box-shadow: 0 0 20px rgba(16, 185, 129, 0.25); }
     
-    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"] { border: 1px solid rgba(168, 85, 247, 0.3) !important; }
-    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"]:hover { border-color: #a855f7 !important; box-shadow: 0 0 20px rgba(168, 85, 247, 0.25); }
+    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"] { border: 1px solid rgba(239, 68, 68, 0.3) !important; }
+    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"]:hover { border-color: #ef4444 !important; box-shadow: 0 0 20px rgba(239, 68, 68, 0.25); }
+
+    div[data-testid="stCol"]:nth-of-type(5) div[data-testid="stMetric"] { border: 1px solid rgba(168, 85, 247, 0.3) !important; }
+    div[data-testid="stCol"]:nth-of-type(5) div[data-testid="stMetric"]:hover { border-color: #a855f7 !important; box-shadow: 0 0 20px rgba(168, 85, 247, 0.25); }
 
     div[data-testid="stMetricValue"] { 
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 32px !important; 
+        font-size: 28px !important; 
         font-weight: 700 !important; 
         color: #ffffff !important;
     }
@@ -246,13 +251,16 @@ try:
     # ------------------ DISPLAY LABELS ENGINE ------------------
     count_dispatched = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Dispatched']) if STATUS_COLUMN in filtered_df.columns else 0
     count_pending = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Pending']) if STATUS_COLUMN in filtered_df.columns else len(filtered_df)
+    count_return = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Return']) if STATUS_COLUMN in filtered_df.columns else 0
     total_volume = filtered_df['Quantity'].sum() if 'Quantity' in filtered_df.columns else 0
 
-    m1, m2, m3, m4 = st.columns(4)
+    # Option A: Balanced 5-Column Dashboard Lineup
+    m1, m2, m3, m4, m5 = st.columns(5)
     with m1: st.metric("Total Load Profile", f"{len(filtered_df):,}")
     with m2: st.metric("Pending Queue", f"{count_pending:,}")
     with m3: st.metric("Dispatched Volume", f"{count_dispatched:,}")
-    with m4: st.metric("Gross Units Moved", f"{total_volume:,}")
+    with m4: st.metric("Return Logs", f"{count_return:,}")
+    with m5: st.metric("Gross Units Moved", f"{total_volume:,}")
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<h4 style='font-family:Orbitron; font-size:13px; letter-spacing:1px; color:#94a3b8; margin-bottom:12px;'>LIVE OPERATIONS PIPELINE</h4>", unsafe_allow_html=True)
@@ -280,7 +288,6 @@ try:
         
         font_family = "Segoe UI"
         
-        # Style Definitions
         title_font = Font(name=font_family, size=15, bold=True, color="0F172A")
         header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
         header_font = Font(name=font_family, size=11, bold=True, color="FFFFFF")
@@ -297,17 +304,15 @@ try:
             "Return": {"fill": PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid"), "font": Font(name=font_family, size=10, bold=True, color="B91C1C")}
         }
 
-        # 1. Title Row
+        # Title Row
         ws.merge_cells("A2:F2")
         ws["A2"] = "SABIN // EXECUTIVE LOGISTICS MANIFEST"
         ws["A2"].font = title_font
         ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
         
-        # 🚨 DYNAMIC COLUMN POSITION RECOVERY LOGIC
+        # Recover True Status Column Letter Dynamically
         columns_mapping = list(filtered_df.columns)
-        
-        # Find exactly where the 'Status' column resides in this dataset
-        status_col_idx = 2  # Default fallback to Column B
+        status_col_idx = 2  
         for idx, col_name in enumerate(columns_mapping, 1):
             if "status" in str(col_name).lower():
                 status_col_idx = idx
@@ -317,11 +322,12 @@ try:
         total_rows_data = len(filtered_df)
         last_row_idx = 8 + total_rows_data
         
-        # 2. Dynamic Head KPI Cards (Uses the computed status column letter dynamically!)
+        # Option A: Extended Formula KPI Header Lineup inside the Workbook
         cards_setup = [
             ("TOTAL LOAD PROFILE", f"=COUNTA(A9:A{last_row_idx})", "A", "B"),
             ("PENDING QUEUE", f'=COUNTIF({status_letter}9:{status_letter}{last_row_idx}, "Pending")', "C", "D"),
-            ("DISPATCHED VOLUME", f'=COUNTIF({status_letter}9:{status_letter}{last_row_idx}, "Dispatched")', "E", "F")
+            ("DISPATCHED VOLUME", f'=COUNTIF({status_letter}9:{status_letter}{last_row_idx}, "Dispatched")', "E", "F"),
+            ("RETURN RECORDS", f'=COUNTIF({status_letter}9:{status_letter}{last_row_idx}, "Return")', "G", "H")
         ]
         
         for lbl, formula, c1, c2 in cards_setup:
@@ -343,7 +349,7 @@ try:
                 ws[f"{c1}{r}"].border = border_all
                 ws[f"{c2}{r}"].border = border_all
 
-        # 3. Headers Generation
+        # Headers Row Generation
         ws.row_dimensions[8].height = 26
         for col_idx, column_name in enumerate(columns_mapping, 1):
             cell = ws.cell(row=8, column=col_idx, value=str(column_name))
@@ -352,7 +358,7 @@ try:
             cell.border = border_all
             cell.alignment = Alignment(horizontal="center" if "status" in str(column_name).lower() else "left", vertical="center")
 
-        # 4. Inject Dynamic Data Matrix Logs
+        # Inject Data Rows
         for r_idx, row_values in enumerate(filtered_df.itertuples(index=False), 9):
             ws.row_dimensions[r_idx].height = 22
             for c_idx, cell_value in enumerate(row_values, 1):
