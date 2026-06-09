@@ -2,10 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# 1. Page Configuration & Custom Theme Styling
+# 1. Page Configuration & Premium Theme Styling
 st.set_page_config(page_title="Warehouse Logistics Portal", layout="wide")
 
-# Custom CSS for dark logistics theme
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: #ecf0f1; }
@@ -18,36 +17,51 @@ st.markdown("""
 st.title("📦 Warehouse Inventory & Logistics Portal")
 st.markdown("---")
 
+# 🟢 Helper Function to Color-Code Row Backgrounds Based on Status
+def style_status_rows(row):
+    status = str(row['Status']).strip()
+    # Create a default style list matching the number of columns in the row
+    styles = [''] * len(row)
+    
+    # Define our colors (Using bright text so it's perfectly visible over dark backgrounds)
+    if status == 'Dispatched':
+        color_style = 'background-color: #0d5c3a; color: #ffffff; font-weight: bold;' # Royal Green
+    elif status == 'Return':
+        color_style = 'background-color: #8c1d1d; color: #ffffff; font-weight: bold;' # Deep Red
+    elif status == 'Pending':
+        color_style = 'background-color: #b37400; color: #ffffff; font-weight: bold;' # Amber Gold
+    else:
+        return styles # No changes for other statuses
+        
+    # Apply the color style across every single cell in that specific row
+    return [color_style for _ in range(len(row))]
+
 try:
     # 2. Read Data
     df = pd.read_csv('inventory.csv')
     st.sidebar.header("🎯 Filter Control Center")
 
-    # 3. WAREHOUSE LOCATION FILTER (Now reads the link to LOCK the location!)
+    # 3. SMART WAREHOUSE CONTROLLER
     LOCATION_COLUMN = 'Warehouse_Name' 
     if LOCATION_COLUMN in df.columns:
         df[LOCATION_COLUMN] = df[LOCATION_COLUMN].astype(str).str.strip()
         unique_locations = sorted(list(df[LOCATION_COLUMN].unique()))
         
-        # Check if a specific warehouse was passed inside the web link URL
         url_params = st.query_params
-        default_index = 0
         
-        if "warehouse" in url_params:
-            url_warehouse = url_params["warehouse"]
-            if url_warehouse in unique_locations:
-                default_index = unique_locations.index(url_warehouse)
-        
-        # The dropdown now defaults to whatever is in the link
-        selected_location = st.sidebar.selectbox(
-            "Select Warehouse Location", 
-            unique_locations, 
-            index=default_index
-        )
-        
-        # Automatically update the link parameters when changed on screen
-        st.query_params["warehouse"] = selected_location
-        df = df[df[LOCATION_COLUMN] == selected_location]
+        if "warehouse" in url_params and url_params["warehouse"] in unique_locations:
+            target_warehouse = url_params["warehouse"]
+            st.sidebar.info(f"📍 Location Locked: **{target_warehouse}**")
+            df = df[df[LOCATION_COLUMN] == target_warehouse]
+        else:
+            master_options = ["All Locations"] + unique_locations
+            selected_location = st.sidebar.selectbox("Select Warehouse Location (Master)", master_options)
+            
+            if selected_location != "All Locations":
+                df = df[df[LOCATION_COLUMN] == selected_location]
+                st.query_params["warehouse"] = selected_location
+            else:
+                st.query_params["warehouse"] = "All"
 
     # 4. INTERACTIVE STATUS FILTER
     STATUS_COLUMN = 'Status' 
@@ -90,9 +104,15 @@ try:
     with col3:
         st.metric("Portal Status", "Live Sync Active")
 
-    # 7. Interactive Live Data Table
+    # 7. Interactive Live Data Table with Applied Background Colors
     st.markdown("### 📋 Active Warehouse Records")
-    st.dataframe(filtered_df, use_container_width=True)
+    
+    if STATUS_COLUMN in filtered_df.columns and len(filtered_df) > 0:
+        # Apply the styling rule row-by-row
+        styled_df = filtered_df.style.apply(style_status_rows, axis=1)
+        st.dataframe(styled_df, use_container_width=True)
+    else:
+        st.dataframe(filtered_df, use_container_width=True)
 
 except FileNotFoundError:
     st.error("⚠️ 'inventory.csv' not found.")
