@@ -3,90 +3,59 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-# 1. Page Configuration & Custom CSS Styling for a Visually Catchy Theme
 st.set_page_config(page_title="Al Quoz & Abu Dhabi Warehouse Logistics", layout="wide")
 
-# Custom CSS injected for a dark, premium logistics theme (Midnight Blue & Neon accents)
+# Visually Catchy Dark Premium Theme CSS
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #0e1117;
-        color: #ecf0f1;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 28px;
-        color: #00ffcc !important;
-    }
-    div[data-testid="stMetricLabel"] {
-        color: #a0aec0 !important;
-    }
-    .css-1d391kg {
-        background-color: #1a202c;
-    }
+    .stApp { background-color: #0e1117; color: #ecf0f1; }
+    div[data-testid="stMetricValue"] { font-size: 28px; color: #00ffcc !important; }
+    div[data-testid="stMetricLabel"] { color: #a0aec0 !important; }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("📦 Warehouse Inventory & Logistics Portal")
 st.markdown("---")
 
-# 2. Load Data Using Relative Cloud Path
 try:
-    # Read the data
     df = pd.read_csv('inventory.csv')
     
-    # Clean/Convert Date Column safely (Change 'Date' to your actual column name if different)
-    if 'Date' in df.columns:
-        df['Date'] = pd.to_datetime(df['Date']).dt.date
+    # 🎯 MATCHED TO YOUR CSV HEADING EXACLY
+    DATE_COLUMN = 'Date_Issued' 
+    
+    if DATE_COLUMN in df.columns:
+        # Convert the Date_Issued column to a proper Python date format safely
+        df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN]).dt.date
+        
+        # Sidebar Filtering UI Setup
+        st.sidebar.header("🎯 Filter Control Center")
+        min_date = min(df[DATE_COLUMN])
+        max_date = max(df[DATE_COLUMN])
+        
+        start_date = st.sidebar.date_input("Start Date", min_date)
+        end_date = st.sidebar.date_input("End Date", max_date)
+        
+        # 🔗 Dynamic Link: This filters the data matrix instantly on selection
+        filtered_df = df[(df[DATE_COLUMN] >= start_date) & (df[DATE_COLUMN] <= end_date)]
     else:
-        # Fallback if no date column exists just to keep the app functional
-        df['Date'] = datetime.today().date()
+        # Quick fallback warning in case there's an unforeseen structural change
+        st.sidebar.warning(f"⚠️ Column '{DATE_COLUMN}' not found. Check your CSV columns: {list(df.columns)}")
+        filtered_df = df
 
-    # 3. Sidebar Filtering Logic
-    st.sidebar.header("🎯 Filter Control Center")
-    
-    min_date = min(df['Date'])
-    max_date = max(df['Date'])
-    
-    # Date Pickers
-    start_date = st.sidebar.date_input("Start Date", min_date)
-    end_date = st.sidebar.date_input("End Date", max_date)
-    
-    # Apply the Date Filter
-    filtered_df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
-
-    # 4. Visually Catchy Metrics / KPI Cards
+    # KPI Metric Cards
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Tracked Items", len(filtered_df))
+        st.metric("Total Records Found", len(filtered_df))
     with col2:
-        # Assumes you have a 'Quantity' or 'Stock' column
-        total_stock = filtered_df['Quantity'].sum() if 'Quantity' in df.columns else "N/A"
-        st.metric("Total Stock Level", total_stock)
+        # Change 'Quantity' to your specific weight or item stock count column header if needed
+        total_stock = filtered_df['Quantity'].sum() if 'Quantity' in filtered_df.columns else "N/A"
+        st.metric("Total Quantity", total_stock)
     with col3:
-        # Assumes you have a 'Location' column
-        locations = filtered_df['Location'].nunique() if 'Location' in df.columns else "Active"
-        st.metric("Active Warehouses", locations)
+        st.metric("Status", "Active Sync")
 
-    st.markdown("### 📊 Live Stock Breakdown")
-    
-    # 5. Visual Charting (Interactive Plotly Chart)
-    # Adjust x and y parameters based on your inventory.csv columns (e.g., 'Item', 'Quantity')
-    if 'Quantity' in filtered_df.columns:
-        x_axis = 'Item' if 'Item' in filtered_df.columns else filtered_df.columns[0]
-        fig = px.bar(
-            filtered_df, 
-            x=x_axis, 
-            y='Quantity', 
-            template="plotly_dark",
-            color_discrete_sequence=["#00ffcc"]
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    # 6. Data Display Table
-    st.markdown("### 📋 Filtered Manifest Record")
+    # Interactive Table (Directly linked to filtered data)
+    st.markdown("### 📋 Filtered Warehouse Records")
     st.dataframe(filtered_df, use_container_width=True)
 
 except FileNotFoundError:
-    st.error("⚠️ Error: 'inventory.csv' missing from cloud repository folder. Please commit via GitHub Desktop.")
-except Exception as e:
-    st.error(f"An error occurred: {e}")
+    st.error("⚠️ 'inventory.csv' not found. Ensure it is placed inside the 'warehouse-tracker' directory.")
