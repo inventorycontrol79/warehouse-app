@@ -272,7 +272,6 @@ try:
 
     # ------------------ ADVANCED PRESTIGE EXCEL GENERATOR ------------------
     if not filtered_df.empty:
-        # Build memory-buffer for Excel conversion
         excel_buffer = io.BytesIO()
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -304,14 +303,25 @@ try:
         ws["A2"].font = title_font
         ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
         
-        # 2. Dynamic Head KPI Cards (Uses real-time sheet equations)
+        # 🚨 DYNAMIC COLUMN POSITION RECOVERY LOGIC
+        columns_mapping = list(filtered_df.columns)
+        
+        # Find exactly where the 'Status' column resides in this dataset
+        status_col_idx = 2  # Default fallback to Column B
+        for idx, col_name in enumerate(columns_mapping, 1):
+            if "status" in str(col_name).lower():
+                status_col_idx = idx
+                break
+        
+        status_letter = get_column_letter(status_col_idx)
         total_rows_data = len(filtered_df)
         last_row_idx = 8 + total_rows_data
         
+        # 2. Dynamic Head KPI Cards (Uses the computed status column letter dynamically!)
         cards_setup = [
             ("TOTAL LOAD PROFILE", f"=COUNTA(A9:A{last_row_idx})", "A", "B"),
-            ("PENDING QUEUE", f'=COUNTIF(B9:B{last_row_idx}, "Pending")', "C", "D"),
-            ("DISPATCHED VOLUME", f'=COUNTIF(B9:B{last_row_idx}, "Dispatched")', "E", "F")
+            ("PENDING QUEUE", f'=COUNTIF({status_letter}9:{status_letter}{last_row_idx}, "Pending")', "C", "D"),
+            ("DISPATCHED VOLUME", f'=COUNTIF({status_letter}9:{status_letter}{last_row_idx}, "Dispatched")', "E", "F")
         ]
         
         for lbl, formula, c1, c2 in cards_setup:
@@ -333,9 +343,6 @@ try:
                 ws[f"{c1}{r}"].border = border_all
                 ws[f"{c2}{r}"].border = border_all
 
-        # Arrange column structural targets matching standard DataFrame exports
-        columns_mapping = list(filtered_df.columns)
-        
         # 3. Headers Generation
         ws.row_dimensions[8].height = 26
         for col_idx, column_name in enumerate(columns_mapping, 1):
@@ -354,18 +361,15 @@ try:
                 cell.font = Font(name=font_family, size=10, color="334155")
                 cell.border = border_all
                 
-                # Default alignments
                 if isinstance(cell_value, (int, float)):
                     cell.alignment = Alignment(horizontal="right", vertical="center")
                     cell.number_format = '#,##0'
                 else:
                     cell.alignment = Alignment(horizontal="left", vertical="center")
 
-                # Alternating Zebra Striping Background rules
                 if r_idx % 2 == 0:
                     cell.fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
 
-                # Dynamic requested Color highlighting logic applied to Status column
                 if "status" in str(col_name).lower():
                     status_str = str(cell_value).strip()
                     if status_str in status_styles:
