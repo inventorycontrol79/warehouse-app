@@ -127,59 +127,6 @@ if not df.empty:
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
 
-# --- SIDEBAR CONTROL PANEL ---
-st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
-
-uploaded = st.sidebar.file_uploader("Upload Raw ERP Excel File", type=["xlsx"])
-
-if uploaded is not None:
-    raw_erp = pd.read_excel(uploaded, engine="openpyxl")
-    available_cols = [str(col).strip() for col in raw_erp.columns]
-    raw_erp.columns = available_cols 
-    
-    st.sidebar.markdown("#### 🗺️ Align ERP Columns")
-    
-    def auto_match(possibilities, options):
-        for p in possibilities:
-            for opt in options:
-                if p.lower() in opt.lower():
-                    return opt
-        return options[0] if options else ""
-    
-    guess_do = auto_match(["voucher", "do number", "do_no", "invoice", "document", "delivery"], available_cols)
-    guess_date = auto_match(["date", "issued", "time", "posting"], available_cols)
-    guess_wh = auto_match(["godown", "warehouse", "location", "facility", "branch", "site"], available_cols)
-    guess_user = auto_match(["created by", "user", "operator", "creator", "entered"], available_cols)
-    
-    chosen_do = st.sidebar.selectbox("Match [DO Number]:", available_cols, index=available_cols.index(guess_do) if guess_do in available_cols else 0)
-    chosen_date = st.sidebar.selectbox("Match [Date Issued]:", available_cols, index=available_cols.index(guess_date) if guess_date in available_cols else 0)
-    chosen_wh = st.sidebar.selectbox("Match [Warehouse]:", available_cols, index=available_cols.index(guess_wh) if guess_wh in available_cols else 0)
-    chosen_user = st.sidebar.selectbox("Match [Created By]:", available_cols, index=available_cols.index(guess_user) if guess_user in available_cols else 0)
-    
-    if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT"):
-        new_df = pd.DataFrame({
-            "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
-            "Date_Issued": raw_erp[chosen_date],
-            "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip().str.title(),
-            "Created_By": raw_erp[chosen_user].astype(str).str.strip()
-        })
-
-        new_df["Last_4"] = new_df["DO_Number"].str[-4:]
-        new_df["Status"] = "Pending"
-        new_df["Remarks"] = ""
-        new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        combined = pd.concat([df, new_df], ignore_index=True)
-        combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
-        combined.to_csv(INVENTORY_FILE, index=False)
-
-        df = combined
-        df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
-        df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
-        st.sidebar.success("Raw ledger remapped and synchronized successfully.")
-
-search = st.sidebar.text_input("🔍 Global DO Search")
-
 # --- ADVANCED URL PARAMETER ROUTING ENGINE ---
 url_params = st.query_params
 url_warehouse = url_params.get("warehouse", None)
@@ -187,10 +134,71 @@ url_warehouse = url_params.get("warehouse", None)
 if url_warehouse:
     url_warehouse = url_warehouse.strip().title()
 
+# Determine role architecture status based on incoming URL criteria
+is_supervisor_session = False
 if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique():
+    is_supervisor_session = True
+
+# --- SIDEBAR CONTROL PANEL ---
+st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
+
+# Lock down administrative uploading mechanics for Supervisor Sessions entirely
+if is_supervisor_session:
+    st.sidebar.info("🔒 Administrative operations locked. Core ledger modifications are read-only for your terminal role.")
+else:
+    uploaded = st.sidebar.file_uploader("Upload Raw ERP Excel File", type=["xlsx"])
+
+    if uploaded is not None:
+        raw_erp = pd.read_excel(uploaded, engine="openpyxl")
+        available_cols = [str(col).strip() for col in raw_erp.columns]
+        raw_erp.columns = available_cols 
+        
+        st.sidebar.markdown("#### 🗺️ Align ERP Columns")
+        
+        def auto_match(possibilities, options):
+            for p in possibilities:
+                for opt in options:
+                    if p.lower() in opt.lower():
+                        return opt
+            return options[0] if options else ""
+        
+        guess_do = auto_match(["voucher", "do number", "do_no", "invoice", "document", "delivery"], available_cols)
+        guess_date = auto_match(["date", "issued", "time", "posting"], available_cols)
+        guess_wh = auto_match(["godown", "warehouse", "location", "facility", "branch", "site"], available_cols)
+        guess_user = auto_match(["created by", "user", "operator", "creator", "entered"], available_cols)
+        
+        chosen_do = st.sidebar.selectbox("Match [DO Number]:", available_cols, index=available_cols.index(guess_do) if guess_do in available_cols else 0)
+        chosen_date = st.sidebar.selectbox("Match [Date Issued]:", available_cols, index=available_cols.index(guess_date) if guess_date in available_cols else 0)
+        chosen_wh = st.sidebar.selectbox("Match [Warehouse]:", available_cols, index=available_cols.index(guess_wh) if guess_wh in available_cols else 0)
+        chosen_user = st.sidebar.selectbox("Match [Created By]:", available_cols, index=available_cols.index(guess_user) if guess_user in available_cols else 0)
+        
+        if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT"):
+            new_df = pd.DataFrame({
+                "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
+                "Date_Issued": raw_erp[chosen_date],
+                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip().str.title(),
+                "Created_By": raw_erp[chosen_user].astype(str).str.strip()
+            })
+
+            new_df["Last_4"] = new_df["DO_Number"].str[-4:]
+            new_df["Status"] = "Pending"
+            new_df["Remarks"] = ""
+            new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            combined = pd.concat([df, new_df], ignore_index=True)
+            combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
+            combined.to_csv(INVENTORY_FILE, index=False)
+
+            df = combined
+            df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
+            df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
+            st.sidebar.success("Raw ledger remapped and synchronized successfully.")
+
+search = st.sidebar.text_input("🔍 Global DO Search")
+
+if is_supervisor_session:
     warehouse_options = [url_warehouse]
     st.sidebar.markdown(f"📦 **Facility Bound:** `{url_warehouse}`")
-    st.sidebar.caption("Security parameter active. Alternate facility routing locked.")
 else:
     warehouse_options = ["All"]
     if not df.empty:
@@ -239,7 +247,6 @@ if not filt.empty:
     if status != "All": 
         filt = filt[filt["Status"] == status]
     
-    # Safe date filtering execution
     date_mask = (filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)
     filt = filt[date_mask]
 
@@ -305,10 +312,13 @@ else:
     st.markdown("---")
     st.markdown("##### Active Operations Ledger")
     
-    # Ensure display tracking formatting is clean
     display_filt = filt.copy()
     display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%Y-%m-%d')
     
+    # DYNAMIC SECURITY PROTECTION MATRIX
+    # If supervisor session is True, disable entire element grid system. Else handle admin defaults.
+    grid_disabled_setting = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
+
     edited = st.data_editor(
         display_filt,
         use_container_width=True,
@@ -316,20 +326,22 @@ else:
         column_config={
             "Status": st.column_config.SelectboxColumn("Status", options=["Pending","Dispatched","Return"])
         },
-        disabled=["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
+        disabled=grid_disabled_setting
     )
 
-    if st.button("💾 COMMIT RECORD TO DATABASE"):
-        base = load_inventory()
-        if not base.empty:
-            for _, row in edited.iterrows():
-                do = str(row["DO_Number"]).strip()
-                base.loc[base["DO_Number"].astype(str).str.strip() == do, "Status"] = row["Status"]
-                base.loc[base["DO_Number"].astype(str).str.strip() == do, "Remarks"] = row["Remarks"]
-                base.loc[base["DO_Number"].astype(str).str.strip() == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            base.to_csv(INVENTORY_FILE, index=False)
-            st.success("System updated successfully. Refreshing live view...")
-            st.rerun()
+    # Completely conceal database mutation pathways for supervisors
+    if not is_supervisor_session:
+        if st.button("💾 COMMIT RECORD TO DATABASE"):
+            base = load_inventory()
+            if not base.empty:
+                for _, row in edited.iterrows():
+                    do = str(row["DO_Number"]).strip()
+                    base.loc[base["DO_Number"].astype(str).str.strip() == do, "Status"] = row["Status"]
+                    base.loc[base["DO_Number"].astype(str).str.strip() == do, "Remarks"] = row["Remarks"]
+                    base.loc[base["DO_Number"].astype(str).str.strip() == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                base.to_csv(INVENTORY_FILE, index=False)
+                st.success("System updated successfully. Refreshing live view...")
+                st.rerun()
 
     # --- EXECUTIVE EXCEL SECURED REPORT ENGINE ---
     buffer = io.BytesIO()
