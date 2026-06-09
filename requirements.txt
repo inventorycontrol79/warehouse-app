@@ -1,6 +1,5 @@
-pandas
 streamlit
+pandas
+altair
 xlsxwriter
 openpyxl
-altair
-plotly

@@ -1,58 +1,72 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import io
 import os
 
-# --- PREMIUM CONFIG ---
-st.set_page_config(page_title="SABIN // Operations", layout="wide")
+# 1. Page Config
+st.set_page_config(page_title="SABIN // Command Center", layout="wide")
 
-# High-Visibility CSS
+# 2. Resilient Styling (Compact CSS)
 st.markdown("""
     <style>
     .stApp { background: #060911; color: #ffffff; }
-    .sabin-brand { font-size: 48px; font-weight: 800; letter-spacing: 12px; text-transform: uppercase; color: #ffffff; }
-    div[data-testid="stMetric"] { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 25px; border-radius: 4px; }
+    .sabin-brand { font-size: 40px; font-weight: 800; letter-spacing: 10px; color: #ffffff; text-transform: uppercase; }
+    div[data-testid="stMetric"] { background: #0f172a; border: 1px solid #1e293b; padding: 20px; border-radius: 4px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- CHART THEME ---
-def premium_theme():
-    return {
-        "config": {
-            "background": "transparent",
-            "axis": {"domainColor": "#475569", "gridColor": "#1e293b", "labelColor": "#94a3b8", "titleColor": "#f8fafc"},
-            "mark": {"color": "#38bdf8"}
-        }
-    }
-alt.themes.register("premium", premium_theme)
-alt.themes.enable("premium")
-
-# --- DATA PROCESSING ---
-CSV_FILE = 'inventory.csv'
-df = pd.read_csv(CSV_FILE)
-df['Warehouse_Name'] = df['Warehouse_Name'].astype(str).str.strip().str.title()
-
-# --- UI COMPONENTS ---
+# 3. Header
 st.markdown("<div class='sabin-brand'>SABIN</div>", unsafe_allow_html=True)
+st.write("---")
 
-# Performance Chart (High End, Dark Theme)
-perf = df.groupby('Warehouse_Name').size().reset_index(name='Volume')
-chart = alt.Chart(perf).mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
-    x=alt.X('Warehouse_Name', title=None),
-    y=alt.Y('Volume', title=None),
-    tooltip=['Warehouse_Name', 'Volume']
-).properties(height=300)
-st.altair_chart(chart, use_container_width=True)
+CSV_FILE = 'inventory.csv'
 
-# Status Color Function
-def color_status(val):
-    color = '#cbd5e1' # Default
-    if val == 'Dispatched': color = '#10b981' # Emerald
-    elif val == 'Pending': color = '#f59e0b' # Amber
-    elif val == 'Return': color = '#f43f5e' # Rose
-    return f'color: {color}; font-weight: bold'
+if os.path.exists(CSV_FILE):
+    df = pd.read_csv(CSV_FILE)
+    
+    # --- AUTO-POLISH DATA ---
+    # Strip whitespace, Title Case names, and force date format
+    if 'Warehouse_Name' in df.columns:
+        df['Warehouse_Name'] = df['Warehouse_Name'].astype(str).str.strip().str.title()
+    if 'Date_Issued' in df.columns:
+        df['Date_Issued'] = pd.to_datetime(df['Date_Issued'], errors='coerce')
+    
+    # SIDEBAR
+    st.sidebar.header("⚙️ OPERATIONS")
+    locs = ["All"] + sorted(df['Warehouse_Name'].unique().tolist())
+    sel_loc = st.sidebar.selectbox("Filter Warehouse", locs)
+    
+    # LOGIC
+    filt = df.copy()
+    if sel_loc != "All":
+        filt = filt[filt['Warehouse_Name'] == sel_loc]
+    
+    # METRICS
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("TOTAL LOAD", len(filt))
+    c2.metric("PENDING", len(filt[filt['Status']=='Pending']))
+    c3.metric("DISPATCHED", len(filt[filt['Status']=='Dispatched']))
+    c4.metric("RETURN", len(filt[filt['Status']=='Return']))
+    
+    # CHART
+    st.subheader("Performance Telemetry")
+    perf = filt.groupby('Warehouse_Name').size().reset_index(name='Volume')
+    chart = alt.Chart(perf).mark_bar(color='#38bdf8', cornerRadius=4).encode(
+        x=alt.X('Warehouse_Name', title=None),
+        y=alt.Y('Volume', title=None),
+        tooltip=['Warehouse_Name', 'Volume']
+    ).properties(height=300)
+    st.altair_chart(chart, use_container_width=True)
+    
+    # TABLE
+    st.dataframe(filt, use_container_width=True)
+    
+    # DOWNLOAD (Using Openpyxl for stability)
+    from io import BytesIO
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as w:
+        filt.to_excel(w, index=False)
+    st.download_button("DOWNLOAD REPORT", buffer.getvalue(), "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# Display Table with Conditional Coloring
-st.subheader("Live Pipeline")
-st.dataframe(df.style.applymap(color_status, subset=['Status']), use_container_width=True)
+else:
+    st.error("inventory.csv file not found.")
