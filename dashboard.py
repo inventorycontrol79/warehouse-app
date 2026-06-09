@@ -41,11 +41,19 @@ if os.path.exists(CSV_FILE):
     sel_loc = st.sidebar.selectbox("Filter Warehouse", ["All"] + sorted(df['Warehouse_Name'].unique().tolist()))
     sel_stat = st.sidebar.selectbox("Filter Status", ["All"] + sorted(df['Status'].unique().tolist()))
     
+    # Date Filter
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📅 DATE FILTER")
+    start_d = st.sidebar.date_input("Start Date", df['Date_Issued'].min())
+    end_d = st.sidebar.date_input("End Date", df['Date_Issued'].max())
+    
+    # Filter Logic
     filt = df.copy()
     if sel_loc != "All": filt = filt[filt['Warehouse_Name'] == sel_loc]
     if sel_stat != "All": filt = filt[filt['Status'] == sel_stat]
+    filt = filt[(filt['Date_Issued'].dt.date >= start_d) & (filt['Date_Issued'].dt.date <= end_d)]
 
-    # --- SUMMARY (Refined Visibility) ---
+    # --- SUMMARY ---
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("TOTAL DO", len(filt))
     m2.metric("DISPATCHED", len(filt[filt['Status']=='Dispatched']))
@@ -54,7 +62,6 @@ if os.path.exists(CSV_FILE):
 
     # --- BLENDED CHART ---
     st.markdown("### Warehouse Performance")
-    # Setting transparent background and specific axis colors to match theme
     chart = alt.Chart(filt.groupby('Warehouse_Name').size().reset_index(name='Volume')).mark_bar(color='#38bdf8', cornerRadius=4).encode(
         x=alt.X('Warehouse_Name', title=None, axis=alt.Axis(labelColor='#94a3b8', tickColor='#94a3b8')), 
         y=alt.Y('Volume', title=None, axis=alt.Axis(labelColor='#94a3b8', tickColor='#94a3b8')),
