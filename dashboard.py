@@ -1,72 +1,74 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+import io
 import os
+from xlsxwriter import Workbook
 
-# 1. Page Config
 st.set_page_config(page_title="SABIN // Command Center", layout="wide")
 
-# 2. Resilient Styling (Compact CSS)
+# --- PREMIUM OBSIDIAN THEME CSS ---
 st.markdown("""
     <style>
-    .stApp { background: #060911; color: #ffffff; }
-    .sabin-brand { font-size: 40px; font-weight: 800; letter-spacing: 10px; color: #ffffff; text-transform: uppercase; }
-    div[data-testid="stMetric"] { background: #0f172a; border: 1px solid #1e293b; padding: 20px; border-radius: 4px; }
+    .stApp { background: #060911; color: #ffffff; font-family: 'Inter', sans-serif; }
+    .brand { font-size: 50px; font-weight: 800; letter-spacing: 12px; color: #ffffff; text-transform: uppercase; margin-bottom: 5px; }
+    .sub-brand { color: #64748b; letter-spacing: 5px; font-size: 12px; margin-bottom: 30px; }
+    div[data-testid="stMetric"] { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 25px; border-radius: 4px; }
+    .stMetric-value { color: #ffffff !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Header
-st.markdown("<div class='sabin-brand'>SABIN</div>", unsafe_allow_html=True)
-st.write("---")
+# --- HEADER ---
+st.markdown("<div class='brand'>SABIN</div><div class='sub-brand'>ENTERPRISE LOGISTICS CONTROL</div>", unsafe_allow_html=True)
 
+# --- DATA ENGINE ---
 CSV_FILE = 'inventory.csv'
-
 if os.path.exists(CSV_FILE):
     df = pd.read_csv(CSV_FILE)
-    
-    # --- AUTO-POLISH DATA ---
-    # Strip whitespace, Title Case names, and force date format
-    if 'Warehouse_Name' in df.columns:
-        df['Warehouse_Name'] = df['Warehouse_Name'].astype(str).str.strip().str.title()
-    if 'Date_Issued' in df.columns:
-        df['Date_Issued'] = pd.to_datetime(df['Date_Issued'], errors='coerce')
+    df['Warehouse_Name'] = df['Warehouse_Name'].astype(str).str.strip().str.title()
+    df['Date_Issued'] = pd.to_datetime(df['Date_Issued'], errors='coerce')
     
     # SIDEBAR
     st.sidebar.header("⚙️ OPERATIONS")
-    locs = ["All"] + sorted(df['Warehouse_Name'].unique().tolist())
-    sel_loc = st.sidebar.selectbox("Filter Warehouse", locs)
+    sel_loc = st.sidebar.selectbox("Filter Warehouse", ["All"] + sorted(df['Warehouse_Name'].unique().tolist()))
+    sel_stat = st.sidebar.selectbox("Filter Status", ["All"] + sorted(df['Status'].unique().tolist()))
     
-    # LOGIC
     filt = df.copy()
-    if sel_loc != "All":
-        filt = filt[filt['Warehouse_Name'] == sel_loc]
-    
-    # METRICS
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("TOTAL LOAD", len(filt))
-    c2.metric("PENDING", len(filt[filt['Status']=='Pending']))
-    c3.metric("DISPATCHED", len(filt[filt['Status']=='Dispatched']))
-    c4.metric("RETURN", len(filt[filt['Status']=='Return']))
-    
-    # CHART
-    st.subheader("Performance Telemetry")
-    perf = filt.groupby('Warehouse_Name').size().reset_index(name='Volume')
-    chart = alt.Chart(perf).mark_bar(color='#38bdf8', cornerRadius=4).encode(
-        x=alt.X('Warehouse_Name', title=None),
-        y=alt.Y('Volume', title=None),
-        tooltip=['Warehouse_Name', 'Volume']
-    ).properties(height=300)
-    st.altair_chart(chart, use_container_width=True)
-    
-    # TABLE
-    st.dataframe(filt, use_container_width=True)
-    
-    # DOWNLOAD (Using Openpyxl for stability)
-    from io import BytesIO
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine='openpyxl') as w:
-        filt.to_excel(w, index=False)
-    st.download_button("DOWNLOAD REPORT", buffer.getvalue(), "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    if sel_loc != "All": filt = filt[filt['Warehouse_Name'] == sel_loc]
+    if sel_stat != "All": filt = filt[filt['Status'] == sel_stat]
 
+    # METRICS
+    cols = st.columns(4)
+    cols[0].metric("TOTAL LOAD", len(filt))
+    cols[1].metric("PENDING", len(filt[filt['Status']=='Pending']))
+    cols[2].metric("DISPATCHED", len(filt[filt['Status']=='Dispatched']))
+    cols[3].metric("RETURN", len(filt[filt['Status']=='Return']))
+
+    # TELEMETRY CHART
+    st.subheader("Warehouse Performance")
+    chart = alt.Chart(filt.groupby('Warehouse_Name').size().reset_index(name='Volume')).mark_bar(color='#38bdf8', cornerRadius=4).encode(
+        x=alt.X('Warehouse_Name', title=None), y=alt.Y('Volume', title=None)
+    ).properties(height=300).configure_view(stroke=None)
+    st.altair_chart(chart, use_container_width=True)
+
+    # TABLE WITH COLORS
+    def color_status(val):
+        color = '#10b981' if val=='Dispatched' else '#f59e0b' if val=='Pending' else '#f43f5e'
+        return f'color: {color}; font-weight: bold'
+    
+    st.dataframe(filt.style.applymap(color_status, subset=['Status']), use_container_width=True)
+
+    # PREMIUM EXCEL EXPORT
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        filt.to_excel(writer, index=False, sheet_name='Report')
+        workbook  = writer.book
+        worksheet = writer.sheets['Report']
+        # Apply premium formatting (Status colors)
+        status_fmt = workbook.add_format({'bold': True})
+        worksheet.conditional_format('B2:B1000', {'type': 'text', 'criteria': 'containing', 'value': 'Pending', 'format': workbook.add_format({'font_color': '#B45309', 'bg_color': '#FEF3C7'})})
+        worksheet.conditional_format('B2:B1000', {'type': 'text', 'criteria': 'containing', 'value': 'Dispatched', 'format': workbook.add_format({'font_color': '#047857', 'bg_color': '#D1FAE5'})})
+
+    st.download_button("DOWNLOAD EXECUTIVE REPORT", buffer.getvalue(), "SABIN_Manifest.xlsx", "application/vnd.ms-excel")
 else:
-    st.error("inventory.csv file not found.")
+    st.error("Data source not found.")
