@@ -3,87 +3,215 @@ import pandas as pd
 import altair as alt
 import io
 import os
-import xlsxwriter
+from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
 
-# --- CONFIGURATION ---
-st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
+st.set_page_config(page_title="SABIN PLASTIC Command Center", layout="wide")
 
-# --- PREMIUM CSS ---
+st_autorefresh(interval=30000, key="refresh")
+
 st.markdown("""
-    <style>
-    .stApp { background: #0c0e12; color: #f8fafc; }
-    .header-box { padding: 40px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .sabin-plastic { font-size: 55px; font-weight: 900; letter-spacing: 15px; color: #ffffff; text-transform: uppercase; }
-    .sub-brand { color: #64748b; letter-spacing: 6px; font-size: 13px; text-transform: uppercase; }
-    div[data-testid="stMetric"] { background: transparent; border: none; padding: 0px; }
-    .stMetric-value { color: #ffffff !important; font-size: 40px !important; font-weight: 800 !important; }
-    .stMetric-label { color: #fbbf24 !important; font-size: 14px !important; text-transform: uppercase; letter-spacing: 2px; }
-    </style>
+<style>
+.stApp{
+background:
+linear-gradient(rgba(8,11,17,.96),rgba(8,11,17,.96)),
+repeating-linear-gradient(90deg,transparent 0px,transparent 39px,rgba(255,255,255,.03) 40px),
+repeating-linear-gradient(0deg,transparent 0px,transparent 39px,rgba(255,255,255,.03) 40px);
+color:white;
+}
+.block-container{padding-top:1rem;}
+.kpi{
+background:rgba(255,255,255,.05);
+padding:15px;border-radius:15px;
+border:1px solid rgba(255,255,255,.08);
+}
+</style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
-st.markdown("<div class='header-box'><div class='sabin-plastic'>SABIN PLASTIC</div><div class='sub-brand'>Warehouse Delivery Tracking System</div></div>", unsafe_allow_html=True)
+INVENTORY_FILE = "inventory.csv"
 
-# --- COMMAND CENTER & UPLOADER ---
-st.sidebar.markdown("## ⚙️ COMMAND CENTER")
-uploaded_file = st.sidebar.file_uploader("Upload Inventory Data", type=["csv"])
+st.title("SABIN PLASTIC")
+st.caption("Warehouse Delivery Command Center")
 
-# Logic: Use uploaded file if available, else look for local file
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-elif os.path.exists('inventory.csv'):
-    df = pd.read_csv('inventory.csv')
-else:
-    st.error("Please upload an inventory CSV file to begin.")
-    st.stop()
+def load_inventory():
+    if os.path.exists(INVENTORY_FILE):
+        return pd.read_csv(INVENTORY_FILE)
+    return pd.DataFrame(columns=[
+        "DO_Number","Last_4","Status","Date_Issued",
+        "Warehouse_Name","Remarks","Created_By"
+    ])
 
-# Auto-Polish data
-df['Warehouse_Name'] = df['Warehouse_Name'].astype(str).str.strip().str.title()
-df['Date_Issued'] = pd.to_datetime(df['Date_Issued'], errors='coerce')
+df = load_inventory()
 
-# Filters
-sel_loc = st.sidebar.selectbox("Filter Warehouse", ["All"] + sorted(df['Warehouse_Name'].unique().tolist()))
-sel_stat = st.sidebar.selectbox("Filter Status", ["All"] + sorted(df['Status'].unique().tolist()))
+st.sidebar.header("Command Center")
 
-st.sidebar.markdown("### 📅 DATE FILTER")
-start_d = st.sidebar.date_input("Start Date", df['Date_Issued'].min())
-end_d = st.sidebar.date_input("End Date", df['Date_Issued'].max())
+uploaded = st.sidebar.file_uploader(
+    "Upload ERP Excel",
+    type=["xlsx"]
+)
 
-# Automation Status
-st.sidebar.markdown("---")
-st.sidebar.info("● WhatsApp Automation: Active")
+if uploaded:
+    erp = pd.read_excel(uploaded)
 
-# Filter Logic
+    new_df = pd.DataFrame()
+    new_df["DO_Number"] = erp["Voucher No"].astype(str).str.replace("DLNS:","", regex=False)
+    new_df["Last_4"] = new_df["DO_Number"].str[-4:]
+    new_df["Status"] = "Pending"
+    new_df["Date_Issued"] = erp["Date"]
+    new_df["Warehouse_Name"] = erp["Godown"]
+    new_df["Remarks"] = ""
+    new_df["Created_By"] = erp["Created By"]
+
+    combined = pd.concat([df,new_df], ignore_index=True)
+    combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
+
+    combined.to_csv(INVENTORY_FILE,index=False)
+    df = combined
+
+    st.sidebar.success("Inventory updated successfully")
+
+if not df.empty:
+    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
+
+search = st.sidebar.text_input("Search")
+warehouse = st.sidebar.selectbox(
+    "Warehouse",
+    ["All"] + sorted(df["Warehouse_Name"].astype(str).unique().tolist()) if not df.empty else ["All"]
+)
+status = st.sidebar.selectbox(
+    "Status",
+    ["All","Pending","Dispatched","Return"]
+)
+
 filt = df.copy()
-if sel_loc != "All": filt = filt[filt['Warehouse_Name'] == sel_loc]
-if sel_stat != "All": filt = filt[filt['Status'] == sel_stat]
-filt = filt[(filt['Date_Issued'].dt.date >= start_d) & (filt['Date_Issued'].dt.date <= end_d)]
 
-# --- SUMMARY ---
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("TOTAL DO", len(filt))
-m2.metric("DISPATCHED", len(filt[filt['Status']=='Dispatched']))
-m3.metric("PENDING", len(filt[filt['Status']=='Pending']))
-m4.metric("RETURNS", len(filt[filt['Status']=='Return']))
+if search:
+    mask = filt.astype(str).apply(
+        lambda c: c.str.contains(search, case=False, na=False)
+    ).any(axis=1)
+    filt = filt[mask]
 
-# --- CHART ---
-st.markdown("### Warehouse Performance")
-chart = alt.Chart(filt.groupby('Warehouse_Name').size().reset_index(name='Volume')).mark_bar(color='#38bdf8', cornerRadius=4).encode(
-    x=alt.X('Warehouse_Name', title=None, axis=alt.Axis(labelColor='#94a3b8', tickColor='#94a3b8')), 
-    y=alt.Y('Volume', title=None, axis=alt.Axis(labelColor='#94a3b8', tickColor='#94a3b8')),
-    tooltip=['Warehouse_Name', 'Volume']
-).properties(height=300, background='transparent').configure_view(stroke=None)
-st.altair_chart(chart, use_container_width=True)
+if warehouse != "All":
+    filt = filt[filt["Warehouse_Name"] == warehouse]
 
-# --- TABLE ---
-def color_status(val):
-    colors = {'Dispatched': '#10b981', 'Pending': '#f59e0b', 'Return': '#f43f5e'}
-    return f'color: {colors.get(val, "#ffffff")}; font-weight: bold'
+if status != "All":
+    filt = filt[filt["Status"] == status]
 
-st.dataframe(filt.style.map(color_status, subset=['Status']), use_container_width=True)
+total = len(filt)
+dispatched = len(filt[filt["Status"]=="Dispatched"])
+pending = len(filt[filt["Status"]=="Pending"])
+returned = len(filt[filt["Status"]=="Return"])
 
-# --- DOWNLOAD ---
+rate = round((dispatched/total)*100,1) if total else 0
+
+c1,c2,c3,c4,c5 = st.columns(5)
+c1.metric("TOTAL DO", total)
+c2.metric("DISPATCHED", dispatched)
+c3.metric("PENDING", pending)
+c4.metric("RETURN", returned)
+c5.metric("DISPATCH %", f"{rate}%")
+
+left,right = st.columns([1,1])
+
+with left:
+    status_df = pd.DataFrame({
+        "Status":["Pending","Dispatched","Return"],
+        "Count":[pending,dispatched,returned]
+    })
+
+    chart = alt.Chart(status_df).mark_arc(innerRadius=70).encode(
+        theta="Count",
+        color="Status",
+        tooltip=["Status","Count"]
+    )
+    st.altair_chart(chart, use_container_width=True)
+
+with right:
+    if not filt.empty:
+        summary = filt.groupby("Warehouse_Name").agg(
+            Total=("DO_Number","count")
+        ).reset_index().sort_values("Total", ascending=False)
+        st.subheader("Warehouse Leaderboard")
+        st.dataframe(summary, use_container_width=True)
+
+if not filt.empty:
+    pending_df = filt[filt["Status"]=="Pending"].copy()
+
+    if not pending_df.empty:
+        pending_df["Age_Days"] = (
+            pd.Timestamp.today() - pd.to_datetime(pending_df["Date_Issued"])
+        ).dt.days
+
+        def risk(x):
+            if x >= 6:
+                return "Critical"
+            elif x >= 3:
+                return "Attention"
+            return "Normal"
+
+        pending_df["Risk"] = pending_df["Age_Days"].apply(risk)
+
+        st.subheader("Pending Ageing Analysis")
+        st.dataframe(
+            pending_df[["DO_Number","Warehouse_Name","Age_Days","Risk"]],
+            use_container_width=True
+        )
+
+st.subheader("Operations Grid")
+
+edited = st.data_editor(
+    filt,
+    use_container_width=True,
+    column_config={
+        "Status": st.column_config.SelectboxColumn(
+            "Status",
+            options=["Pending","Dispatched","Return"]
+        ),
+        "Remarks": st.column_config.TextColumn("Remarks")
+    },
+    disabled=[
+        "DO_Number","Last_4","Date_Issued",
+        "Warehouse_Name","Created_By"
+    ]
+)
+
+if st.button("SAVE CHANGES"):
+    base = load_inventory()
+
+    for _, row in edited.iterrows():
+        do = row["DO_Number"]
+        base.loc[base["DO_Number"]==do, "Status"] = row["Status"]
+        base.loc[base["DO_Number"]==do, "Remarks"] = row["Remarks"]
+
+    base.to_csv(INVENTORY_FILE,index=False)
+    st.success("Changes saved to inventory.csv")
+
 buffer = io.BytesIO()
-with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-    filt.to_excel(writer, index=False, sheet_name='Report')
-st.download_button("📥 DOWNLOAD EXECUTIVE REPORT", buffer.getvalue(), "SABIN_Logistics.xlsx", "application/vnd.ms-excel")
+
+with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+    filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
+
+    workbook = writer.book
+    ws = writer.sheets["Dispatch Records"]
+
+    header = workbook.add_format({
+        "bold": True,
+        "bg_color": "#D4AF37",
+        "font_color": "black"
+    })
+
+    for col_num, value in enumerate(filt.columns.values):
+        ws.write(0, col_num, value, header)
+
+    ws.freeze_panes(1,0)
+
+    for i, col in enumerate(filt.columns):
+        width = max(len(col), 15)
+        ws.set_column(i,i,width)
+
+st.download_button(
+    "Download Executive Report",
+    buffer.getvalue(),
+    "SABIN_Logistics.xlsx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
