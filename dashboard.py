@@ -22,7 +22,7 @@ try:
     st.sidebar.header("🎯 Filter Control Center")
 
     # 1. WAREHOUSE LOCATION FILTER
-    LOCATION_COLUMN = 'Location' 
+    LOCATION_COLUMN = 'Warehouse_Name' 
     if LOCATION_COLUMN in df.columns:
         unique_locations = list(df[LOCATION_COLUMN].unique())
         selected_location = st.sidebar.selectbox("Select Warehouse Location", unique_locations)
