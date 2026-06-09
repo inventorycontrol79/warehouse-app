@@ -12,9 +12,10 @@ st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
 INVENTORY_FILE = "inventory.csv"
 BOT_STATUS_FILE = "bot_status.txt"
 
+# Auto-refresh system every 30 seconds to fetch live data updates
 st_autorefresh(interval=30000, key="auto_refresh")
 
-# --- PREMIUM CORPORATE ERP STYLING & CONTRAST FIXES ---
+# --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
@@ -25,6 +26,7 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
+    /* Global Visibility Override for Text & Headings */
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
         color: #F8FAFC !important;
     }
@@ -110,7 +112,10 @@ st.markdown("""
 # --- ENGINE DATA LOADING ---
 def load_inventory():
     if os.path.exists(INVENTORY_FILE):
-        return pd.read_csv(INVENTORY_FILE)
+        try:
+            return pd.read_csv(INVENTORY_FILE)
+        except Exception:
+            pass
     return pd.DataFrame(columns=[
         "DO_Number","Last_4","Status","Date_Issued",
         "Warehouse_Name","Remarks","Created_By","Last_Modified"
@@ -118,20 +123,22 @@ def load_inventory():
 
 df = load_inventory()
 
+if not df.empty:
+    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
+    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
+
 # --- SIDEBAR CONTROL PANEL ---
 st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
 
 uploaded = st.sidebar.file_uploader("Upload Raw ERP Excel File", type=["xlsx"])
 
 if uploaded is not None:
-    # Read file sheets blindly
     raw_erp = pd.read_excel(uploaded, engine="openpyxl")
     available_cols = [str(col).strip() for col in raw_erp.columns]
-    raw_erp.columns = available_cols # Sanitize column spacing anomalies
+    raw_erp.columns = available_cols 
     
     st.sidebar.markdown("#### 🗺️ Align ERP Columns")
     
-    # Smart Aligner Helper Function
     def auto_match(possibilities, options):
         for p in possibilities:
             for opt in options:
@@ -139,13 +146,11 @@ if uploaded is not None:
                     return opt
         return options[0] if options else ""
     
-    # Auto-detect target source layouts dynamically
     guess_do = auto_match(["voucher", "do number", "do_no", "invoice", "document", "delivery"], available_cols)
     guess_date = auto_match(["date", "issued", "time", "posting"], available_cols)
     guess_wh = auto_match(["godown", "warehouse", "location", "facility", "branch", "site"], available_cols)
     guess_user = auto_match(["created by", "user", "operator", "creator", "entered"], available_cols)
     
-    # UI selectors fallback configuration panel
     chosen_do = st.sidebar.selectbox("Match [DO Number]:", available_cols, index=available_cols.index(guess_do) if guess_do in available_cols else 0)
     chosen_date = st.sidebar.selectbox("Match [Date Issued]:", available_cols, index=available_cols.index(guess_date) if guess_date in available_cols else 0)
     chosen_wh = st.sidebar.selectbox("Match [Warehouse]:", available_cols, index=available_cols.index(guess_wh) if guess_wh in available_cols else 0)
@@ -169,22 +174,33 @@ if uploaded is not None:
         combined.to_csv(INVENTORY_FILE, index=False)
 
         df = combined
+        df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
+        df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
         st.sidebar.success("Raw ledger remapped and synchronized successfully.")
-
-if not df.empty:
-    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
-    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
 
 search = st.sidebar.text_input("🔍 Global DO Search")
 
-warehouse_options = ["All"]
-if not df.empty:
-    warehouse_options += sorted(df["Warehouse_Name"].astype(str).unique().tolist())
+# --- ADVANCED URL PARAMETER ROUTING ENGINE ---
+url_params = st.query_params
+url_warehouse = url_params.get("warehouse", None)
+
+if url_warehouse:
+    url_warehouse = url_warehouse.strip().title()
+
+if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique():
+    warehouse_options = [url_warehouse]
+    st.sidebar.markdown(f"📦 **Facility Bound:** `{url_warehouse}`")
+    st.sidebar.caption("Security parameter active. Alternate facility routing locked.")
+else:
+    warehouse_options = ["All"]
+    if not df.empty:
+        warehouse_options += sorted(df["Warehouse_Name"].astype(str).unique().tolist())
 
 warehouse = st.sidebar.selectbox("Filter Facility", warehouse_options)
 status = st.sidebar.selectbox("Filter Status", ["All","Pending","Dispatched","Return"])
 
-if not df.empty:
+# Date bounds calculation safety check
+if not df.empty and pd.notna(df["Date_Issued"].min()):
     min_date = df["Date_Issued"].min().date()
     max_date = df["Date_Issued"].max().date()
 else:
@@ -214,25 +230,33 @@ else:
 # --- CENTRAL PIPELINE FILTER LOGIC ---
 filt = df.copy()
 
-if search:
-    mask = filt.astype(str).apply(lambda x: x.str.contains(search, case=False, na=False)).any(axis=1)
-    filt = filt[mask]
-if warehouse != "All": filt = filt[filt["Warehouse_Name"] == warehouse]
-if status != "All": filt = filt[filt["Status"] == status]
-
 if not filt.empty:
-    filt = filt[(filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)]
+    if search:
+        mask = filt.astype(str).apply(lambda x: x.str.contains(search, case=False, na=False)).any(axis=1)
+        filt = filt[mask]
+    if warehouse != "All": 
+        filt = filt[filt["Warehouse_Name"] == warehouse]
+    if status != "All": 
+        filt = filt[filt["Status"] == status]
+    
+    # Safe date filtering execution
+    date_mask = (filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)
+    filt = filt[date_mask]
 
 # --- EXECUTIVE METRIC CARDS ---
-total = len(filt)
-dispatched = len(filt[filt["Status"]=="Dispatched"])
-pending = len(filt[filt["Status"]=="Pending"])
-returned = len(filt[filt["Status"]=="Return"])
+total = len(filt) if not filt.empty else 0
+dispatched = len(filt[filt["Status"]=="Dispatched"]) if not filt.empty else 0
+pending = len(filt[filt["Status"]=="Pending"]) if not filt.empty else 0
+returned = len(filt[filt["Status"]=="Return"]) if not filt.empty else 0
 
 dispatch_rate = round((dispatched/total)*100,1) if total else 0
 
-pending_only = filt[filt["Status"] == "Pending"]
-avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
+if not filt.empty:
+    pending_only = filt[filt["Status"] == "Pending"]
+    avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
+else:
+    pending_only = pd.DataFrame()
+    avg_age = 0
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 c1.metric("TOTAL DO", total)
@@ -244,76 +268,89 @@ c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
 st.markdown("###")
 
-# --- EXECUTIVE DATA DATA VISUALIZATIONS ---
-left, right = st.columns([1,1])
+# --- DATA AVAILABILITY WRAPPER ---
+if filt.empty:
+    st.info("📌 System Ready: Upload an Excel file via the sidebar control panel to populate operations data.")
+else:
+    # --- EXECUTIVE VISUALIZATIONS ---
+    left, right = st.columns([1,1])
 
-with left:
-    st.markdown("##### Distribution Pipeline")
-    chart_df = pd.DataFrame({"Status":["Pending","Dispatched","Return"], "Count":[pending,dispatched,returned]})
-    chart = alt.Chart(chart_df).mark_arc(innerRadius=80).encode(
-        theta="Count:Q",
-        color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#EAB308","#10B981","#EF4444"])),
-        tooltip=["Status","Count"]
-    ).properties(height=350, background="transparent").configure_view(stroke=None)
-    st.altair_chart(chart, use_container_width=True)
+    with left:
+        st.markdown("##### Distribution Pipeline")
+        chart_df = pd.DataFrame({"Status":["Pending","Dispatched","Return"], "Count":[pending,dispatched,returned]})
+        chart = alt.Chart(chart_df).mark_arc(innerRadius=80).encode(
+            theta="Count:Q",
+            color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#EAB308","#10B981","#EF4444"])),
+            tooltip=["Status","Count"]
+        ).properties(height=350, background="transparent").configure_view(stroke=None)
+        st.altair_chart(chart, use_container_width=True)
 
-with right:
-    st.markdown("##### Facility Workload Leaderboard")
-    if not filt.empty:
+    with right:
+        st.markdown("##### Facility Workload Leaderboard")
         warehouse_summary = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
         st.dataframe(warehouse_summary, use_container_width=True, hide_index=True)
 
-if not pending_only.empty:
+    if not pending_only.empty:
+        st.markdown("---")
+        st.markdown("##### Critical Ageing Queue (Pending Orders Only)")
+        pending_only["Age_Days"] = (pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days
+        def risk(x):
+            if x >= 6: return "🔴 High Risk"
+            elif x >= 3: return "🟡 Attention"
+            return "🟢 Standard"
+        pending_only["Risk_Profile"] = pending_only["Age_Days"].apply(risk)
+        st.dataframe(pending_only[["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"]].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
+
+    # --- LIVE OPERATIONS INTERACTIVE LEDGER ---
     st.markdown("---")
-    st.markdown("##### Critical Ageing Queue (Pending Orders Only)")
-    pending_only["Age_Days"] = (pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days
-    def risk(x):
-        if x >= 6: return "🔴 High Risk"
-        elif x >= 3: return "🟡 Attention"
-        return "🟢 Standard"
-    pending_only["Risk_Profile"] = pending_only["Age_Days"].apply(risk)
-    st.dataframe(pending_only[["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"]].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
-
-# --- LIVE OPERATIONS INTERACTIVE LEDGER ---
-st.markdown("---")
-st.markdown("##### Active Operations Ledger")
-edited = st.data_editor(
-    filt,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Status": st.column_config.SelectboxColumn("Status", options=["Pending","Dispatched","Return"])
-    },
-    disabled=["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By"]
-)
-
-if st.button("💾 COMMIT RECORD TO DATABASE"):
-    base = load_inventory()
-    for _, row in edited.iterrows():
-        do = row["DO_Number"]
-        base.loc[base["DO_Number"]==do, "Status"] = row["Status"]
-        base.loc[base["DO_Number"]==do, "Remarks"] = row["Remarks"]
-        base.loc[base["DO_Number"]==do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    base.to_csv(INVENTORY_FILE, index=False)
-    st.success("System updated successfully.")
-
-# --- EXECUTIVE EXCEL SECURED REPORT ENGINE ---
-buffer = io.BytesIO()
-with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-    summary = pd.DataFrame({"Metric":["Total DO","Dispatched","Pending","Return","Dispatch %"], "Value":[total,dispatched,pending,returned,f"{dispatch_rate}%"]})
-    summary.to_excel(writer, sheet_name="Executive Summary", index=False)
-    filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
+    st.markdown("##### Active Operations Ledger")
     
-    wb = writer.book
-    header = wb.add_format({"bold":True, "bg_color":"#0F172A", "font_color":"white"})
+    # Ensure display tracking formatting is clean
+    display_filt = filt.copy()
+    display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%Y-%m-%d')
     
-    for sheet in ["Executive Summary","Dispatch Records"]:
-        ws = writer.sheets[sheet]
-        ws.freeze_panes(1,0)
-        cols = summary.columns if sheet == "Executive Summary" else filt.columns
-        for col_num, value in enumerate(cols):
-            ws.write(0, col_num, value, header)
-            ws.set_column(col_num, col_num, 20)
+    edited = st.data_editor(
+        display_filt,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Status": st.column_config.SelectboxColumn("Status", options=["Pending","Dispatched","Return"])
+        },
+        disabled=["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
+    )
 
-st.markdown("###")
-st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    if st.button("💾 COMMIT RECORD TO DATABASE"):
+        base = load_inventory()
+        if not base.empty:
+            for _, row in edited.iterrows():
+                do = str(row["DO_Number"]).strip()
+                base.loc[base["DO_Number"].astype(str).str.strip() == do, "Status"] = row["Status"]
+                base.loc[base["DO_Number"].astype(str).str.strip() == do, "Remarks"] = row["Remarks"]
+                base.loc[base["DO_Number"].astype(str).str.strip() == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            base.to_csv(INVENTORY_FILE, index=False)
+            st.success("System updated successfully. Refreshing live view...")
+            st.rerun()
+
+    # --- EXECUTIVE EXCEL SECURED REPORT ENGINE ---
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        summary_df = pd.DataFrame({"Metric":["Total DO","Dispatched","Pending","Return","Dispatch %"], "Value":[total,dispatched,pending,returned,f"{dispatch_rate}%"]})
+        summary_df.to_excel(writer, sheet_name="Executive Summary", index=False)
+        
+        excel_filt = filt.copy()
+        excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%Y-%m-%d')
+        excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
+        
+        wb = writer.book
+        header = wb.add_format({"bold":True, "bg_color":"#0F172A", "font_color":"white"})
+        
+        for sheet in ["Executive Summary","Dispatch Records"]:
+            ws = writer.sheets[sheet]
+            ws.freeze_panes(1,0)
+            cols = summary_df.columns if sheet == "Executive Summary" else excel_filt.columns
+            for col_num, value in enumerate(cols):
+                ws.write(0, col_num, value, header)
+                ws.set_column(col_num, col_num, 20)
+
+    st.markdown("###")
+    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
