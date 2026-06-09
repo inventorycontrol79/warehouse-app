@@ -5,41 +5,66 @@ from datetime import datetime
 # 1. Page Configuration & Premium Theme Styling
 st.set_page_config(page_title="Warehouse Logistics Portal", layout="wide")
 
+# Custom CSS for an Ultra-Premium Dark Theme with clean borders and card highlights
 st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; color: #ecf0f1; }
-    div[data-testid="stMetricValue"] { font-size: 28px; color: #00ffcc !important; }
-    div[data-testid="stMetricLabel"] { color: #a0aec0 !important; }
-    .stSelectbox label, .stDateInput label { color: #00ffcc !important; font-weight: bold; }
+    /* Main Background */
+    .stApp { 
+        background-color: #0b0e14; 
+        color: #f1f5f9; 
+    }
+    /* Metric Cards Styling */
+    div[data-testid="stMetricValue"] { 
+        font-size: 32px; 
+        font-weight: 700;
+        color: #00ffcc !important; 
+        font-family: 'Inter', sans-serif;
+    }
+    div[data-testid="stMetricLabel"] { 
+        color: #94a3b8 !important; 
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 12px;
+    }
+    div[data-testid="stMetric"] {
+        background-color: #111827;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #1f2937;
+    }
+    /* Input Label Adjustments */
+    .stSelectbox label, .stDateInput label { 
+        color: #94a3b8 !important; 
+        font-weight: 600; 
+    }
+    /* Subtitles and Section Rules */
+    hr {
+        border: 0;
+        height: 1px;
+        background: linear-gradient(to right, #00ffcc, transparent);
+        margin-bottom: 30px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📦 Warehouse Inventory & Logistics Portal")
+st.title("📦 Warehouse Operations Master Portal")
 st.markdown("---")
 
-# 🟢 Helper Function to Color-Code Row Backgrounds Based on Status
-def style_status_rows(row):
-    status = str(row['Status']).strip()
-    # Create a default style list matching the number of columns in the row
-    styles = [''] * len(row)
-    
-    # Define our colors (Using bright text so it's perfectly visible over dark backgrounds)
-    if status == 'Dispatched':
-        color_style = 'background-color: #0d5c3a; color: #ffffff; font-weight: bold;' # Royal Green
-    elif status == 'Return':
-        color_style = 'background-color: #8c1d1d; color: #ffffff; font-weight: bold;' # Deep Red
-    elif status == 'Pending':
-        color_style = 'background-color: #b37400; color: #ffffff; font-weight: bold;' # Amber Gold
-    else:
-        return styles # No changes for other statuses
-        
-    # Apply the color style across every single cell in that specific row
-    return [color_style for _ in range(len(row))]
+# 💎 Premium Custom Cell-by-Cell Text Coloring Function
+def style_premium_cells(val):
+    clean_val = str(val).strip()
+    if clean_val == 'Dispatched':
+        return 'color: #10b981; font-weight: bold; font-size: 15px;' # Premium Emerald Royal Green Text
+    elif clean_val == 'Return':
+        return 'color: #ef4444; font-weight: bold; font-size: 15px;' # Premium Crimson Red Text
+    elif clean_val == 'Pending':
+        return 'color: #f59e0b; font-weight: bold; font-size: 15px;' # Premium Cyber Amber Gold Text
+    return ''
 
 try:
     # 2. Read Data
     df = pd.read_csv('inventory.csv')
-    st.sidebar.header("🎯 Filter Control Center")
+    st.sidebar.header("🎯 Control Center")
 
     # 3. SMART WAREHOUSE CONTROLLER
     LOCATION_COLUMN = 'Warehouse_Name' 
@@ -49,7 +74,7 @@ try:
         
         url_params = st.query_params
         
-        if "warehouse" in url_params and url_params["warehouse"] in unique_locations:
+        if "warehouse" in url_params and url_params["warehouse"] in unique_locations and url_params.get("role") == "supervisor":
             target_warehouse = url_params["warehouse"]
             st.sidebar.info(f"📍 Location Locked: **{target_warehouse}**")
             df = df[df[LOCATION_COLUMN] == target_warehouse]
@@ -59,16 +84,12 @@ try:
             
             if selected_location != "All Locations":
                 df = df[df[LOCATION_COLUMN] == selected_location]
-                st.query_params["warehouse"] = selected_location
-            else:
-                st.query_params["warehouse"] = "All"
 
     # 4. INTERACTIVE STATUS FILTER
     STATUS_COLUMN = 'Status' 
     if STATUS_COLUMN in df.columns:
         df[STATUS_COLUMN] = df[STATUS_COLUMN].astype(str).str.strip()
         existing_statuses = list(df[STATUS_COLUMN].unique())
-        
         if 'Pending' in existing_statuses:
             existing_statuses.remove('Pending')
             status_options = ["All", "Pending"] + existing_statuses
@@ -84,7 +105,6 @@ try:
     if DATE_COLUMN in df.columns:
         df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], errors='coerce').dt.date
         clean_dates = df[DATE_COLUMN].dropna()
-        
         if not clean_dates.empty:
             start_date = st.sidebar.date_input("Start Date", min(clean_dates))
             end_date = st.sidebar.date_input("End Date", max(clean_dates))
@@ -94,27 +114,27 @@ try:
     else:
         filtered_df = df
             
-    # 6. KPI Dashboard Metric Cards
+    # 6. Premium KPI Metric Cards
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Records on Screen", len(filtered_df))
+        st.metric("Total Line Items", f"{len(filtered_df):,}")
     with col2:
-        total_stock = filtered_df['Quantity'].sum() if 'Quantity' in filtered_df.columns else "N/A"
-        st.metric("Total Quantity", total_stock)
+        total_stock = filtered_df['Quantity'].sum() if 'Quantity' in filtered_df.columns else 0
+        st.metric("Total Volume Quantity", f"{total_stock:,}")
     with col3:
-        st.metric("Portal Status", "Live Sync Active")
+        st.metric("Network Status", "Live Sync Operational")
 
-    # 7. Interactive Live Data Table with Applied Background Colors
-    st.markdown("### 📋 Active Warehouse Records")
-    
+    st.markdown("<br>### 📋 Live Logistics Manifest", unsafe_allow_html=True)
+
+    # 7. Rendering Dataframe with High-End Selective Status Styling
     if STATUS_COLUMN in filtered_df.columns and len(filtered_df) > 0:
-        # Apply the styling rule row-by-row
-        styled_df = filtered_df.style.apply(style_status_rows, axis=1)
+        # Applies premium color properties directly to the text of the Status column cells
+        styled_df = filtered_df.style.map(style_premium_cells, subset=[STATUS_COLUMN])
         st.dataframe(styled_df, use_container_width=True)
     else:
         st.dataframe(filtered_df, use_container_width=True)
 
 except FileNotFoundError:
-    st.error("⚠️ 'inventory.csv' not found.")
+    st.error("⚠️ Core Database Error: 'inventory.csv' dataset was not detected.")
 except Exception as e:
-    st.error(f"An unexpected error occurred: {e}")
+    st.error(f"An unexpected portal error occurred: {e}")
