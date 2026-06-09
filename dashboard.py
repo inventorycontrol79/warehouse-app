@@ -36,7 +36,7 @@ try:
     st.sidebar.header("🎯 Filter Control Center")
 
     # 3. WAREHOUSE LOCATION FILTER (With automatic whitespace cleanup)
-    LOCATION_COLUMN = 'Location' 
+    LOCATION_COLUMN = 'Warehouse_Name' 
     if LOCATION_COLUMN in df.columns:
         # Convert to string and strip out hidden spaces that cause duplicates
         df[LOCATION_COLUMN] = df[LOCATION_COLUMN].astype(str).str.strip()
