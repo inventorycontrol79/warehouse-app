@@ -12,21 +12,33 @@ st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
 INVENTORY_FILE = "inventory.csv"
 BOT_STATUS_FILE = "bot_status.txt"
 
-# Auto-refresh every 30 seconds
+# Auto-refresh system every 30 seconds to fetch live data
 st_autorefresh(interval=30000, key="auto_refresh")
 
-# --- PREMIUM CORPORATE ERP STYLING ---
+# --- PREMIUM CORPORATE ERP STYLING & CONTRAST FIXES ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
     
+    /* Global App Canvas */
     .stApp {
         background-color: #0B0F19; /* Deep Corporate Slate */
         color: #E2E8F0;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Sleek Enterprise Header */
+    /* Critical Visibility Fix for Default Streamlit Elements */
+    h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
+        color: #F8FAFC !important; /* Luminous Off-White */
+    }
+    
+    /* Form Titles & Labels Contrast */
+    label, .stWidgetLabel p {
+        color: #94A3B8 !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Sleek Enterprise Header Structure */
     .premium-header {
         border-bottom: 1px solid #1E293B;
         padding-bottom: 1.5rem;
@@ -37,18 +49,18 @@ st.markdown("""
         font-size: 32px;
         font-weight: 800;
         letter-spacing: 4px;
-        color: #F8FAFC;
+        color: #F8FAFC !important;
         margin: 0;
         line-height: 1.2;
     }
     .sabin-logo span {
-        color: #0EA5E9; /* Corporate Blue Accent */
+        color: #0EA5E9 !important; /* Corporate Blue Accent */
     }
     .sabin-sub {
         font-size: 12px;
         font-weight: 600;
         letter-spacing: 3px;
-        color: #64748B;
+        color: #94A3B8 !important; /* Clearly Visible Silver/Slate */
         text-transform: uppercase;
         margin-top: 4px;
     }
@@ -57,7 +69,7 @@ st.markdown("""
     div[data-testid="metric-container"] {
         background-color: #111827;
         border: 1px solid #1E293B;
-        border-top: 3px solid #0EA5E9; /* Subtle accent line */
+        border-top: 3px solid #0EA5E9; /* Corporate Blue Accent Border */
         border-radius: 6px;
         padding: 20px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -79,23 +91,30 @@ st.markdown("""
         text-transform: uppercase;
     }
     
-    /* Clean up Sidebar */
+    /* Clean Sidebar Separation and Contrast */
     section[data-testid="stSidebar"] {
         background-color: #0F172A;
         border-right: 1px solid #1E293B;
     }
+    section[data-testid="stSidebar"] h1, 
+    section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3, 
+    section[data-testid="stSidebar"] h4, 
+    section[data-testid="stSidebar"] label {
+        color: #F8FAFC !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# --- HEADER BARS ---
 st.markdown("""
     <div class='premium-header'>
         <div class='sabin-logo'>SABIN <span>PLASTIC</span></div>
-        <div class='sabin-sub'>Enterprise Logistics Operations</div>
+        <div class='sabin-sub'>Enterprise Logistics Operations Terminal</div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- DATA HANDLING ---
+# --- ENGINE DATA LOADING ---
 def load_inventory():
     if os.path.exists(INVENTORY_FILE):
         return pd.read_csv(INVENTORY_FILE)
@@ -106,7 +125,7 @@ def load_inventory():
 
 df = load_inventory()
 
-# --- SIDEBAR: COMMAND CENTER ---
+# --- SIDEBAR CONTROL PANEL ---
 st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
 
 uploaded = st.sidebar.file_uploader("Upload ERP Excel", type=["xlsx"])
@@ -158,7 +177,7 @@ st.sidebar.markdown("### 📅 TIMEFRAME")
 start_date = st.sidebar.date_input("Start Date", min_date)
 end_date = st.sidebar.date_input("End Date", max_date)
 
-# Automation Status
+# Automation System Status Check
 st.sidebar.markdown("---")
 if os.path.exists(BOT_STATUS_FILE):
     try:
@@ -174,7 +193,7 @@ if os.path.exists(BOT_STATUS_FILE):
 else:
     st.sidebar.info("🤖 API: Standby Mode")
 
-# --- FILTER LOGIC ---
+# --- CENTRAL PIPELINE FILTER LOGIC ---
 filt = df.copy()
 
 if search:
@@ -186,7 +205,7 @@ if status != "All": filt = filt[filt["Status"] == status]
 if not filt.empty:
     filt = filt[(filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)]
 
-# --- EXECUTIVE SUMMARY METRICS ---
+# --- EXECUTIVE METRIC CARDS ---
 total = len(filt)
 dispatched = len(filt[filt["Status"]=="Dispatched"])
 pending = len(filt[filt["Status"]=="Pending"])
@@ -194,7 +213,7 @@ returned = len(filt[filt["Status"]=="Return"])
 
 dispatch_rate = round((dispatched/total)*100,1) if total else 0
 
-# FIX: Calculate average age strictly for "Pending" items
+# Evaluates ageing metrics STRICTLY for Pending orders (Excluding Returns and Dispatched items)
 pending_only = filt[filt["Status"] == "Pending"]
 avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
 
@@ -206,7 +225,9 @@ c4.metric("RETURNS", returned)
 c5.metric("DISPATCH %", f"{dispatch_rate}%")
 c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
-# --- CHARTS & ANALYSIS ---
+st.markdown("###")
+
+# --- EXECUTIVE DATA DATA VISUALIZATIONS ---
 left, right = st.columns([1,1])
 
 with left:
@@ -220,15 +241,15 @@ with left:
     st.altair_chart(chart, use_container_width=True)
 
 with right:
-    st.markdown("##### Facility Workload")
+    st.markdown("##### Facility Workload Leaderboard")
     if not filt.empty:
         warehouse_summary = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
         st.dataframe(warehouse_summary, use_container_width=True, hide_index=True)
 
-# Ageing Analysis (Strictly Pending)
+# Ageing Analysis Queue Execution
 if not pending_only.empty:
     st.markdown("---")
-    st.markdown("##### Critical Ageing Queue (Pending DOs)")
+    st.markdown("##### Critical Ageing Queue (Pending Orders Only)")
     pending_only["Age_Days"] = (pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days
     def risk(x):
         if x >= 6: return "🔴 High Risk"
@@ -237,7 +258,7 @@ if not pending_only.empty:
     pending_only["Risk_Profile"] = pending_only["Age_Days"].apply(risk)
     st.dataframe(pending_only[["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"]].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
 
-# --- LIVE OPERATIONS GRID ---
+# --- LIVE OPERATIONS INTERACTIVE LEDGER ---
 st.markdown("---")
 st.markdown("##### Active Operations Ledger")
 edited = st.data_editor(
@@ -260,7 +281,7 @@ if st.button("💾 COMMIT RECORD TO DATABASE"):
     base.to_csv(INVENTORY_FILE, index=False)
     st.success("System updated successfully.")
 
-# --- EXECUTIVE EXCEL EXPORT ---
+# --- EXECUTIVE EXCEL SECURED REPORT ENGINE ---
 buffer = io.BytesIO()
 with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
     summary = pd.DataFrame({"Metric":["Total DO","Dispatched","Pending","Return","Dispatch %"], "Value":[total,dispatched,pending,returned,f"{dispatch_rate}%"]})
@@ -278,4 +299,5 @@ with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
             ws.write(0, col_num, value, header)
             ws.set_column(col_num, col_num, 20)
 
+st.markdown("###")
 st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
