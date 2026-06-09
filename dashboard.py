@@ -15,46 +15,83 @@ BOT_STATUS_FILE = "bot_status.txt"
 # Auto-refresh every 30 seconds
 st_autorefresh(interval=30000, key="auto_refresh")
 
-# --- PREMIUM CSS STYLING ---
+# --- PREMIUM CORPORATE ERP STYLING ---
 st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+    
     .stApp {
-        background:
-        linear-gradient(rgba(9,12,18,.95),rgba(9,12,18,.95)),
-        repeating-linear-gradient(90deg,transparent 0px,transparent 79px,rgba(251,191,36,.035) 80px),
-        repeating-linear-gradient(0deg,transparent 0px,transparent 79px,rgba(251,191,36,.035) 80px),
-        radial-gradient(circle at 20% 30%,rgba(56,189,248,.05),transparent 30%),
-        radial-gradient(circle at 80% 70%,rgba(16,185,129,.04),transparent 30%);
-        color: #f8fafc;
-        font-family: 'Inter', sans-serif;
+        background-color: #0B0F19; /* Deep Corporate Slate */
+        color: #E2E8F0;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    div[data-testid="metric-container"] {
-        background: rgba(255,255,255,.03);
-        border: 1px solid rgba(255,255,255,.08);
-        border-radius: 18px;
-        padding: 20px;
-        backdrop-filter: blur(10px);
+    
+    /* Sleek Enterprise Header */
+    .premium-header {
+        border-bottom: 1px solid #1E293B;
+        padding-bottom: 1.5rem;
+        margin-bottom: 2rem;
+        margin-top: 1rem;
     }
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg,#0f172a,#111827);
+    .sabin-logo {
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: 4px;
+        color: #F8FAFC;
+        margin: 0;
+        line-height: 1.2;
     }
-    .sabin-title {
-        font-family: 'Montserrat', sans-serif; 
-        font-size: 50px; 
-        font-weight: 900; 
-        letter-spacing: 15px; 
-        color: #ffffff; 
+    .sabin-logo span {
+        color: #0EA5E9; /* Corporate Blue Accent */
+    }
+    .sabin-sub {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 3px;
+        color: #64748B;
         text-transform: uppercase;
-        margin-bottom: 0px;
+        margin-top: 4px;
+    }
+
+    /* Structured Corporate Metrics */
+    div[data-testid="metric-container"] {
+        background-color: #111827;
+        border: 1px solid #1E293B;
+        border-top: 3px solid #0EA5E9; /* Subtle accent line */
+        border-radius: 6px;
+        padding: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: border-color 0.2s ease;
+    }
+    div[data-testid="metric-container"]:hover {
+        border-color: #38BDF8;
+    }
+    .stMetric-value { 
+        color: #F8FAFC !important; 
+        font-size: 32px !important; 
+        font-weight: 600 !important; 
+    }
+    .stMetric-label { 
+        color: #94A3B8 !important; 
+        font-size: 12px !important; 
+        font-weight: 600 !important; 
+        letter-spacing: 1px; 
+        text-transform: uppercase;
+    }
+    
+    /* Clean up Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #0F172A;
+        border-right: 1px solid #1E293B;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # --- HEADER ---
 st.markdown("""
-    <div style='padding:30px; border-radius:20px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); margin-bottom:30px;'>
-        <div class='sabin-title'>SABIN PLASTIC</div>
-        <div style='color:#fbbf24; letter-spacing: 6px; font-size: 14px; text-transform: uppercase;'>Warehouse Delivery Command Center</div>
+    <div class='premium-header'>
+        <div class='sabin-logo'>SABIN <span>PLASTIC</span></div>
+        <div class='sabin-sub'>Enterprise Logistics Operations</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -70,7 +107,7 @@ def load_inventory():
 df = load_inventory()
 
 # --- SIDEBAR: COMMAND CENTER ---
-st.sidebar.header("⚙️ COMMAND CENTER")
+st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
 
 uploaded = st.sidebar.file_uploader("Upload ERP Excel", type=["xlsx"])
 
@@ -80,7 +117,7 @@ if uploaded is not None:
     new_df = pd.DataFrame({
         "DO_Number": erp["Voucher No"].astype(str).str.replace("DLNS:","", regex=False),
         "Date_Issued": erp["Date"],
-        "Warehouse_Name": erp["Godown"].astype(str).str.strip().str.title(), # Auto-Polish
+        "Warehouse_Name": erp["Godown"].astype(str).str.strip().str.title(),
         "Created_By": erp["Created By"]
     })
 
@@ -94,19 +131,19 @@ if uploaded is not None:
     combined.to_csv(INVENTORY_FILE, index=False)
 
     df = combined
-    st.sidebar.success("Inventory updated successfully")
+    st.sidebar.success("Database synchronized successfully.")
 
 if not df.empty:
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
-    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title() # Auto-Polish existing data
+    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
 
-search = st.sidebar.text_input("🔍 Global Search")
+search = st.sidebar.text_input("🔍 Global DO Search")
 
 warehouse_options = ["All"]
 if not df.empty:
     warehouse_options += sorted(df["Warehouse_Name"].astype(str).unique().tolist())
 
-warehouse = st.sidebar.selectbox("Filter Warehouse", warehouse_options)
+warehouse = st.sidebar.selectbox("Filter Facility", warehouse_options)
 status = st.sidebar.selectbox("Filter Status", ["All","Pending","Dispatched","Return"])
 
 if not df.empty:
@@ -117,7 +154,7 @@ else:
     min_date = today
     max_date = today
 
-st.sidebar.markdown("### 📅 DATE FILTER")
+st.sidebar.markdown("### 📅 TIMEFRAME")
 start_date = st.sidebar.date_input("Start Date", min_date)
 end_date = st.sidebar.date_input("End Date", max_date)
 
@@ -129,13 +166,13 @@ if os.path.exists(BOT_STATUS_FILE):
         last = datetime.strptime(ts,"%Y-%m-%d %H:%M:%S")
         diff = (datetime.now()-last).total_seconds()
         if diff < 120:
-            st.sidebar.success("🟢 WhatsApp Bot: Online")
+            st.sidebar.success("🟢 API: Active & Routing")
         else:
-            st.sidebar.error("🔴 WhatsApp Bot: Offline")
+            st.sidebar.error("🔴 API: Connection Lost")
     except:
-        st.sidebar.warning("Bot status unavailable")
+        st.sidebar.warning("API Status: Unknown")
 else:
-    st.sidebar.info("🤖 Automation Monitoring Standby")
+    st.sidebar.info("🤖 API: Standby Mode")
 
 # --- FILTER LOGIC ---
 filt = df.copy()
@@ -156,7 +193,10 @@ pending = len(filt[filt["Status"]=="Pending"])
 returned = len(filt[filt["Status"]=="Return"])
 
 dispatch_rate = round((dispatched/total)*100,1) if total else 0
-avg_age = round(((pd.Timestamp.today()-filt["Date_Issued"]).dt.days).mean(),1) if not filt.empty else 0
+
+# FIX: Calculate average age strictly for "Pending" items
+pending_only = filt[filt["Status"] == "Pending"]
+avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 c1.metric("TOTAL DO", total)
@@ -164,42 +204,42 @@ c2.metric("DISPATCHED", dispatched)
 c3.metric("PENDING", pending)
 c4.metric("RETURNS", returned)
 c5.metric("DISPATCH %", f"{dispatch_rate}%")
-c6.metric("AVG AGE", f"{avg_age} Days")
+c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
 # --- CHARTS & ANALYSIS ---
 left, right = st.columns([1,1])
 
 with left:
-    st.subheader("Pipeline Distribution")
+    st.markdown("##### Distribution Pipeline")
     chart_df = pd.DataFrame({"Status":["Pending","Dispatched","Return"], "Count":[pending,dispatched,returned]})
-    chart = alt.Chart(chart_df).mark_arc(innerRadius=85).encode(
+    chart = alt.Chart(chart_df).mark_arc(innerRadius=80).encode(
         theta="Count:Q",
-        color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#fbbf24","#10b981","#ef4444"])),
+        color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#EAB308","#10B981","#EF4444"])),
         tooltip=["Status","Count"]
     ).properties(height=350, background="transparent").configure_view(stroke=None)
     st.altair_chart(chart, use_container_width=True)
 
 with right:
-    st.subheader("Warehouse Leaderboard")
+    st.markdown("##### Facility Workload")
     if not filt.empty:
         warehouse_summary = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
         st.dataframe(warehouse_summary, use_container_width=True, hide_index=True)
 
-# Ageing Analysis
-if not filt.empty:
-    pending_df = filt[filt["Status"]=="Pending"].copy()
-    if not pending_df.empty:
-        pending_df["Age_Days"] = (pd.Timestamp.today()-pending_df["Date_Issued"]).dt.days
-        def risk(x):
-            if x >= 6: return "🔴 Critical"
-            elif x >= 3: return "🟡 Attention"
-            return "🟢 Normal"
-        pending_df["Risk"] = pending_df["Age_Days"].apply(risk)
-        st.subheader("Pending Ageing Analysis")
-        st.dataframe(pending_df[["DO_Number","Warehouse_Name","Age_Days","Risk"]], use_container_width=True, hide_index=True)
+# Ageing Analysis (Strictly Pending)
+if not pending_only.empty:
+    st.markdown("---")
+    st.markdown("##### Critical Ageing Queue (Pending DOs)")
+    pending_only["Age_Days"] = (pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days
+    def risk(x):
+        if x >= 6: return "🔴 High Risk"
+        elif x >= 3: return "🟡 Attention"
+        return "🟢 Standard"
+    pending_only["Risk_Profile"] = pending_only["Age_Days"].apply(risk)
+    st.dataframe(pending_only[["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"]].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
 
 # --- LIVE OPERATIONS GRID ---
-st.subheader("Operations Grid")
+st.markdown("---")
+st.markdown("##### Active Operations Ledger")
 edited = st.data_editor(
     filt,
     use_container_width=True,
@@ -210,7 +250,7 @@ edited = st.data_editor(
     disabled=["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By"]
 )
 
-if st.button("💾 COMMIT OPERATIONS CHANGES"):
+if st.button("💾 COMMIT RECORD TO DATABASE"):
     base = load_inventory()
     for _, row in edited.iterrows():
         do = row["DO_Number"]
@@ -218,7 +258,7 @@ if st.button("💾 COMMIT OPERATIONS CHANGES"):
         base.loc[base["DO_Number"]==do, "Remarks"] = row["Remarks"]
         base.loc[base["DO_Number"]==do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     base.to_csv(INVENTORY_FILE, index=False)
-    st.success("Logistics grid successfully updated.")
+    st.success("System updated successfully.")
 
 # --- EXECUTIVE EXCEL EXPORT ---
 buffer = io.BytesIO()
@@ -228,7 +268,7 @@ with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
     filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
     
     wb = writer.book
-    header = wb.add_format({"bold":True, "bg_color":"#1E293B", "font_color":"white"})
+    header = wb.add_format({"bold":True, "bg_color":"#0F172A", "font_color":"white"})
     
     for sheet in ["Executive Summary","Dispatch Records"]:
         ws = writer.sheets[sheet]
@@ -238,4 +278,4 @@ with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
             ws.write(0, col_num, value, header)
             ws.set_column(col_num, col_num, 20)
 
-st.download_button("📥 DOWNLOAD EXECUTIVE REPORT", buffer.getvalue(), "SABIN_Logistics.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
