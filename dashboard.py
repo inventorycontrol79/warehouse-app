@@ -4,9 +4,6 @@ import altair as alt
 from datetime import datetime
 import io
 import os
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
 
 st.set_page_config(page_title="SABIN // Command Center", layout="wide")
 
@@ -14,9 +11,8 @@ st.set_page_config(page_title="SABIN // Command Center", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #060911; color: #ffffff; font-family: 'Inter', sans-serif; }
-    .metric-value { font-size: 32px !important; color: #ffffff !important; }
-    .metric-label { color: #cbd5e1 !important; font-size: 12px !important; }
-    div[data-testid="stMetric"] { background: #0f172a; border: 1px solid #1e293b; padding: 20px; border-radius: 4px; }
+    div[data-testid="stMetric"] { background: #0f172a; border: 1px solid #1e293b; padding: 20px; border-radius: 8px; }
+    h1, h2, h3, h4 { color: #f8fafc !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -26,44 +22,54 @@ CSV_FILE = 'inventory.csv'
 if os.path.exists(CSV_FILE):
     df = pd.read_csv(CSV_FILE)
     
-    # Simple Filters
-    st.sidebar.header("Controls")
-    locs = ["All"] + list(df['Location'].unique())
-    sel_loc = st.sidebar.selectbox("Filter Location", locs)
+    # --- SPECIFIC COLUMN MAPPING ---
+    loc_col = 'Warehouse_Name'
+    # Fallback to the second column if 'Status' isn't explicitly found
+    stat_col = 'Status' if 'Status' in df.columns else df.columns[1]
+    
+    # Ensure column exists
+    if loc_col not in df.columns:
+        st.error(f"Error: Expected column '{loc_col}' not found in CSV. Found: {list(df.columns)}")
+        st.stop()
+
+    # Sidebar Filter
+    locs = ["All"] + list(df[loc_col].unique())
+    sel_loc = st.sidebar.selectbox("Filter Warehouse", locs)
     
     filtered_df = df.copy()
     if sel_loc != "All":
-        filtered_df = df[df['Location'] == sel_loc]
+        filtered_df = df[df[loc_col] == sel_loc]
 
-    # Metrics
+    # Metrics Row
     m1, m2, m3, m4 = st.columns(4)
     with m1: st.metric("Total Load", len(filtered_df))
-    with m2: st.metric("Pending", len(filtered_df[filtered_df['Status']=='Pending']))
-    with m3: st.metric("Dispatched", len(filtered_df[filtered_df['Status']=='Dispatched']))
-    with m4: st.metric("Return", len(filtered_df[filtered_df['Status']=='Return']))
+    with m2: st.metric("Pending", len(filtered_df[filtered_df[stat_col]=='Pending']))
+    with m3: st.metric("Dispatched", len(filtered_df[filtered_df[stat_col]=='Dispatched']))
+    with m4: st.metric("Return", len(filtered_df[filtered_df[stat_col]=='Return']))
 
-    # Visual Warehouse Performance
-    st.subheader("Warehouse Performance")
-    perf = filtered_df.groupby('Location').size().reset_index(name='Volume')
-    chart = alt.Chart(perf).mark_bar(color='#38bdf8').encode(
-        x='Location', y='Volume', tooltip=['Location', 'Volume']
+    # Visual Performance
+    st.subheader("Warehouse Performance Telemetry")
+    perf = filtered_df.groupby(loc_col).size().reset_index(name='Volume')
+    chart = alt.Chart(perf).mark_bar(color='#38bdf8', cornerRadius=4).encode(
+        x=alt.X(loc_col, title='Warehouse'), 
+        y=alt.Y('Volume', title='Total Units'),
+        tooltip=[loc_col, 'Volume']
     ).properties(height=300)
     st.altair_chart(chart, use_container_width=True)
 
     # Data Table
-    st.subheader("Live Pipeline")
     st.dataframe(filtered_df, use_container_width=True)
 
-    # Excel Download Engine (RE-ADDED)
-    excel_buffer = io.BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-        filtered_df.to_excel(writer, index=False, sheet_name='Report')
+    # Excel Download
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        filtered_df.to_excel(writer, index=False)
     
     st.download_button(
-        label="Download Report as Excel",
-        data=excel_buffer.getvalue(),
-        file_name=f"SABIN_Report_{datetime.now().strftime('%Y%m%d')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        label="Download Executive Report", 
+        data=buffer.getvalue(), 
+        file_name=f"SABIN_Manifest_{datetime.now().strftime('%Y%m%d')}.xlsx", 
+        mime="application/vnd.ms-excel"
     )
 else:
-    st.warning("Please upload a file to begin.")
+    st.error("inventory.csv not found.")
