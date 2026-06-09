@@ -12,7 +12,6 @@ st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
 INVENTORY_FILE = "inventory.csv"
 BOT_STATUS_FILE = "bot_status.txt"
 
-# Auto-refresh system every 30 seconds to fetch live data
 st_autorefresh(interval=30000, key="auto_refresh")
 
 # --- PREMIUM CORPORATE ERP STYLING & CONTRAST FIXES ---
@@ -20,25 +19,21 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
     
-    /* Global App Canvas */
     .stApp {
-        background-color: #0B0F19; /* Deep Corporate Slate */
+        background-color: #0B0F19; 
         color: #E2E8F0;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Critical Visibility Fix for Default Streamlit Elements */
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
-        color: #F8FAFC !important; /* Luminous Off-White */
+        color: #F8FAFC !important;
     }
     
-    /* Form Titles & Labels Contrast */
     label, .stWidgetLabel p {
         color: #94A3B8 !important;
         font-weight: 600 !important;
     }
     
-    /* Sleek Enterprise Header Structure */
     .premium-header {
         border-bottom: 1px solid #1E293B;
         padding-bottom: 1.5rem;
@@ -54,22 +49,21 @@ st.markdown("""
         line-height: 1.2;
     }
     .sabin-logo span {
-        color: #0EA5E9 !important; /* Corporate Blue Accent */
+        color: #0EA5E9 !important; 
     }
     .sabin-sub {
         font-size: 12px;
         font-weight: 600;
         letter-spacing: 3px;
-        color: #94A3B8 !important; /* Clearly Visible Silver/Slate */
+        color: #94A3B8 !important; 
         text-transform: uppercase;
         margin-top: 4px;
     }
 
-    /* Structured Corporate Metrics */
     div[data-testid="metric-container"] {
         background-color: #111827;
         border: 1px solid #1E293B;
-        border-top: 3px solid #0EA5E9; /* Corporate Blue Accent Border */
+        border-top: 3px solid #0EA5E9; 
         border-radius: 6px;
         padding: 20px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -91,7 +85,6 @@ st.markdown("""
         text-transform: uppercase;
     }
     
-    /* Clean Sidebar Separation and Contrast */
     section[data-testid="stSidebar"] {
         background-color: #0F172A;
         border-right: 1px solid #1E293B;
@@ -110,7 +103,7 @@ st.markdown("""
 st.markdown("""
     <div class='premium-header'>
         <div class='sabin-logo'>SABIN <span>PLASTIC</span></div>
-        <div class='sabin-sub'>Enterprise Logistics Operations Terminal</div>
+        <div class='sabin-sub'>Enterprise Warehouse Tracking System</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -128,29 +121,55 @@ df = load_inventory()
 # --- SIDEBAR CONTROL PANEL ---
 st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
 
-uploaded = st.sidebar.file_uploader("Upload ERP Excel", type=["xlsx"])
+uploaded = st.sidebar.file_uploader("Upload Raw ERP Excel File", type=["xlsx"])
 
 if uploaded is not None:
-    erp = pd.read_excel(uploaded, engine="openpyxl")
+    # Read file sheets blindly
+    raw_erp = pd.read_excel(uploaded, engine="openpyxl")
+    available_cols = [str(col).strip() for col in raw_erp.columns]
+    raw_erp.columns = available_cols # Sanitize column spacing anomalies
     
-    new_df = pd.DataFrame({
-        "DO_Number": erp["Voucher No"].astype(str).str.replace("DLNS:","", regex=False),
-        "Date_Issued": erp["Date"],
-        "Warehouse_Name": erp["Godown"].astype(str).str.strip().str.title(),
-        "Created_By": erp["Created By"]
-    })
+    st.sidebar.markdown("#### 🗺️ Align ERP Columns")
+    
+    # Smart Aligner Helper Function
+    def auto_match(possibilities, options):
+        for p in possibilities:
+            for opt in options:
+                if p.lower() in opt.lower():
+                    return opt
+        return options[0] if options else ""
+    
+    # Auto-detect target source layouts dynamically
+    guess_do = auto_match(["voucher", "do number", "do_no", "invoice", "document", "delivery"], available_cols)
+    guess_date = auto_match(["date", "issued", "time", "posting"], available_cols)
+    guess_wh = auto_match(["godown", "warehouse", "location", "facility", "branch", "site"], available_cols)
+    guess_user = auto_match(["created by", "user", "operator", "creator", "entered"], available_cols)
+    
+    # UI selectors fallback configuration panel
+    chosen_do = st.sidebar.selectbox("Match [DO Number]:", available_cols, index=available_cols.index(guess_do) if guess_do in available_cols else 0)
+    chosen_date = st.sidebar.selectbox("Match [Date Issued]:", available_cols, index=available_cols.index(guess_date) if guess_date in available_cols else 0)
+    chosen_wh = st.sidebar.selectbox("Match [Warehouse]:", available_cols, index=available_cols.index(guess_wh) if guess_wh in available_cols else 0)
+    chosen_user = st.sidebar.selectbox("Match [Created By]:", available_cols, index=available_cols.index(guess_user) if guess_user in available_cols else 0)
+    
+    if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT"):
+        new_df = pd.DataFrame({
+            "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
+            "Date_Issued": raw_erp[chosen_date],
+            "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip().str.title(),
+            "Created_By": raw_erp[chosen_user].astype(str).str.strip()
+        })
 
-    new_df["Last_4"] = new_df["DO_Number"].str[-4:]
-    new_df["Status"] = "Pending"
-    new_df["Remarks"] = ""
-    new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_df["Last_4"] = new_df["DO_Number"].str[-4:]
+        new_df["Status"] = "Pending"
+        new_df["Remarks"] = ""
+        new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    combined = pd.concat([df,new_df], ignore_index=True)
-    combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
-    combined.to_csv(INVENTORY_FILE, index=False)
+        combined = pd.concat([df, new_df], ignore_index=True)
+        combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
+        combined.to_csv(INVENTORY_FILE, index=False)
 
-    df = combined
-    st.sidebar.success("Database synchronized successfully.")
+        df = combined
+        st.sidebar.success("Raw ledger remapped and synchronized successfully.")
 
 if not df.empty:
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
@@ -177,7 +196,6 @@ st.sidebar.markdown("### 📅 TIMEFRAME")
 start_date = st.sidebar.date_input("Start Date", min_date)
 end_date = st.sidebar.date_input("End Date", max_date)
 
-# Automation System Status Check
 st.sidebar.markdown("---")
 if os.path.exists(BOT_STATUS_FILE):
     try:
@@ -213,7 +231,6 @@ returned = len(filt[filt["Status"]=="Return"])
 
 dispatch_rate = round((dispatched/total)*100,1) if total else 0
 
-# Evaluates ageing metrics STRICTLY for Pending orders (Excluding Returns and Dispatched items)
 pending_only = filt[filt["Status"] == "Pending"]
 avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
 
@@ -246,7 +263,6 @@ with right:
         warehouse_summary = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
         st.dataframe(warehouse_summary, use_container_width=True, hide_index=True)
 
-# Ageing Analysis Queue Execution
 if not pending_only.empty:
     st.markdown("---")
     st.markdown("##### Critical Ageing Queue (Pending Orders Only)")
