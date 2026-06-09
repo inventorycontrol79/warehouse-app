@@ -9,154 +9,180 @@ from openpyxl.utils import get_column_letter
 
 # 1. Page Configuration Setup
 st.set_page_config(
-    page_title="SABIN // Operations Command", 
+    page_title="SABIN // Enterprise Command", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
-# 2. Premium Executive Obsidian Theme UI Injector
+# 2. Premium Luxury Textured Architecture UI Injector
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap');
     
-    /* Global Background and Typography Reset */
+    /* Institutional Matte Satin Background with Micro-Carbon Weave Texture */
     .stApp { 
-        background-color: #090d16;
+        background-color: #060911;
         background-image: 
-            radial-gradient(circle at 50% 0%, #1e293b 0%, #090d16 75%);
+            radial-gradient(circle at 50% 0%, rgba(30, 41, 59, 0.45) 0%, #060911 85%),
+            linear-gradient(rgba(255, 255, 255, 0.008) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.008) 2px, transparent 2px);
+        background-size: 100% 100%, 8px 8px, 8px 8px;
         color: #f1f5f9; 
         font-family: 'Inter', sans-serif;
     }
     
-    /* Brand Frame Title Block */
+    /* Monolithic Platinum Glass Brand Frame (Inspired by Luxury Automotive Design Language) */
     .brand-frame {
+        position: relative;
         text-align: left;
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
-        backdrop-filter: blur(20px);
-        padding: 30px 40px;
-        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        padding: 40px 50px;
+        border-radius: 4px;
         border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
-        margin-bottom: 30px;
+        border-left: 4px solid #f8fafc; /* Asymmetrical Platinum Architectural Detail */
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        margin-bottom: 35px;
+        overflow: hidden;
+    }
+    .brand-frame::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.15), transparent);
     }
     .brand-title {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 38px;
+        font-size: 42px;
         font-weight: 800;
-        letter-spacing: -0.5px;
-        color: #ffffff;
+        letter-spacing: 12px;
+        text-transform: uppercase;
+        background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         margin: 0;
-        line-height: 1.1;
+        line-height: 1.0;
     }
     .brand-subtitle {
-        font-size: 13px;
-        letter-spacing: 0.5px;
-        color: #94a3b8;
-        margin-top: 6px;
-        font-weight: 400;
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        color: #64748b;
+        margin-top: 12px;
+        font-weight: 500;
     }
 
-    /* Operations Ribbon */
+    /* Subdued Operations Ribbon */
     .status-ribbon {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 30px;
         padding: 0 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-bottom: 14px;
     }
     .section-headline {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 16px;
-        color: #ffffff;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 2.5px;
+        color: #94a3b8;
         font-weight: 700;
     }
     .engine-badge {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
-        color: #10b981;
-        background: rgba(16, 185, 129, 0.06);
-        padding: 6px 14px;
-        border-radius: 100px;
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        letter-spacing: 1px;
+        color: #cbd5e1;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 5px 16px;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        text-transform: uppercase;
     }
     
-    /* Institutional Metric Blocks */
+    /* Tailored Monolithic Telemetry Cards */
     div[data-testid="stMetric"] { 
-        background: rgba(15, 23, 42, 0.45) !important;
+        background: linear-gradient(180deg, rgba(30, 41, 59, 0.25) 0%, rgba(15, 23, 42, 0.45) 100%) !important;
         backdrop-filter: blur(20px);
-        padding: 22px !important; 
-        border-radius: 10px !important; 
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        transition: all 0.25s ease-in-out;
+        padding: 24px 28px !important; 
+        border-radius: 2px !important; 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     
-    /* Clean Corporate Accent Borders */
-    div[data-testid="stCol"]:nth-of-type(1) div[data-testid="stMetric"] { border: 1px solid rgba(148, 163, 184, 0.15) !important; }
-    div[data-testid="stCol"]:nth-of-type(1) div[data-testid="stMetric"]:hover { border-color: #64748b !important; background: rgba(15, 23, 42, 0.6) !important; }
+    /* Sophisticated Low-Profile Highlight Interactivity */
+    div[data-testid="stCol"]:nth-of-type(1) div[data-testid="stMetric"] { border: 1px solid rgba(255, 255, 255, 0.05) !important; border-top: 2px solid #64748b !important; }
+    div[data-testid="stCol"]:nth-of-type(1) div[data-testid="stMetric"]:hover { background: rgba(255, 255, 255, 0.04) !important; border-top-color: #ffffff !important; }
     
-    div[data-testid="stCol"]:nth-of-type(2) div[data-testid="stMetric"] { border: 1px solid rgba(245, 158, 11, 0.15) !important; }
-    div[data-testid="stCol"]:nth-of-type(2) div[data-testid="stMetric"]:hover { border-color: #f59e0b !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.1); }
+    div[data-testid="stCol"]:nth-of-type(2) div[data-testid="stMetric"] { border: 1px solid rgba(255, 255, 255, 0.05) !important; border-top: 2px solid #d97706 !important; }
+    div[data-testid="stCol"]:nth-of-type(2) div[data-testid="stMetric"]:hover { background: rgba(255, 255, 255, 0.04) !important; border-top-color: #f59e0b !important; }
     
-    div[data-testid="stCol"]:nth-of-type(3) div[data-testid="stMetric"] { border: 1px solid rgba(16, 185, 129, 0.15) !important; }
-    div[data-testid="stCol"]:nth-of-type(3) div[data-testid="stMetric"]:hover { border-color: #10b981 !important; box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
+    div[data-testid="stCol"]:nth-of-type(3) div[data-testid="stMetric"] { border: 1px solid rgba(255, 255, 255, 0.05) !important; border-top: 2px solid #059669 !important; }
+    div[data-testid="stCol"]:nth-of-type(3) div[data-testid="stMetric"]:hover { background: rgba(255, 255, 255, 0.04) !important; border-top-color: #10b981 !important; }
     
-    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"] { border: 1px solid rgba(239, 68, 68, 0.15) !important; }
-    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"]:hover { border-color: #ef4444 !important; box-shadow: 0 0 15px rgba(239, 68, 68, 0.1); }
+    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"] { border: 1px solid rgba(255, 255, 255, 0.05) !important; border-top: 2px solid #dc2626 !important; }
+    div[data-testid="stCol"]:nth-of-type(4) div[data-testid="stMetric"]:hover { background: rgba(255, 255, 255, 0.04) !important; border-top-color: #ef4444 !important; }
 
     div[data-testid="stMetricValue"] { 
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 34px !important; 
-        font-weight: 700 !important; 
+        font-family: 'Inter', sans-serif;
+        font-size: 38px !important; 
+        font-weight: 300 !important; /* Elegant architectural light-weight number look */
         color: #ffffff !important;
-        letter-spacing: -1px;
+        letter-spacing: -1.5px;
+        margin-top: 4px;
     }
     div[data-testid="stMetricLabel"] { 
-        color: #94a3b8 !important; 
+        color: #64748b !important; 
         text-transform: uppercase !important; 
-        letter-spacing: 1px !important; 
-        font-size: 11px !important; 
+        letter-spacing: 2px !important; 
+        font-size: 10px !important; 
         font-weight: 600 !important;
     }
     
-    /* Sidebar Luxury Restyling */
+    /* Sidebar Minimal Styling */
     .stSidebar { 
-        background-color: #05070c !important; 
-        border-right: 1px solid rgba(255, 255, 255, 0.05) !important; 
+        background-color: #03050a !important; 
+        border-right: 1px solid rgba(255, 255, 255, 0.04) !important; 
     }
     
     .stSelectbox label, .stDateInput label { 
-        color: #94a3b8 !important; 
-        font-size: 11px !important;
+        color: #64748b !important; 
+        font-size: 10px !important;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 500;
+        letter-spacing: 1px;
+        font-weight: 600;
     }
     
-    /* Modern Data Grid Base Frame */
+    /* Clean Industrial Data Grid Overrides */
     .stDataFrame { 
-        background: rgba(15, 23, 42, 0.3) !important; 
-        border-radius: 10px; 
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        padding: 6px;
+        background: rgba(15, 23, 42, 0.2) !important; 
+        border-radius: 4px; 
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 4px;
     }
     
-    /* Corporate Premium Action Button */
+    /* Tailored Industrial Platinum Action Button */
     div.stDownloadButton > button {
-        background: #ffffff !important;
-        color: #090d16 !important;
-        border: 1px solid #ffffff !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.3px !important;
-        font-size: 12px !important;
-        padding: 10px 24px !important;
-        border-radius: 6px !important;
-        transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background: transparent !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        font-weight: 500 !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
+        font-size: 10px !important;
+        padding: 12px 28px !important;
+        border-radius: 2px !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
     div.stDownloadButton > button:hover {
-        background: #e2e8f0 !important;
-        border-color: #e2e8f0 !important;
-        box-shadow: 0 4px 20px rgba(255,255,255,0.15) !important;
+        background: #ffffff !important;
+        color: #060911 !important;
+        border-color: #ffffff !important;
+        box-shadow: 0 15px 30px rgba(255,255,255,0.08) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -165,14 +191,14 @@ st.markdown("""
 st.markdown("""
 <div class="brand-frame">
     <div class="brand-title">SABIN</div>
-    <div class="brand-subtitle">Enterprise Logistics Control Center</div>
+    <div class="brand-subtitle">Logistics Intelligence & Corporate Operations</div>
 </div>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="status-ribbon">
-    <div class="section-headline">Live Control Stream</div>
-    <div class="engine-badge">● AUTOMATION STANDBY</div>
+    <div class="section-headline">Live Management Pipeline</div>
+    <div class="engine-badge">System Secure // Standby</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -185,9 +211,9 @@ try:
     df = pd.read_csv(CSV_FILE)
     
     # ------------------ SIDEBAR CONTROL CONFIGURATIONS ------------------
-    st.sidebar.markdown("<p style='font-family:Inter; font-size:14px; font-weight:600; color:#ffffff; margin-bottom:15px;'>Operations Console</p>", unsafe_allow_html=True)
+    st.sidebar.markdown("<p style='font-family:Inter; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:#ffffff; margin-bottom:20px;'>Console Desk</p>", unsafe_allow_html=True)
 
-    st.sidebar.markdown("<p style='font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; font-weight:600; margin-bottom:5px;'>Import ERP Manifest</p>", unsafe_allow_html=True)
+    st.sidebar.markdown("<p style='font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#475569; font-weight:600; margin-bottom:5px;'>Import ERP Manifest</p>", unsafe_allow_html=True)
     uploaded_file = st.sidebar.file_uploader("Drop report file", type=['csv', 'xlsx'], label_visibility="collapsed")
     
     if uploaded_file is not None:
@@ -197,7 +223,7 @@ try:
             else:
                 uploaded_df = pd.read_csv(uploaded_file)
             uploaded_df.to_csv(CSV_FILE, index=False)
-            st.sidebar.success("Manifest synced successfully.")
+            st.sidebar.success("Source aligned.")
             df = pd.read_csv(CSV_FILE) 
             st.rerun()
         except Exception as e:
@@ -211,7 +237,7 @@ try:
         url_params = st.query_params
         if "warehouse" in url_params and url_params["warehouse"] in unique_locations and url_params.get("role") == "supervisor":
             target_warehouse = url_params["warehouse"]
-            st.sidebar.info(f"Locked Terminal: {target_warehouse}")
+            st.sidebar.info(f"Station: {target_warehouse}")
             df = df[df[LOCATION_COLUMN] == target_warehouse]
         else:
             master_options = ["All Terminals"] + unique_locations
@@ -247,7 +273,7 @@ try:
     count_pending = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Pending']) if STATUS_COLUMN in filtered_df.columns else len(filtered_df)
     count_return = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Return']) if STATUS_COLUMN in filtered_df.columns else 0
 
-    # Clean 4-Column Balanced Lineup (Removed Gross Volume Column)
+    # Pristine 4-Column Balanced Lineup
     m1, m2, m3, m4 = st.columns(4)
     with m1: st.metric("Total Load Profile", f"{len(filtered_df):,}")
     with m2: st.metric("Pending Queue", f"{count_pending:,}")
@@ -258,16 +284,16 @@ try:
 
     def style_premium_cells(val):
         clean_val = str(val).strip()
-        if clean_val == 'Dispatched': return 'color: #10b981; font-weight: 600; background-color: rgba(16, 185, 129, 0.05);'
-        elif clean_val == 'Return': return 'color: #f43f5e; font-weight: 600; background-color: rgba(244, 63, 94, 0.05);'
-        elif clean_val == 'Pending': return 'color: #f59e0b; font-weight: 600; background-color: rgba(245, 158, 11, 0.05);'
+        if clean_val == 'Dispatched': return 'color: #10b981; font-weight: 600; background-color: rgba(16, 185, 129, 0.03);'
+        elif clean_val == 'Return': return 'color: #f43f5e; font-weight: 600; background-color: rgba(244, 63, 94, 0.03);'
+        elif clean_val == 'Pending': return 'color: #f59e0b; font-weight: 600; background-color: rgba(245, 158, 11, 0.03);'
         return ''
 
     if len(filtered_df) > 0:
         if STATUS_COLUMN in filtered_df.columns:
-            st.dataframe(filtered_df.style.map(style_premium_cells, subset=[STATUS_COLUMN]), use_container_width=True, height=480)
-        else: st.dataframe(filtered_df, use_container_width=True, height=480)
-    else: st.info("No records found matching selected logs criteria.")
+            st.dataframe(filtered_df.style.map(style_premium_cells, subset=[STATUS_COLUMN]), use_container_width=True, height=500)
+        else: st.dataframe(filtered_df, use_container_width=True, height=500)
+    else: st.info("No records match your selected configuration filters.")
 
     # ------------------ ADVANCED PRESTIGE EXCEL GENERATOR ------------------
     if not filtered_df.empty:
