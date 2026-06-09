@@ -2,29 +2,56 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# 1. Page Configuration & Premium Theme Styling
-st.set_page_config(page_title="Warehouse Logistics Portal", layout="wide")
+# 1. Page Configuration & Custom Theme Layout
+st.set_page_config(page_title="Warehouse Logistics Master Portal", layout="wide")
 
-# Custom CSS for an Ultra-Premium Dark Theme with clean borders and card highlights
+# Custom CSS for an Ultra-Premium Dark Theme with glowing indicators and clean layouts
 st.markdown("""
     <style>
-    /* Main Background */
+    /* Main Background Elements */
     .stApp { 
         background-color: #0b0e14; 
         color: #f1f5f9; 
     }
-    /* Metric Cards Styling */
+    /* Executive Summary Block Styling */
+    .summary-box {
+        background: #111827;
+        padding: 18px 25px;
+        border-radius: 10px;
+        border-left: 5px solid #00ffcc;
+        border-top: 1px solid #1f2937;
+        border-right: 1px solid #1f2937;
+        border-bottom: 1px solid #1f2937;
+        margin-bottom: 25px;
+    }
+    .summary-title {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #94a3b8;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    .summary-grid {
+        display: flex;
+        gap: 30px;
+        flex-wrap: wrap;
+    }
+    .summary-item {
+        font-size: 16px;
+        font-weight: 500;
+    }
+    /* KPI Metric Cards Styling */
     div[data-testid="stMetricValue"] { 
         font-size: 32px; 
         font-weight: 700;
         color: #00ffcc !important; 
-        font-family: 'Inter', sans-serif;
     }
     div[data-testid="stMetricLabel"] { 
         color: #94a3b8 !important; 
         text-transform: uppercase;
         letter-spacing: 1px;
-        font-size: 12px;
+        font-size: 11px;
     }
     div[data-testid="stMetric"] {
         background-color: #111827;
@@ -32,17 +59,16 @@ st.markdown("""
         border-radius: 12px;
         border: 1px solid #1f2937;
     }
-    /* Input Label Adjustments */
+    /* Input Form Label Adjustments */
     .stSelectbox label, .stDateInput label { 
         color: #94a3b8 !important; 
         font-weight: 600; 
     }
-    /* Subtitles and Section Rules */
     hr {
         border: 0;
         height: 1px;
         background: linear-gradient(to right, #00ffcc, transparent);
-        margin-bottom: 30px;
+        margin: 20px 0px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -50,15 +76,15 @@ st.markdown("""
 st.title("📦 Warehouse Operations Master Portal")
 st.markdown("---")
 
-# 💎 Premium Custom Cell-by-Cell Text Coloring Function
+# Premium Custom Cell-by-Cell Status Text Highlights
 def style_premium_cells(val):
     clean_val = str(val).strip()
     if clean_val == 'Dispatched':
-        return 'color: #10b981; font-weight: bold; font-size: 15px;' # Premium Emerald Royal Green Text
+        return 'color: #10b981; font-weight: bold; font-size: 14px;' # Emerald Royal Green
     elif clean_val == 'Return':
-        return 'color: #ef4444; font-weight: bold; font-size: 15px;' # Premium Crimson Red Text
+        return 'color: #ef4444; font-weight: bold; font-size: 14px;' # Crimson Red
     elif clean_val == 'Pending':
-        return 'color: #f59e0b; font-weight: bold; font-size: 15px;' # Premium Cyber Amber Gold Text
+        return 'color: #f59e0b; font-weight: bold; font-size: 14px;' # Cyber Amber Gold
     return ''
 
 try:
@@ -67,7 +93,7 @@ try:
     st.sidebar.header("🎯 Control Center")
 
     # 3. SMART WAREHOUSE CONTROLLER
-    LOCATION_COLUMN = 'Warehouse_Name' 
+    LOCATION_COLUMN = 'Location' 
     if LOCATION_COLUMN in df.columns:
         df[LOCATION_COLUMN] = df[LOCATION_COLUMN].astype(str).str.strip()
         unique_locations = sorted(list(df[LOCATION_COLUMN].unique()))
@@ -113,11 +139,29 @@ try:
             filtered_df = df
     else:
         filtered_df = df
-            
-    # 6. Premium KPI Metric Cards
+
+    # 6. EXECUTIVE OPERATIONAL SUMMARY BANNER (Top of Dashboard)
+    if STATUS_COLUMN in filtered_df.columns:
+        # Compute calculations dynamically based on currently filtered dataset rows
+        count_dispatched = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Dispatched'])
+        count_pending = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Pending'])
+        count_return = len(filtered_df[filtered_df[STATUS_COLUMN] == 'Return'])
+        
+        st.markdown(f"""
+            <div class="summary-box">
+                <div class="summary-title">📈 Real-Time Logistics Summary Breakdown</div>
+                <div class="summary-grid">
+                    <div class="summary-item">🟢 Dispatched: <span style="color:#10b981; font-weight:700;">{count_dispatched}</span> items</div>
+                    <div class="summary-item">🟡 Pending: <span style="color:#f59e0b; font-weight:700;">{count_pending}</span> entries</div>
+                    <div class="summary-item">🔴 Returned: <span style="color:#ef4444; font-weight:700;">{count_return}</span> records</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # 7. Premium KPI Metric Cards
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Line Items", f"{len(filtered_df):,}")
+        st.metric("Total Rows Listed", f"{len(filtered_df):,}")
     with col2:
         total_stock = filtered_df['Quantity'].sum() if 'Quantity' in filtered_df.columns else 0
         st.metric("Total Volume Quantity", f"{total_stock:,}")
@@ -126,9 +170,8 @@ try:
 
     st.markdown("<br>### 📋 Live Logistics Manifest", unsafe_allow_html=True)
 
-    # 7. Rendering Dataframe with High-End Selective Status Styling
+    # 8. Interactive Live Data Table with Applied Cell Text Colors
     if STATUS_COLUMN in filtered_df.columns and len(filtered_df) > 0:
-        # Applies premium color properties directly to the text of the Status column cells
         styled_df = filtered_df.style.map(style_premium_cells, subset=[STATUS_COLUMN])
         st.dataframe(styled_df, use_container_width=True)
     else:
