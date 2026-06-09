@@ -3,13 +3,14 @@ import pandas as pd
 import altair as alt
 import io
 import os
+import json
+import gspread
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
 
-INVENTORY_FILE = "inventory.csv"
 BOT_STATUS_FILE = "bot_status.txt"
 
 # Auto-refresh system every 30 seconds to fetch live data updates
@@ -26,7 +27,6 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Global Visibility Override for Text & Headings */
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
         color: #F8FAFC !important;
     }
@@ -109,21 +109,48 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- ENGINE DATA LOADING ---
-def load_inventory():
-    if os.path.exists(INVENTORY_FILE):
-        try:
-            return pd.read_csv(INVENTORY_FILE)
-        except Exception:
-            pass
-    return pd.DataFrame(columns=[
-        "DO_Number","Last_4","Status","Date_Issued",
-        "Warehouse_Name","Remarks","Created_By","Last_Modified"
-    ])
+# --- GOOGLE SHEETS CORE ENGINE ---
+def load_inventory_from_sheets():
+    try:
+        creds = json.loads(st.secrets["GOOGLE_JSON"])
+        gc = gspread.service_account_from_dict(creds)
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        worksheet = sh.get_worksheet(0)
+        data = worksheet.get_all_records()
+        if not data:
+            return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
+        return pd.DataFrame(data)
+    except Exception as e:
+        return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
 
-df = load_inventory()
+def save_inventory_to_sheets(dataframe):
+    try:
+        creds = json.loads(st.secrets["GOOGLE_JSON"])
+        gc = gspread.service_account_from_dict(creds)
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        worksheet = sh.get_worksheet(0)
+        worksheet.clear()
+        
+        headers = dataframe.columns.tolist()
+        df_to_save = dataframe.copy()
+        
+        # Convert timestamps clean for Google Sheet cells formatting
+        if "Date_Issued" in df_to_save.columns:
+            df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
+                lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
+            )
+            
+        rows = df_to_save.fillna("").astype(str).values.tolist()
+        worksheet.append_rows([headers] + rows)
+        return True
+    except Exception as e:
+        st.error(f"🚨 Google Sheets Error Connection: {e}")
+        return False
+
+df = load_inventory_from_sheets()
 
 if not df.empty:
+    df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
 
@@ -134,7 +161,6 @@ url_warehouse = url_params.get("warehouse", None)
 if url_warehouse:
     url_warehouse = url_warehouse.strip().title()
 
-# Determine role architecture status based on incoming URL criteria
 is_supervisor_session = False
 if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique():
     is_supervisor_session = True
@@ -142,7 +168,6 @@ if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].uniq
 # --- SIDEBAR CONTROL PANEL ---
 st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
 
-# Lock down administrative uploading mechanics for Supervisor Sessions entirely
 if is_supervisor_session:
     st.sidebar.info("🔒 Administrative operations locked. Core ledger modifications are read-only for your terminal role.")
 else:
@@ -187,12 +212,13 @@ else:
 
             combined = pd.concat([df, new_df], ignore_index=True)
             combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
-            combined.to_csv(INVENTORY_FILE, index=False)
-
-            df = combined
-            df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
-            df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
-            st.sidebar.success("Raw ledger remapped and synchronized successfully.")
+            
+            if save_inventory_to_sheets(combined):
+                df = combined
+                df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
+                df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
+                st.sidebar.success("Cloud Google Sheet synchronized successfully!")
+                st.rerun()
 
 search = st.sidebar.text_input("🔍 Global DO Search")
 
@@ -207,7 +233,6 @@ else:
 warehouse = st.sidebar.selectbox("Filter Facility", warehouse_options)
 status = st.sidebar.selectbox("Filter Status", ["All","Pending","Dispatched","Return"])
 
-# Date bounds calculation safety check
 if not df.empty and pd.notna(df["Date_Issued"].min()):
     min_date = df["Date_Issued"].min().date()
     max_date = df["Date_Issued"].max().date()
@@ -275,9 +300,8 @@ c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
 st.markdown("###")
 
-# --- DATA AVAILABILITY WRAPPER ---
 if filt.empty:
-    st.info("📌 System Ready: Upload an Excel file via the sidebar control panel to populate operations data.")
+    st.info("📌 System Online: Upload an ERP Excel spreadsheet file via the administrator panel to stream ledger records.")
 else:
     # --- EXECUTIVE VISUALIZATIONS ---
     left, right = st.columns([1,1])
@@ -315,8 +339,6 @@ else:
     display_filt = filt.copy()
     display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%Y-%m-%d')
     
-    # DYNAMIC SECURITY PROTECTION MATRIX
-    # If supervisor session is True, disable entire element grid system. Else handle admin defaults.
     grid_disabled_setting = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
 
     edited = st.data_editor(
@@ -329,19 +351,20 @@ else:
         disabled=grid_disabled_setting
     )
 
-    # Completely conceal database mutation pathways for supervisors
     if not is_supervisor_session:
         if st.button("💾 COMMIT RECORD TO DATABASE"):
-            base = load_inventory()
+            base = load_inventory_from_sheets()
             if not base.empty:
+                base["DO_Number"] = base["DO_Number"].astype(str).str.strip()
                 for _, row in edited.iterrows():
                     do = str(row["DO_Number"]).strip()
-                    base.loc[base["DO_Number"].astype(str).str.strip() == do, "Status"] = row["Status"]
-                    base.loc[base["DO_Number"].astype(str).str.strip() == do, "Remarks"] = row["Remarks"]
-                    base.loc[base["DO_Number"].astype(str).str.strip() == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                base.to_csv(INVENTORY_FILE, index=False)
-                st.success("System updated successfully. Refreshing live view...")
-                st.rerun()
+                    base.loc[base["DO_Number"] == do, "Status"] = row["Status"]
+                    base.loc[base["DO_Number"] == do, "Remarks"] = row["Remarks"]
+                    base.loc[base["DO_Number"] == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                if save_inventory_to_sheets(base):
+                    st.success("System database overwritten successfully! Reloading canvas matrix...")
+                    st.rerun()
 
     # --- EXECUTIVE EXCEL SECURED REPORT ENGINE ---
     buffer = io.BytesIO()

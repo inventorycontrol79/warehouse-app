@@ -1,6 +1,7 @@
 streamlit
 pandas
 altair
-xlsxwriter
 openpyxl
 streamlit-autorefresh
+gspread
+xlsxwriter
