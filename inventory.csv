@@ -867,7 +867,7 @@ DLNS:SP-26-12864,2864,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12865,2865,Dispatched,05/06/2026,Al Quoz,Standard Delivery,Shaman
 DLNS:SP-26-12869,2869,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12871,2871,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12874,2874,Pending,05/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12874,2874,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12876,2876,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12877,2877,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12878,2878,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay
@@ -933,27 +933,27 @@ DLNS:SP-26-12921,2921,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12930,2930,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12932,2932,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12937,2937,Dispatched,06/06/2026,Al Quoz,Standard Delivery,Anand
-DLNS:SP-26-12938,2938,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12939,2939,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12944,2944,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12945,2945,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12948,2948,Pending,06/06/2026,Al Quoz,Standard Delivery,Melvin
-DLNS:SP-26-12949,2949,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12951,2951,Pending,06/06/2026,Al Quoz,Standard Delivery,Anand
-DLNS:SP-26-12960,2960,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12965,2965,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12967,2967,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12968,2968,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12970,2970,Pending,06/06/2026,Al Quoz,Standard Delivery,Melvin
-DLNS:SP-26-12971,2971,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12972,2972,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12976,2976,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12977,2977,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12978,2978,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12983,2983,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12984,2984,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12985,2985,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
-DLNS:SP-26-12986,2986,Pending,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12938,2938,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12939,2939,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12944,2944,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12945,2945,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12948,2948,Dispatched,06/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12949,2949,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12951,2951,Dispatched,06/06/2026,Al Quoz,Standard Delivery,Anand
+DLNS:SP-26-12960,2960,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12965,2965,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12967,2967,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12968,2968,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12970,2970,Dispatched,06/06/2026,Al Quoz,Standard Delivery,Melvin
+DLNS:SP-26-12971,2971,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12972,2972,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12976,2976,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12977,2977,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12978,2978,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12983,2983,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12984,2984,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12985,2985,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
+DLNS:SP-26-12986,2986,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay
 DLNS:SP-26-12916,2916,Dispatched,06/06/2026,DIP,Standard Delivery,Anand
 DLNS:SP-26-12917,2917,Dispatched,06/06/2026,DIP,Standard Delivery,Anand
 DLNS:SP-26-12919,2919,Dispatched,06/06/2026,DIP,Standard Delivery,Anand
