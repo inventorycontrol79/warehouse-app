@@ -41,7 +41,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- THE BRUTE-FORCE AUTOMATIC CRYPTO-HEALER MATRIX ---
+# --- THE ADVANCED CRYPTO-HEALER MATRIX ---
 def get_ultimate_healed_client():
     """Cycles through cryptographic reconstruction profiles until connection is stable."""
     try:
@@ -55,53 +55,63 @@ def get_ultimate_healed_client():
             st.error("🚨 Configuration Error: Missing 'private_key' field inside gcp_service_account.")
             return None
             
-        original_pk = base_creds["private_key"]
+        original_pk = str(base_creds["private_key"])
         
-        # 1. Strip structural framing to isolate raw Base64 data
-        core_pk = original_pk.replace("-----BEGIN PRIVATE KEY-----", "")
+        # 1. Clean out literal string expression artifacts before structural mapping
+        if original_pk.count("-----BEGIN PRIVATE KEY-----") > 1:
+            # Handle accidental duplicate pasting
+            original_pk = original_pk.split("-----BEGIN PRIVATE KEY-----")[1]
+            original_pk = "-----BEGIN PRIVATE KEY-----" + original_pk.split("-----END PRIVATE KEY-----")[0] + "-----END PRIVATE KEY-----"
+        
+        # Convert literal written line breaks into actual formatting spaces
+        clean_pk = original_pk.replace("\\\\n", "\n").replace("\\n", "\n")
+        
+        # Isolate core Base64 payload block
+        core_pk = clean_pk.replace("-----BEGIN PRIVATE KEY-----", "")
         core_pk = core_pk.replace("-----END PRIVATE KEY-----", "")
-        core_pk = re.sub(r'[^A-Za-z0-9+/=]', '', core_pk)
-        core_pk = core_pk.rstrip('=') # Drop existing padding to rebuild it cleanly
         
-        # 2. Calculate ideal mathematical padding requirements
+        # Purge all hidden blank lines to avoid rogue 'n' injections from split strings
+        core_pk = "".join(core_pk.split())
+        core_pk = re.sub(r'[^A-Za-z0-9+/=]', '', core_pk)
+        core_pk = core_pk.rstrip('=') 
+        
+        # 2. Re-calculate mathematical padding variables
         rem = len(core_pk) % 4
         if rem == 2: core_pk += '=='
         elif rem == 3: core_pk += '='
         
-        # 3. Construct a standard 64-character line sequence format
+        # 3. Compile strategic layout patterns
         chunks = [core_pk[i:i+64] for i in range(0, len(core_pk), 64)]
-        formatted_pk = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(chunks) + "\n-----END PRIVATE KEY-----\n"
+        formatted_wrapped = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(chunks) + "\n-----END PRIVATE KEY-----\n"
+        formatted_single = f"-----BEGIN PRIVATE KEY-----\n{core_pk}\n-----END PRIVATE KEY-----\n"
         
-        # 4. Strategy Matrix Array
         strategies = [
-            {"name": "Mathematical Clean 64-Char Wrap", "pk": formatted_pk},
-            {"name": "Standard Line-break Literal Fix", "pk": original_pk.replace("\\n", "\n")},
-            {"name": "Double Escaped Line-break Fix", "pk": original_pk.replace("\\\\n", "\n").replace("\\n", "\n")},
-            {"name": "Single Line Continuous Block", "pk": f"-----BEGIN PRIVATE KEY-----\n{core_pk}\n-----END PRIVATE KEY-----\n"}
+            {"name": "Clean Wrapped 64-Char Matrix", "pk": formatted_wrapped},
+            {"name": "Literal Processed Linebreaks", "pk": clean_pk},
+            {"name": "Single-Line Block Execution", "pk": formatted_single},
+            {"name": "Original Handshake Flow", "pk": original_pk}
         ]
         
         last_error = ""
-        # 5. Execute matrix validation sequences
+        # 4. Cycle strategies until ASN.1 serialization accepts block alignment
         for strat in strategies:
             try:
                 test_creds = base_creds.copy()
                 test_creds["private_key"] = strat["pk"]
                 gc = gspread.service_account_from_dict(test_creds)
                 
-                # Perform an active ping check on your cloud file to guarantee handshake
+                # Active network testing link handshake
                 gc.open_by_url(st.secrets["GSHEET_URL"])
                 return gc
             except Exception as e:
                 last_error = str(e)
                 continue
                 
-        # If all repairs fail, the source text data itself is physically truncated
         st.error(f"🛑 **All Cryptographic Repair Protocols Exhausted.**\n\n"
                  f"**Underlying Engine Diagnostics:** `{last_error}`\n\n"
-                 "**Action Required:** The character length of your key is incorrect. When copying your "
-                 "key from the original Google JSON file into your Streamlit Secrets field, a portion of the "
-                 "string was likely cut off. Please delete your current secret, re-open your downloaded JSON file, "
-                 "and copy the string completely.")
+                 "**Action Required:** The character byte array contains structural noise that standard base64 decoding cannot isolate. "
+                 "Please open your original Google JSON file, select ONLY the text between the quotes inside the `\"private_key\"` field, "
+                 "and overwrite your Streamlit system dashboard secret completely.")
         return None
     except Exception as e:
         st.error(f"🚨 Healing Engine Fault: {e}")
