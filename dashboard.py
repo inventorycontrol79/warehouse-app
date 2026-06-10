@@ -112,7 +112,6 @@ st.markdown("""
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
     try:
-        # Utilizing Streamlit's official dictionary connection method
         creds_dict = dict(st.secrets["gcp_service_account"])
         gc = gspread.service_account_from_dict(creds_dict)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
@@ -122,6 +121,8 @@ def load_inventory_from_sheets():
             return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
         return pd.DataFrame(data)
     except Exception as e:
+        # CHANGED: This will now show us exactly why Google is rejecting the bot
+        st.error(f"🛑 Hidden Google Connection Error: {e}")
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
 
 def save_inventory_to_sheets(dataframe):
