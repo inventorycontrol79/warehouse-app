@@ -41,37 +41,75 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- THE ULTIMATE AUTO-HEALER ENGINE ---
-def get_healed_google_client():
-    """Intercepts, deconstructs, and perfectly rebuilds mangled credentials."""
+# --- THE BRUTE-FORCE AUTOMATIC CRYPTO-HEALER MATRIX ---
+def get_ultimate_healed_client():
+    """Cycles through cryptographic reconstruction profiles until connection is stable."""
     try:
         raw_creds = st.secrets["gcp_service_account"]
-        
-        # Heal Issue 1: Paste format (Stringified JSON vs Streamlit AttrDict)
         if isinstance(raw_creds, str):
-            creds_dict = json.loads(raw_creds)
+            base_creds = json.loads(raw_creds)
         else:
-            creds_dict = dict(raw_creds)
+            base_creds = dict(raw_creds)
             
-        # Heal Issue 2: The Cryptographic PEM formatting
-        if "private_key" in creds_dict:
-            pk = creds_dict["private_key"]
-            # Strip away the headers completely
-            pk = pk.replace("-----BEGIN PRIVATE KEY-----", "")
-            pk = pk.replace("-----END PRIVATE KEY-----", "")
-            # Violently destroy ALL whitespaces, literal \n strings, and hidden carriage returns
-            pk = re.sub(r'\s+|\\n', '', pk)
-            # Reconstruct the mathematically perfect string required by the cryptography library
-            creds_dict["private_key"] = f"-----BEGIN PRIVATE KEY-----\n{pk}\n-----END PRIVATE KEY-----\n"
+        if "private_key" not in base_creds:
+            st.error("🚨 Configuration Error: Missing 'private_key' field inside gcp_service_account.")
+            return None
             
-        return gspread.service_account_from_dict(creds_dict)
+        original_pk = base_creds["private_key"]
+        
+        # 1. Strip structural framing to isolate raw Base64 data
+        core_pk = original_pk.replace("-----BEGIN PRIVATE KEY-----", "")
+        core_pk = core_pk.replace("-----END PRIVATE KEY-----", "")
+        core_pk = re.sub(r'[^A-Za-z0-9+/=]', '', core_pk)
+        core_pk = core_pk.rstrip('=') # Drop existing padding to rebuild it cleanly
+        
+        # 2. Calculate ideal mathematical padding requirements
+        rem = len(core_pk) % 4
+        if rem == 2: core_pk += '=='
+        elif rem == 3: core_pk += '='
+        
+        # 3. Construct a standard 64-character line sequence format
+        chunks = [core_pk[i:i+64] for i in range(0, len(core_pk), 64)]
+        formatted_pk = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(chunks) + "\n-----END PRIVATE KEY-----\n"
+        
+        # 4. Strategy Matrix Array
+        strategies = [
+            {"name": "Mathematical Clean 64-Char Wrap", "pk": formatted_pk},
+            {"name": "Standard Line-break Literal Fix", "pk": original_pk.replace("\\n", "\n")},
+            {"name": "Double Escaped Line-break Fix", "pk": original_pk.replace("\\\\n", "\n").replace("\\n", "\n")},
+            {"name": "Single Line Continuous Block", "pk": f"-----BEGIN PRIVATE KEY-----\n{core_pk}\n-----END PRIVATE KEY-----\n"}
+        ]
+        
+        last_error = ""
+        # 5. Execute matrix validation sequences
+        for strat in strategies:
+            try:
+                test_creds = base_creds.copy()
+                test_creds["private_key"] = strat["pk"]
+                gc = gspread.service_account_from_dict(test_creds)
+                
+                # Perform an active ping check on your cloud file to guarantee handshake
+                gc.open_by_url(st.secrets["GSHEET_URL"])
+                return gc
+            except Exception as e:
+                last_error = str(e)
+                continue
+                
+        # If all repairs fail, the source text data itself is physically truncated
+        st.error(f"🛑 **All Cryptographic Repair Protocols Exhausted.**\n\n"
+                 f"**Underlying Engine Diagnostics:** `{last_error}`\n\n"
+                 "**Action Required:** The character length of your key is incorrect. When copying your "
+                 "key from the original Google JSON file into your Streamlit Secrets field, a portion of the "
+                 "string was likely cut off. Please delete your current secret, re-open your downloaded JSON file, "
+                 "and copy the string completely.")
+        return None
     except Exception as e:
-        st.error(f"🛑 Auto-Healer Failed to reconstruct credentials: {e}")
+        st.error(f"🚨 Healing Engine Fault: {e}")
         return None
 
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
-    gc = get_healed_google_client()
+    gc = get_ultimate_healed_client()
     if not gc:
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
     
@@ -83,11 +121,11 @@ def load_inventory_from_sheets():
             return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
         return pd.DataFrame(data)
     except Exception as e:
-        st.error(f"🛑 Connected to Google, but failed to read the Sheet: {e}")
+        st.error(f"🛑 Verified secure token alignment, but failed parsing the Sheet cells: {e}")
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
 
 def save_inventory_to_sheets(dataframe):
-    gc = get_healed_google_client()
+    gc = get_ultimate_healed_client()
     if not gc: return False
     
     try:
@@ -107,7 +145,7 @@ def save_inventory_to_sheets(dataframe):
         worksheet.append_rows([headers] + rows)
         return True
     except Exception as e:
-        st.error(f"🚨 Connected to Google, but failed to write to Sheet: {e}")
+        st.error(f"🚨 Data backup transmission failed: {e}")
         return False
 
 # --- DATA INITIALIZATION ---
@@ -265,7 +303,7 @@ c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 st.markdown("###")
 
 if filt.empty:
-    st.info("📌 System Online: Upload an ERP Excel spreadsheet file via the administrator panel to stream ledger records.")
+    st.info("📌 System Online: Waiting for Cloud synchronized interface link connection.")
 else:
     # --- EXECUTIVE VISUALIZATIONS ---
     left, right = st.columns([1,1])
