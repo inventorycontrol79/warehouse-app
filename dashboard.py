@@ -121,6 +121,7 @@ def load_inventory_from_sheets():
             return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
         return pd.DataFrame(data)
     except Exception as e:
+        st.sidebar.error(f"⚠️ Sheet Load Crash: {e}")
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
 
 def save_inventory_to_sheets(dataframe):
@@ -134,7 +135,6 @@ def save_inventory_to_sheets(dataframe):
         headers = dataframe.columns.tolist()
         df_to_save = dataframe.copy()
         
-        # Convert timestamps cleanly for Google Sheet cells formatting (DD/MM/YYYY)
         if "Date_Issued" in df_to_save.columns:
             df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
                 lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
@@ -148,14 +148,18 @@ def save_inventory_to_sheets(dataframe):
         return False
 
 df = load_inventory_from_sheets()
-st.write("DEBUG: Rows found in sheet:", len(df))
-st.write("DEBUG: Column names found:", df.columns.tolist())
+
+# --- LIVE DIAGNOSTICS DISPLAY PANEL ---
+st.markdown("### 🔍 SYSTEM DIAGNOSTICS")
+col_diag1, col_diag2 = st.columns(2)
+with col_diag1:
+    st.metric("Rows Read From Cloud", len(df))
+with col_diag2:
+    st.write("Headers Found In Your Sheet:", df.columns.tolist() if not df.empty else "NO HEADERS FOUND")
 
 if not df.empty:
     df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
-    # PRESERVE CAPITALIZATION: Removed .str.title() to protect 'DIP' string casing
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
-    # FORMAT PARSER: Set explicitly to read Day/Month/Year strings safely
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
 # --- ADVANCED URL PARAMETER ROUTING ENGINE ---
@@ -163,7 +167,7 @@ url_params = st.query_params
 url_warehouse = url_params.get("warehouse", None)
 
 if url_warehouse:
-    url_warehouse = url_warehouse.strip() # Removed .title() to respect exact matched caps
+    url_warehouse = url_warehouse.strip()
 
 is_supervisor_session = False
 if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique():
@@ -205,7 +209,7 @@ else:
             new_df = pd.DataFrame({
                 "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
                 "Date_Issued": pd.to_datetime(raw_erp[chosen_date], errors="coerce"),
-                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(), # Removed .title()
+                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(),
                 "Created_By": raw_erp[chosen_user].astype(str).str.strip()
             })
 
@@ -237,18 +241,6 @@ else:
 warehouse = st.sidebar.selectbox("Filter Facility", warehouse_options)
 status = st.sidebar.selectbox("Filter Status", ["All","Pending","Dispatched","Return"])
 
-if not df.empty and pd.notna(df["Date_Issued"].min()):
-    min_date = df["Date_Issued"].min().date()
-    max_date = df["Date_Issued"].max().date()
-else:
-    today = datetime.today().date()
-    min_date = today
-    max_date = today
-
-st.sidebar.markdown("### 📅 TIMEFRAME")
-start_date = st.sidebar.date_input("Start Date", min_date)
-end_date = st.sidebar.date_input("End Date", max_date)
-
 st.sidebar.markdown("---")
 if os.path.exists(BOT_STATUS_FILE):
     try:
@@ -275,9 +267,6 @@ if not filt.empty:
         filt = filt[filt["Warehouse_Name"] == warehouse]
     if status != "All": 
         filt = filt[filt["Status"] == status]
-    
-    date_mask = (filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)
-    filt = filt[date_mask]
 
 # --- EXECUTIVE METRIC CARDS ---
 total = len(filt) if not filt.empty else 0
@@ -289,7 +278,11 @@ dispatch_rate = round((dispatched/total)*100,1) if total else 0
 
 if not filt.empty:
     pending_only = filt[filt["Status"] == "Pending"]
-    avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
+    # Safely handle potential parsing issues for dates
+    try:
+        avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
+    except:
+        avg_age = 0
 else:
     pending_only = pd.DataFrame()
     avg_age = 0
@@ -305,7 +298,7 @@ c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 st.markdown("###")
 
 if filt.empty:
-    st.info("📌 System Online: Upload an ERP Excel spreadsheet file via the administrator panel to stream ledger records.")
+    st.info("📌 System Online: No records match the sidebar filters, or sheet is empty.")
 else:
     # --- EXECUTIVE VISUALIZATIONS ---
     left, right = st.columns([1,1])
@@ -328,20 +321,26 @@ else:
     if not pending_only.empty:
         st.markdown("---")
         st.markdown("##### Critical Ageing Queue (Pending Orders Only)")
-        pending_only["Age_Days"] = (pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days
-        def risk(x):
-            if x >= 6: return "🔴 High Risk"
-            elif x >= 3: return "🟡 Attention"
-            return "🟢 Standard"
-        pending_only["Risk_Profile"] = pending_only["Age_Days"].apply(risk)
-        st.dataframe(pending_only[["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"]].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
+        try:
+            pending_only["Age_Days"] = (pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days
+            def risk(x):
+                if x >= 6: return "🔴 High Risk"
+                elif x >= 3: return "🟡 Attention"
+                return "🟢 Standard"
+            pending_only["Risk_Profile"] = pending_only["Age_Days"].apply(risk)
+            st.dataframe(pending_only[["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"]].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
+        except:
+            pass
 
     # --- LIVE OPERATIONS INTERACTIVE LEDGER ---
     st.markdown("---")
     st.markdown("##### Active Operations Ledger")
     
     display_filt = filt.copy()
-    display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
+    try:
+        display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
+    except:
+        pass
     
     grid_disabled_setting = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
 
@@ -377,7 +376,10 @@ else:
         summary_df.to_excel(writer, sheet_name="Executive Summary", index=False)
         
         excel_filt = filt.copy()
-        excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
+        try:
+            excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
+        except:
+            pass
         excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
         
         wb = writer.book
