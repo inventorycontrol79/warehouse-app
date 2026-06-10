@@ -4,8 +4,8 @@ import altair as alt
 import io
 import os
 import json
-import re
 import gspread
+from google.oauth2.service_account import Credentials
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
@@ -41,85 +41,32 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- THE ADVANCED CRYPTO-HEALER MATRIX ---
-def get_ultimate_healed_client():
-    """Cycles through cryptographic reconstruction profiles until connection is stable."""
+# --- NATIVE AUTHENTICATION ENGINE ---
+def get_google_client():
+    """Reads the raw JSON string bypass from secrets and authenticates securely."""
     try:
-        raw_creds = st.secrets["gcp_service_account"]
-        if isinstance(raw_creds, str):
-            base_creds = json.loads(raw_creds)
-        else:
-            base_creds = dict(raw_creds)
-            
-        if "private_key" not in base_creds:
-            st.error("🚨 Configuration Error: Missing 'private_key' field inside gcp_service_account.")
-            return None
-            
-        original_pk = str(base_creds["private_key"])
+        # Load the raw string and let Python's native JSON parser handle the \n characters properly
+        raw_json = st.secrets["GCP_JSON"]
+        creds_dict = json.loads(raw_json)
         
-        # 1. Clean out literal string expression artifacts before structural mapping
-        if original_pk.count("-----BEGIN PRIVATE KEY-----") > 1:
-            # Handle accidental duplicate pasting
-            original_pk = original_pk.split("-----BEGIN PRIVATE KEY-----")[1]
-            original_pk = "-----BEGIN PRIVATE KEY-----" + original_pk.split("-----END PRIVATE KEY-----")[0] + "-----END PRIVATE KEY-----"
-        
-        # Convert literal written line breaks into actual formatting spaces
-        clean_pk = original_pk.replace("\\\\n", "\n").replace("\\n", "\n")
-        
-        # Isolate core Base64 payload block
-        core_pk = clean_pk.replace("-----BEGIN PRIVATE KEY-----", "")
-        core_pk = core_pk.replace("-----END PRIVATE KEY-----", "")
-        
-        # Purge all hidden blank lines to avoid rogue 'n' injections from split strings
-        core_pk = "".join(core_pk.split())
-        core_pk = re.sub(r'[^A-Za-z0-9+/=]', '', core_pk)
-        core_pk = core_pk.rstrip('=') 
-        
-        # 2. Re-calculate mathematical padding variables
-        rem = len(core_pk) % 4
-        if rem == 2: core_pk += '=='
-        elif rem == 3: core_pk += '='
-        
-        # 3. Compile strategic layout patterns
-        chunks = [core_pk[i:i+64] for i in range(0, len(core_pk), 64)]
-        formatted_wrapped = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(chunks) + "\n-----END PRIVATE KEY-----\n"
-        formatted_single = f"-----BEGIN PRIVATE KEY-----\n{core_pk}\n-----END PRIVATE KEY-----\n"
-        
-        strategies = [
-            {"name": "Clean Wrapped 64-Char Matrix", "pk": formatted_wrapped},
-            {"name": "Literal Processed Linebreaks", "pk": clean_pk},
-            {"name": "Single-Line Block Execution", "pk": formatted_single},
-            {"name": "Original Handshake Flow", "pk": original_pk}
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
         ]
         
-        last_error = ""
-        # 4. Cycle strategies until ASN.1 serialization accepts block alignment
-        for strat in strategies:
-            try:
-                test_creds = base_creds.copy()
-                test_creds["private_key"] = strat["pk"]
-                gc = gspread.service_account_from_dict(test_creds)
-                
-                # Active network testing link handshake
-                gc.open_by_url(st.secrets["GSHEET_URL"])
-                return gc
-            except Exception as e:
-                last_error = str(e)
-                continue
-                
-        st.error(f"🛑 **All Cryptographic Repair Protocols Exhausted.**\n\n"
-                 f"**Underlying Engine Diagnostics:** `{last_error}`\n\n"
-                 "**Action Required:** The character byte array contains structural noise that standard base64 decoding cannot isolate. "
-                 "Please open your original Google JSON file, select ONLY the text between the quotes inside the `\"private_key\"` field, "
-                 "and overwrite your Streamlit system dashboard secret completely.")
-        return None
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        gc = gspread.authorize(creds)
+        
+        # Ping check to ensure connection
+        gc.open_by_url(st.secrets["GSHEET_URL"])
+        return gc
     except Exception as e:
-        st.error(f"🚨 Healing Engine Fault: {e}")
+        st.error(f"🚨 Authentication Failed: {e}")
         return None
 
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
-    gc = get_ultimate_healed_client()
+    gc = get_google_client()
     if not gc:
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
     
@@ -131,11 +78,11 @@ def load_inventory_from_sheets():
             return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
         return pd.DataFrame(data)
     except Exception as e:
-        st.error(f"🛑 Verified secure token alignment, but failed parsing the Sheet cells: {e}")
+        st.error(f"🛑 Connection successful, but failed reading the Sheet: {e}")
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
 
 def save_inventory_to_sheets(dataframe):
-    gc = get_ultimate_healed_client()
+    gc = get_google_client()
     if not gc: return False
     
     try:
