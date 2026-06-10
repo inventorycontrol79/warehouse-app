@@ -148,6 +148,8 @@ def save_inventory_to_sheets(dataframe):
         return False
 
 df = load_inventory_from_sheets()
+st.write("DEBUG: Rows found in sheet:", len(df))
+st.write("DEBUG: Column names found:", df.columns.tolist())
 
 if not df.empty:
     df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
