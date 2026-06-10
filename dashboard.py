@@ -112,14 +112,13 @@ st.markdown("""
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
     try:
-        creds = dict(st.secrets["GOOGLE_JSON"])
-        if "private_key" in creds:
-            creds["private_key"] = creds["private_key"].replace("\\n", "\n")
+        # Load the raw string and convert it cleanly to a Python dictionary via JSON
+        creds = json.loads(st.secrets["GOOGLE_JSON_STR"])
             
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         
-        # FIXED: Explicit lookup fallback. Checks for 'Sheet1' then defaults back to structural slot 0
+        # Explicit lookup fallback: Checks for 'Sheet1' then defaults to structural slot 0
         try:
             worksheet = sh.worksheet("Sheet1")
         except:
@@ -135,9 +134,7 @@ def load_inventory_from_sheets():
 
 def save_inventory_to_sheets(dataframe):
     try:
-        creds = dict(st.secrets["GOOGLE_JSON"])
-        if "private_key" in creds:
-            creds["private_key"] = creds["private_key"].replace("\\n", "\n")
+        creds = json.loads(st.secrets["GOOGLE_JSON_STR"])
             
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
@@ -164,18 +161,11 @@ def save_inventory_to_sheets(dataframe):
         st.error(f"🚨 Google Sheets Error Connection: {e}")
         return False
 
+# Load Base Data
 df = load_inventory_from_sheets()
 
-# --- LIVE DIAGNOSTICS DISPLAY PANEL ---
-st.markdown("### 🔍 SYSTEM DIAGNOSTICS")
-col_diag1, col_diag2 = st.columns(2)
-with col_diag1:
-    st.metric("Rows Read From Cloud", len(df))
-with col_diag2:
-    st.write("Headers Found In Your Sheet:", df.columns.tolist() if not df.empty else "NO HEADERS FOUND")
-
+# Clean Data & Enforce Types
 if not df.empty:
-    # Scrub text anomalies out of critical data pathways
     df.columns = [str(c).strip() for c in df.columns]
     for col in ["DO_Number", "Warehouse_Name", "Status"]:
         if col in df.columns:
@@ -183,6 +173,14 @@ if not df.empty:
             
     if "Date_Issued" in df.columns:
         df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
+
+# --- LIVE DIAGNOSTICS DISPLAY PANEL ---
+st.markdown("### 🔍 SYSTEM DIAGNOSTICS")
+col_diag1, col_diag2 = st.columns(2)
+with col_diag1:
+    st.metric("Rows Read From Cloud", len(df))
+with col_diag2:
+    st.write("Headers Found:", df.columns.tolist() if not df.empty else "NO HEADERS FOUND")
 
 # --- ADVANCED URL PARAMETER ROUTING ENGINE ---
 url_params = st.query_params
@@ -244,13 +242,11 @@ else:
             combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
             
             if save_inventory_to_sheets(combined):
-                df = combined
-                if "Warehouse_Name" in df.columns:
-                    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
-                if "Date_Issued" in df.columns:
-                    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
                 st.sidebar.success("Cloud Google Sheet synchronized successfully!")
                 st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("#### 🎯 Data Filters")
 
 search = st.sidebar.text_input("🔍 Global DO Search")
 
@@ -262,8 +258,19 @@ else:
     if not df.empty and "Warehouse_Name" in df.columns:
         warehouse_options += sorted(df["Warehouse_Name"].astype(str).unique().tolist())
 
-warehouse = st.sidebar.selectbox("Filter Facility", warehouse_options)
-status = st.sidebar.selectbox("Filter Status", ["All","Pending","Dispatched","Return"])
+warehouse = st.sidebar.selectbox("🏭 Filter Facility", warehouse_options)
+status = st.sidebar.selectbox("🏷️ Filter Status", ["All","Pending","Dispatched","Return"])
+
+# --- DATE FILTER LOGIC ---
+if not df.empty and "Date_Issued" in df.columns and pd.api.types.is_datetime64_any_dtype(df["Date_Issued"]):
+    min_date = df["Date_Issued"].min().date()
+    max_date = df["Date_Issued"].max().date()
+else:
+    min_date = datetime.today().date()
+    max_date = datetime.today().date()
+
+# UI Date Picker
+date_range = st.sidebar.date_input("📅 Filter Date Range", value=(min_date, max_date))
 
 st.sidebar.markdown("---")
 if os.path.exists(BOT_STATUS_FILE):
@@ -284,13 +291,27 @@ else:
 filt = df.copy()
 
 if not filt.empty and len(filt.columns) >= 4:
+    # 1. Global Search Filter
     if search:
         mask = filt.astype(str).apply(lambda x: x.str.contains(search, case=False, na=False)).any(axis=1)
         filt = filt[mask]
+        
+    # 2. Warehouse Filter
     if warehouse != "All" and "Warehouse_Name" in filt.columns: 
         filt = filt[filt["Warehouse_Name"] == warehouse]
+        
+    # 3. Status Filter
     if status != "All" and "Status" in filt.columns: 
         filt = filt[filt["Status"] == status]
+        
+    # 4. Date Range Filter
+    if len(date_range) == 2 and "Date_Issued" in filt.columns:
+        start_date, end_date = date_range
+        filt = filt[(filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)]
+    elif len(date_range) == 1 and "Date_Issued" in filt.columns:
+        # If user only selects a single day instead of a range
+        start_date = date_range[0]
+        filt = filt[filt["Date_Issued"].dt.date == start_date]
 
 # --- EXECUTIVE METRIC CARDS ---
 has_valid_data = not filt.empty and "Status" in filt.columns
@@ -305,7 +326,6 @@ dispatch_rate = round((dispatched/total)*100,1) if total else 0
 if has_valid_data and "Date_Issued" in filt.columns:
     pending_only = filt[filt["Status"] == "Pending"]
     try:
-        # Prevent NaT calculations from breaking UI components
         valid_dates = pending_only[pending_only["Date_Issued"].notna()]
         avg_age = round(((pd.Timestamp.today() - valid_dates["Date_Issued"]).dt.days).mean(), 1) if not valid_dates.empty else 0
     except:
