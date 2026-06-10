@@ -19,7 +19,7 @@ st_autorefresh(interval=30000, key="auto_refresh")
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
     
     .stApp {
         background-color: #0B0F19; 
@@ -134,10 +134,10 @@ def save_inventory_to_sheets(dataframe):
         headers = dataframe.columns.tolist()
         df_to_save = dataframe.copy()
         
-        # Convert timestamps clean for Google Sheet cells formatting
+        # Convert timestamps cleanly for Google Sheet cells formatting (DD/MM/YYYY)
         if "Date_Issued" in df_to_save.columns:
             df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
-                lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
+                lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
             )
             
         rows = df_to_save.fillna("").astype(str).values.tolist()
@@ -151,15 +151,17 @@ df = load_inventory_from_sheets()
 
 if not df.empty:
     df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
-    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
-    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
+    # PRESERVE CAPITALIZATION: Removed .str.title() to protect 'DIP' string casing
+    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
+    # FORMAT PARSER: Set explicitly to read Day/Month/Year strings safely
+    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
 # --- ADVANCED URL PARAMETER ROUTING ENGINE ---
 url_params = st.query_params
 url_warehouse = url_params.get("warehouse", None)
 
 if url_warehouse:
-    url_warehouse = url_warehouse.strip().title()
+    url_warehouse = url_warehouse.strip() # Removed .title() to respect exact matched caps
 
 is_supervisor_session = False
 if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique():
@@ -200,8 +202,8 @@ else:
         if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT"):
             new_df = pd.DataFrame({
                 "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
-                "Date_Issued": raw_erp[chosen_date],
-                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip().str.title(),
+                "Date_Issued": pd.to_datetime(raw_erp[chosen_date], errors="coerce"),
+                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(), # Removed .title()
                 "Created_By": raw_erp[chosen_user].astype(str).str.strip()
             })
 
@@ -215,8 +217,8 @@ else:
             
             if save_inventory_to_sheets(combined):
                 df = combined
-                df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip().str.title()
-                df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], errors="coerce")
+                df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
+                df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
                 st.sidebar.success("Cloud Google Sheet synchronized successfully!")
                 st.rerun()
 
@@ -337,7 +339,7 @@ else:
     st.markdown("##### Active Operations Ledger")
     
     display_filt = filt.copy()
-    display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%Y-%m-%d')
+    display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
     
     grid_disabled_setting = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
 
@@ -373,7 +375,7 @@ else:
         summary_df.to_excel(writer, sheet_name="Executive Summary", index=False)
         
         excel_filt = filt.copy()
-        excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%Y-%m-%d')
+        excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
         excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
         
         wb = writer.book
