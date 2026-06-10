@@ -112,7 +112,8 @@ st.markdown("""
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
     try:
-        creds = json.loads(st.secrets["GOOGLE_JSON"])
+        # Use native dict parsing for clean TOML secrets format
+        creds = dict(st.secrets["GOOGLE_JSON"])
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
@@ -126,7 +127,8 @@ def load_inventory_from_sheets():
 
 def save_inventory_to_sheets(dataframe):
     try:
-        creds = json.loads(st.secrets["GOOGLE_JSON"])
+        # Use native dict parsing for clean TOML secrets format
+        creds = dict(st.secrets["GOOGLE_JSON"])
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
@@ -278,7 +280,6 @@ dispatch_rate = round((dispatched/total)*100,1) if total else 0
 
 if not filt.empty:
     pending_only = filt[filt["Status"] == "Pending"]
-    # Safely handle potential parsing issues for dates
     try:
         avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
     except:
