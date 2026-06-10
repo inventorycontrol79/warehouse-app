@@ -113,6 +113,11 @@ st.markdown("""
 def load_inventory_from_sheets():
     try:
         creds_dict = dict(st.secrets["gcp_service_account"])
+        
+        # FIX: Forcefully convert textual '\n' back into actual cryptographic line breaks
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            
         gc = gspread.service_account_from_dict(creds_dict)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
@@ -121,13 +126,17 @@ def load_inventory_from_sheets():
             return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
         return pd.DataFrame(data)
     except Exception as e:
-        # CHANGED: This will now show us exactly why Google is rejecting the bot
         st.error(f"🛑 Hidden Google Connection Error: {e}")
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
 
 def save_inventory_to_sheets(dataframe):
     try:
         creds_dict = dict(st.secrets["gcp_service_account"])
+        
+        # FIX: Forcefully convert textual '\n' back into actual cryptographic line breaks
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            
         gc = gspread.service_account_from_dict(creds_dict)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
@@ -153,9 +162,7 @@ df = load_inventory_from_sheets()
 
 if not df.empty:
     df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
-    # PRESERVE CAPITALIZATION
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
-    # FORMAT PARSER
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
 # --- ADVANCED URL PARAMETER ROUTING ENGINE ---
