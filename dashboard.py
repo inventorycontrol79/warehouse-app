@@ -4,104 +4,36 @@ import altair as alt
 import io
 import os
 import json
+import re
 import gspread
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
-
 BOT_STATUS_FILE = "bot_status.txt"
-
-# Auto-refresh system every 30 seconds to fetch live data updates
 st_autorefresh(interval=30000, key="auto_refresh")
 
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
-    
-    .stApp {
-        background-color: #0B0F19; 
-        color: #E2E8F0;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    
-    h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
-        color: #F8FAFC !important;
-    }
-    
-    label, .stWidgetLabel p {
-        color: #94A3B8 !important;
-        font-weight: 600 !important;
-    }
-    
-    .premium-header {
-        border-bottom: 1px solid #1E293B;
-        padding-bottom: 1.5rem;
-        margin-bottom: 2rem;
-        margin-top: 1rem;
-    }
-    .sabin-logo {
-        font-size: 32px;
-        font-weight: 800;
-        letter-spacing: 4px;
-        color: #F8FAFC !important;
-        margin: 0;
-        line-height: 1.2;
-    }
-    .sabin-logo span {
-        color: #0EA5E9 !important; 
-    }
-    .sabin-sub {
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 3px;
-        color: #94A3B8 !important; 
-        text-transform: uppercase;
-        margin-top: 4px;
-    }
-
-    div[data-testid="metric-container"] {
-        background-color: #111827;
-        border: 1px solid #1E293B;
-        border-top: 3px solid #0EA5E9; 
-        border-radius: 6px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        transition: border-color 0.2s ease;
-    }
-    div[data-testid="metric-container"]:hover {
-        border-color: #38BDF8;
-    }
-    .stMetric-value { 
-        color: #F8FAFC !important; 
-        font-size: 32px !important; 
-        font-weight: 600 !important; 
-    }
-    .stMetric-label { 
-        color: #94A3B8 !important; 
-        font-size: 12px !important; 
-        font-weight: 600 !important; 
-        letter-spacing: 1px; 
-        text-transform: uppercase;
-    }
-    
-    section[data-testid="stSidebar"] {
-        background-color: #0F172A;
-        border-right: 1px solid #1E293B;
-    }
-    section[data-testid="stSidebar"] h1, 
-    section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3, 
-    section[data-testid="stSidebar"] h4, 
-    section[data-testid="stSidebar"] label {
-        color: #F8FAFC !important;
-    }
+    .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
+    label, .stWidgetLabel p { color: #94A3B8 !important; font-weight: 600 !important; }
+    .premium-header { border-bottom: 1px solid #1E293B; padding-bottom: 1.5rem; margin-bottom: 2rem; margin-top: 1rem; }
+    .sabin-logo { font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #F8FAFC !important; margin: 0; line-height: 1.2; }
+    .sabin-logo span { color: #0EA5E9 !important; }
+    .sabin-sub { font-size: 12px; font-weight: 600; letter-spacing: 3px; color: #94A3B8 !important; text-transform: uppercase; margin-top: 4px; }
+    div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: border-color 0.2s ease; }
+    div[data-testid="metric-container"]:hover { border-color: #38BDF8; }
+    .stMetric-value { color: #F8FAFC !important; font-size: 32px !important; font-weight: 600 !important; }
+    .stMetric-label { color: #94A3B8 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 1px; text-transform: uppercase; }
+    section[data-testid="stSidebar"] { background-color: #0F172A; border-right: 1px solid #1E293B; }
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4, section[data-testid="stSidebar"] label { color: #F8FAFC !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER BARS ---
 st.markdown("""
     <div class='premium-header'>
         <div class='sabin-logo'>SABIN <span>PLASTIC</span></div>
@@ -109,16 +41,41 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# --- THE ULTIMATE AUTO-HEALER ENGINE ---
+def get_healed_google_client():
+    """Intercepts, deconstructs, and perfectly rebuilds mangled credentials."""
+    try:
+        raw_creds = st.secrets["gcp_service_account"]
+        
+        # Heal Issue 1: Paste format (Stringified JSON vs Streamlit AttrDict)
+        if isinstance(raw_creds, str):
+            creds_dict = json.loads(raw_creds)
+        else:
+            creds_dict = dict(raw_creds)
+            
+        # Heal Issue 2: The Cryptographic PEM formatting
+        if "private_key" in creds_dict:
+            pk = creds_dict["private_key"]
+            # Strip away the headers completely
+            pk = pk.replace("-----BEGIN PRIVATE KEY-----", "")
+            pk = pk.replace("-----END PRIVATE KEY-----", "")
+            # Violently destroy ALL whitespaces, literal \n strings, and hidden carriage returns
+            pk = re.sub(r'\s+|\\n', '', pk)
+            # Reconstruct the mathematically perfect string required by the cryptography library
+            creds_dict["private_key"] = f"-----BEGIN PRIVATE KEY-----\n{pk}\n-----END PRIVATE KEY-----\n"
+            
+        return gspread.service_account_from_dict(creds_dict)
+    except Exception as e:
+        st.error(f"🛑 Auto-Healer Failed to reconstruct credentials: {e}")
+        return None
+
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
+    gc = get_healed_google_client()
+    if not gc:
+        return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
+    
     try:
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        
-        # FIX: Forcefully convert textual '\n' back into actual cryptographic line breaks
-        if "private_key" in creds_dict:
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            
-        gc = gspread.service_account_from_dict(creds_dict)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
         data = worksheet.get_all_records()
@@ -126,18 +83,14 @@ def load_inventory_from_sheets():
             return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
         return pd.DataFrame(data)
     except Exception as e:
-        st.error(f"🛑 Hidden Google Connection Error: {e}")
+        st.error(f"🛑 Connected to Google, but failed to read the Sheet: {e}")
         return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
 
 def save_inventory_to_sheets(dataframe):
+    gc = get_healed_google_client()
+    if not gc: return False
+    
     try:
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        
-        # FIX: Forcefully convert textual '\n' back into actual cryptographic line breaks
-        if "private_key" in creds_dict:
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            
-        gc = gspread.service_account_from_dict(creds_dict)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
         worksheet.clear()
@@ -145,7 +98,6 @@ def save_inventory_to_sheets(dataframe):
         headers = dataframe.columns.tolist()
         df_to_save = dataframe.copy()
         
-        # Convert timestamps cleanly for Google Sheet cells formatting (DD/MM/YYYY)
         if "Date_Issued" in df_to_save.columns:
             df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
                 lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
@@ -155,9 +107,10 @@ def save_inventory_to_sheets(dataframe):
         worksheet.append_rows([headers] + rows)
         return True
     except Exception as e:
-        st.error(f"🚨 Google Sheets Error Connection: {e}")
+        st.error(f"🚨 Connected to Google, but failed to write to Sheet: {e}")
         return False
 
+# --- DATA INITIALIZATION ---
 df = load_inventory_from_sheets()
 
 if not df.empty:
