@@ -112,8 +112,9 @@ st.markdown("""
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
     try:
-        creds = json.loads(st.secrets["GOOGLE_JSON"])
-        gc = gspread.service_account_from_dict(creds)
+        # Utilizing Streamlit's official dictionary connection method
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        gc = gspread.service_account_from_dict(creds_dict)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
         data = worksheet.get_all_records()
@@ -125,8 +126,8 @@ def load_inventory_from_sheets():
 
 def save_inventory_to_sheets(dataframe):
     try:
-        creds = json.loads(st.secrets["GOOGLE_JSON"])
-        gc = gspread.service_account_from_dict(creds)
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        gc = gspread.service_account_from_dict(creds_dict)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
         worksheet.clear()
@@ -151,9 +152,9 @@ df = load_inventory_from_sheets()
 
 if not df.empty:
     df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
-    # PRESERVE CAPITALIZATION: Removed .str.title() to protect 'DIP' string casing
+    # PRESERVE CAPITALIZATION
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
-    # FORMAT PARSER: Set explicitly to read Day/Month/Year strings safely
+    # FORMAT PARSER
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
 # --- ADVANCED URL PARAMETER ROUTING ENGINE ---
@@ -161,7 +162,7 @@ url_params = st.query_params
 url_warehouse = url_params.get("warehouse", None)
 
 if url_warehouse:
-    url_warehouse = url_warehouse.strip() # Removed .title() to respect exact matched caps
+    url_warehouse = url_warehouse.strip()
 
 is_supervisor_session = False
 if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique():
@@ -203,7 +204,7 @@ else:
             new_df = pd.DataFrame({
                 "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
                 "Date_Issued": pd.to_datetime(raw_erp[chosen_date], errors="coerce"),
-                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(), # Removed .title()
+                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(),
                 "Created_By": raw_erp[chosen_user].astype(str).str.strip()
             })
 
