@@ -112,16 +112,19 @@ st.markdown("""
 # --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
     try:
-        # Use native dict parsing for clean TOML secrets format
         creds = dict(st.secrets["GOOGLE_JSON"])
-        
-        # FIX: Force Python to format the escape strings into structural PEM line breaks
         if "private_key" in creds:
             creds["private_key"] = creds["private_key"].replace("\\n", "\n")
             
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        worksheet = sh.get_worksheet(0)
+        
+        # FIXED: Explicit lookup fallback. Checks for 'Sheet1' then defaults back to structural slot 0
+        try:
+            worksheet = sh.worksheet("Sheet1")
+        except:
+            worksheet = sh.get_worksheet(0)
+            
         data = worksheet.get_all_records()
         if not data:
             return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
@@ -132,16 +135,18 @@ def load_inventory_from_sheets():
 
 def save_inventory_to_sheets(dataframe):
     try:
-        # Use native dict parsing for clean TOML secrets format
         creds = dict(st.secrets["GOOGLE_JSON"])
-        
-        # FIX: Force Python to format the escape strings into structural PEM line breaks
         if "private_key" in creds:
             creds["private_key"] = creds["private_key"].replace("\\n", "\n")
             
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        worksheet = sh.get_worksheet(0)
+        
+        try:
+            worksheet = sh.worksheet("Sheet1")
+        except:
+            worksheet = sh.get_worksheet(0)
+            
         worksheet.clear()
         
         headers = dataframe.columns.tolist()
@@ -170,9 +175,14 @@ with col_diag2:
     st.write("Headers Found In Your Sheet:", df.columns.tolist() if not df.empty else "NO HEADERS FOUND")
 
 if not df.empty:
-    df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
-    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
-    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
+    # Scrub text anomalies out of critical data pathways
+    df.columns = [str(c).strip() for c in df.columns]
+    for col in ["DO_Number", "Warehouse_Name", "Status"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+            
+    if "Date_Issued" in df.columns:
+        df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
 # --- ADVANCED URL PARAMETER ROUTING ENGINE ---
 url_params = st.query_params
@@ -182,7 +192,7 @@ if url_warehouse:
     url_warehouse = url_warehouse.strip()
 
 is_supervisor_session = False
-if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique():
+if url_warehouse and not df.empty and "Warehouse_Name" in df.columns and url_warehouse in df["Warehouse_Name"].unique():
     is_supervisor_session = True
 
 # --- SIDEBAR CONTROL PANEL ---
@@ -235,8 +245,10 @@ else:
             
             if save_inventory_to_sheets(combined):
                 df = combined
-                df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
-                df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
+                if "Warehouse_Name" in df.columns:
+                    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
+                if "Date_Issued" in df.columns:
+                    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
                 st.sidebar.success("Cloud Google Sheet synchronized successfully!")
                 st.rerun()
 
@@ -247,7 +259,7 @@ if is_supervisor_session:
     st.sidebar.markdown(f"📦 **Facility Bound:** `{url_warehouse}`")
 else:
     warehouse_options = ["All"]
-    if not df.empty:
+    if not df.empty and "Warehouse_Name" in df.columns:
         warehouse_options += sorted(df["Warehouse_Name"].astype(str).unique().tolist())
 
 warehouse = st.sidebar.selectbox("Filter Facility", warehouse_options)
@@ -271,27 +283,31 @@ else:
 # --- CENTRAL PIPELINE FILTER LOGIC ---
 filt = df.copy()
 
-if not filt.empty:
+if not filt.empty and len(filt.columns) >= 4:
     if search:
         mask = filt.astype(str).apply(lambda x: x.str.contains(search, case=False, na=False)).any(axis=1)
         filt = filt[mask]
-    if warehouse != "All": 
+    if warehouse != "All" and "Warehouse_Name" in filt.columns: 
         filt = filt[filt["Warehouse_Name"] == warehouse]
-    if status != "All": 
+    if status != "All" and "Status" in filt.columns: 
         filt = filt[filt["Status"] == status]
 
 # --- EXECUTIVE METRIC CARDS ---
+has_valid_data = not filt.empty and "Status" in filt.columns
+
 total = len(filt) if not filt.empty else 0
-dispatched = len(filt[filt["Status"]=="Dispatched"]) if not filt.empty else 0
-pending = len(filt[filt["Status"]=="Pending"]) if not filt.empty else 0
-returned = len(filt[filt["Status"]=="Return"]) if not filt.empty else 0
+dispatched = len(filt[filt["Status"]=="Dispatched"]) if has_valid_data else 0
+pending = len(filt[filt["Status"]=="Pending"]) if has_valid_data else 0
+returned = len(filt[filt["Status"]=="Return"]) if has_valid_data else 0
 
 dispatch_rate = round((dispatched/total)*100,1) if total else 0
 
-if not filt.empty:
+if has_valid_data and "Date_Issued" in filt.columns:
     pending_only = filt[filt["Status"] == "Pending"]
     try:
-        avg_age = round(((pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days).mean(), 1) if not pending_only.empty else 0
+        # Prevent NaT calculations from breaking UI components
+        valid_dates = pending_only[pending_only["Date_Issued"].notna()]
+        avg_age = round(((pd.Timestamp.today() - valid_dates["Date_Issued"]).dt.days).mean(), 1) if not valid_dates.empty else 0
     except:
         avg_age = 0
 else:
@@ -308,8 +324,8 @@ c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
 st.markdown("###")
 
-if filt.empty:
-    st.info("📌 System Online: No records match the sidebar filters, or sheet is empty.")
+if filt.empty or len(filt.columns) < 4:
+    st.info("📌 System Online: No records match the sidebar filters, or sheet data requires initialization.")
 else:
     # --- EXECUTIVE VISUALIZATIONS ---
     left, right = st.columns([1,1])
@@ -326,20 +342,24 @@ else:
 
     with right:
         st.markdown("##### Facility Workload Leaderboard")
-        warehouse_summary = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
-        st.dataframe(warehouse_summary, use_container_width=True, hide_index=True)
+        if "Warehouse_Name" in filt.columns and "DO_Number" in filt.columns:
+            warehouse_summary = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
+            st.dataframe(warehouse_summary, use_container_width=True, hide_index=True)
 
-    if not pending_only.empty:
+    if not pending_only.empty and "Date_Issued" in pending_only.columns:
         st.markdown("---")
         st.markdown("##### Critical Ageing Queue (Pending Orders Only)")
         try:
-            pending_only["Age_Days"] = (pd.Timestamp.today() - pending_only["Date_Issued"]).dt.days
-            def risk(x):
-                if x >= 6: return "🔴 High Risk"
-                elif x >= 3: return "🟡 Attention"
-                return "🟢 Standard"
-            pending_only["Risk_Profile"] = pending_only["Age_Days"].apply(risk)
-            st.dataframe(pending_only[["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"]].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
+            pending_only_dates = pending_only[pending_only["Date_Issued"].notna()].copy()
+            if not pending_only_dates.empty:
+                pending_only_dates["Age_Days"] = (pd.Timestamp.today() - pending_only_dates["Date_Issued"]).dt.days
+                def risk(x):
+                    if x >= 6: return "🔴 High Risk"
+                    elif x >= 3: return "🟡 Attention"
+                    return "🟢 Standard"
+                pending_only_dates["Risk_Profile"] = pending_only_dates["Age_Days"].apply(risk)
+                display_cols = [c for c in ["DO_Number","Warehouse_Name","Age_Days","Risk_Profile"] if c in pending_only_dates.columns]
+                st.dataframe(pending_only_dates[display_cols].sort_values("Age_Days", ascending=False), use_container_width=True, hide_index=True)
         except:
             pass
 
@@ -348,12 +368,14 @@ else:
     st.markdown("##### Active Operations Ledger")
     
     display_filt = filt.copy()
-    try:
-        display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
-    except:
-        pass
+    if "Date_Issued" in display_filt.columns:
+        try:
+            display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
+        except:
+            pass
     
-    grid_disabled_setting = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
+    disabled_cols = [c for c in ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"] if c in display_filt.columns]
+    grid_disabled_setting = True if is_supervisor_session else disabled_cols
 
     edited = st.data_editor(
         display_filt,
@@ -368,12 +390,14 @@ else:
     if not is_supervisor_session:
         if st.button("💾 COMMIT RECORD TO DATABASE"):
             base = load_inventory_from_sheets()
-            if not base.empty:
+            if not base.empty and "DO_Number" in base.columns:
                 base["DO_Number"] = base["DO_Number"].astype(str).str.strip()
                 for _, row in edited.iterrows():
                     do = str(row["DO_Number"]).strip()
-                    base.loc[base["DO_Number"] == do, "Status"] = row["Status"]
-                    base.loc[base["DO_Number"] == do, "Remarks"] = row["Remarks"]
+                    if "Status" in row:
+                        base.loc[base["DO_Number"] == do, "Status"] = row["Status"]
+                    if "Remarks" in row:
+                        base.loc[base["DO_Number"] == do, "Remarks"] = row["Remarks"]
                     base.loc[base["DO_Number"] == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 if save_inventory_to_sheets(base):
@@ -387,10 +411,11 @@ else:
         summary_df.to_excel(writer, sheet_name="Executive Summary", index=False)
         
         excel_filt = filt.copy()
-        try:
-            excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
-        except:
-            pass
+        if "Date_Issued" in excel_filt.columns:
+            try:
+                excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
+            except:
+                pass
         excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
         
         wb = writer.book
