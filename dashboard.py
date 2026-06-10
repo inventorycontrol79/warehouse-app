@@ -110,57 +110,48 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- GOOGLE SHEETS CORE ENGINE ---
+@st.cache_resource(ttl=600)
+def get_gspread_client():
+    creds = json.loads(st.secrets["GOOGLE_JSON_STR"])
+    return gspread.service_account_from_dict(creds)
+
 def load_inventory_from_sheets():
     try:
-        # Load the raw string and convert it cleanly to a Python dictionary via JSON
-        creds = json.loads(st.secrets["GOOGLE_JSON_STR"])
-            
-        gc = gspread.service_account_from_dict(creds)
+        gc = get_gspread_client()
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         
-        # Explicit lookup fallback: Checks for 'Sheet1' then defaults to structural slot 0
-        try:
-            worksheet = sh.worksheet("Sheet1")
-        except:
-            worksheet = sh.get_worksheet(0)
-            
-        data = worksheet.get_all_records()
-        if not data:
-            return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
+        # Access the first worksheet
+        worksheet = sh.get_worksheet(0)
+        
+        data = worksheet.get_all_records(expected_headers=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
+        
         return pd.DataFrame(data)
     except Exception as e:
-        st.sidebar.error(f"⚠️ Sheet Load Crash: {e}")
-        return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
+        st.error(f"⚠️ Connection Error: {e}")
+        return pd.DataFrame()
 
 def save_inventory_to_sheets(dataframe):
     try:
-        creds = json.loads(st.secrets["GOOGLE_JSON_STR"])
-            
-        gc = gspread.service_account_from_dict(creds)
+        gc = get_gspread_client()
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        worksheet = sh.get_worksheet(0)
         
-        try:
-            worksheet = sh.worksheet("Sheet1")
-        except:
-            worksheet = sh.get_worksheet(0)
-            
+        # Clear and overwrite with new data
         worksheet.clear()
         
-        headers = dataframe.columns.tolist()
+        # Ensure formatting for date column
         df_to_save = dataframe.copy()
-        
         if "Date_Issued" in df_to_save.columns:
             df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
                 lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
             )
             
-        rows = df_to_save.fillna("").astype(str).values.tolist()
-        worksheet.append_rows([headers] + rows)
+        rows = [df_to_save.columns.tolist()] + df_to_save.fillna("").astype(str).values.tolist()
+        worksheet.append_rows(rows)
         return True
     except Exception as e:
-        st.error(f"🚨 Google Sheets Error Connection: {e}")
+        st.error(f"🚨 Save Error: {e}")
         return False
-
 # Load Base Data
 df = load_inventory_from_sheets()
 
