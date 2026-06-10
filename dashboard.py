@@ -114,6 +114,11 @@ def load_inventory_from_sheets():
     try:
         # Use native dict parsing for clean TOML secrets format
         creds = dict(st.secrets["GOOGLE_JSON"])
+        
+        # FIX: Force Python to format the escape strings into structural PEM line breaks
+        if "private_key" in creds:
+            creds["private_key"] = creds["private_key"].replace("\\n", "\n")
+            
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
@@ -129,6 +134,11 @@ def save_inventory_to_sheets(dataframe):
     try:
         # Use native dict parsing for clean TOML secrets format
         creds = dict(st.secrets["GOOGLE_JSON"])
+        
+        # FIX: Force Python to format the escape strings into structural PEM line breaks
+        if "private_key" in creds:
+            creds["private_key"] = creds["private_key"].replace("\\n", "\n")
+            
         gc = gspread.service_account_from_dict(creds)
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
