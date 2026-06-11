@@ -774,7 +774,7 @@ DLNS:SP-26-12757,2757,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12758,2758,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12759,2759,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12760,2760,Dispatched,04/06/2026,Al Quoz,Standard Delivery,Shaman,
-DLNS:SP-26-12766,2766,Pending,04/06/2026,Al Quoz,Standard Delivery,jay,
+DLNS:SP-26-12766,2766,Pending,04/06/2026,Al Quoz,"Return, waiting their payment to process return note)",jay,2026-06-11 06:56:43
 DLNS:SP-26-12767,2767,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12769,2769,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12770,2770,Dispatched,04/06/2026,Al Quoz,Standard Delivery,jay,
@@ -868,7 +868,7 @@ DLNS:SP-26-12874,2874,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12876,2876,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12877,2877,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12878,2878,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
-DLNS:SP-26-12882,2882,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
+DLNS:SP-26-12882,2882,Return,05/06/2026,Al Quoz,Return (0760),jay,2026-06-11 06:55:14
 DLNS:SP-26-12885,2885,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12888,2888,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12891,2891,Dispatched,05/06/2026,Al Quoz,Standard Delivery,jay,
@@ -928,7 +928,7 @@ DLNS:SP-26-12987,2987,Dispatched,06/06/2026,Sharjah,Standard Delivery,Melvin,
 DLNS:SP-26-12918,2918,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12921,2921,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12930,2930,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay,
-DLNS:SP-26-12932,2932,Pending,06/06/2026,Al Quoz,Standard Delivery,jay,2026-06-10 13:28:32
+DLNS:SP-26-12932,2932,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay,2026-06-11 06:56:02
 DLNS:SP-26-12937,2937,Dispatched,06/06/2026,Al Quoz,Standard Delivery,Anand,
 DLNS:SP-26-12938,2938,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay,
 DLNS:SP-26-12939,2939,Dispatched,06/06/2026,Al Quoz,Standard Delivery,jay,
@@ -1192,29 +1192,29 @@ SP-26-13297,3297,Dispatched,10/06/2026,Sharjah,,Melvin,2026-06-11 05:15:20
 SP-26-13300,3300,Dispatched,10/06/2026,Sharjah,,jay,2026-06-11 05:15:20
 SP-26-13301,3301,Dispatched,10/06/2026,Sharjah,,Melvin,2026-06-11 05:15:20
 SP-26-13302,3302,Dispatched,10/06/2026,Sharjah,,Melvin,2026-06-11 05:15:20
-SP-26-13203,3203,Pending,10/06/2026,Al Quoz,,Melvin,2026-06-11 05:15:45
-SP-26-13204,3204,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13206,3206,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13208,3208,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13209,3209,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13212,3212,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13213,3213,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13216,3216,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13218,3218,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13203,3203,Dispatched,10/06/2026,Al Quoz,,Melvin,2026-06-11 05:15:45
+SP-26-13204,3204,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13206,3206,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13208,3208,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13209,3209,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13212,3212,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13213,3213,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13216,3216,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13218,3218,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
 SP-26-13224,3224,Dispatched,10/06/2026,Al Quoz,,Melvin,2026-06-11 05:15:45
-SP-26-13225,3225,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13232,3232,Pending,10/06/2026,Al Quoz,,Melvin,2026-06-11 05:15:45
-SP-26-13239,3239,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13242,3242,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13246,3246,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13248,3248,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13249,3249,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13250,3250,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13251,3251,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13257,3257,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13261,3261,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13265,3265,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
-SP-26-13272,3272,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13225,3225,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13232,3232,Dispatched,10/06/2026,Al Quoz,,Melvin,2026-06-11 05:15:45
+SP-26-13239,3239,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13242,3242,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13246,3246,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13248,3248,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13249,3249,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13250,3250,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13251,3251,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13257,3257,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13261,3261,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13265,3265,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13272,3272,Dispatched,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
 SP-26-13274,3274,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
 SP-26-13275,3275,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
 SP-26-13279,3279,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
@@ -1225,3 +1225,26 @@ SP-26-13291,3291,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
 SP-26-13295,3295,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
 SP-26-13296,3296,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
 SP-26-13298,3298,Pending,10/06/2026,Al Quoz,,jay,2026-06-11 05:15:45
+SP-26-13207,3207,Pending,10/06/2026,DIP,,Anand,2026-06-11 06:45:20
+SP-26-13237,3237,Pending,10/06/2026,DIP,,Anand,2026-06-11 06:45:20
+SP-26-13263,3263,Pending,10/06/2026,DIP,,Melvin,2026-06-11 06:45:20
+SP-26-13266,3266,Pending,10/06/2026,DIP,,Melvin,2026-06-11 06:45:20
+SP-26-13267,3267,Pending,10/06/2026,DIP,,Melvin,2026-06-11 06:45:20
+SP-26-13277,3277,Pending,10/06/2026,DIP,,Anand,2026-06-11 06:45:20
+SP-26-13278,3278,Pending,10/06/2026,DIP,,Anand,2026-06-11 06:45:20
+SP-26-13292,3292,Pending,10/06/2026,DIP,,Anand,2026-06-11 06:45:20
+SP-26-13293,3293,Pending,10/06/2026,DIP,,Anand,2026-06-11 06:45:20
+SP-26-13294,3294,Pending,10/06/2026,DIP,,Anand,2026-06-11 06:45:20
+SP-26-13201,3201,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13202,3202,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13233,3233,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13234,3234,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13253,3253,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13254,3254,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13255,3255,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13256,3256,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13269,3269,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13271,3271,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13289,3289,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13290,3290,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
+SP-26-13299,3299,Pending,10/06/2026,Abu Dhabi,,Shaman,2026-06-11 06:45:54
