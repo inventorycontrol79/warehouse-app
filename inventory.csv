@@ -12,7 +12,7 @@ SP-26-11755,1755,Dispatched,19/05/2026,Al Quoz,Standard Delivery,,
 SP-26-11758,1758,Dispatched,19/05/2026,Al Quoz,Standard Delivery,,
 SP-26-11759,1759,Dispatched,19/05/2026,Al Quoz,Standard Delivery,,
 SP-26-11764,1764,Dispatched,19/05/2026,Al Quoz,Standard Delivery,,
-SP-26-11765,1765,Dispatched,19/05/2026,Al Quoz,Favas bhai told to keep DO (Delivery by 17/06) ,,2026-06-13 11:17:51
+SP-26-11765,1765,Dispatched,19/05/2026,Al Quoz,Delivered on 12/06,,2026-06-13 11:17:51
 SP-26-11778,1778,Dispatched,19/05/2026,Al Quoz,Standard Delivery,,
 SP-26-11783,1783,Dispatched,19/05/2026,Al Quoz,Standard Delivery,,
 SP-26-11792,1792,Dispatched,19/05/2026,Al Quoz,Standard Delivery,,
@@ -1357,7 +1357,7 @@ SP-26-13452,3452,Dispatched,12/06/2026,Sharjah,,Melvin,2026-06-13 11:12:01
 SP-26-13453,3453,Dispatched,12/06/2026,Sharjah,,Melvin,2026-06-13 11:12:01
 SP-26-13455,3455,Dispatched,12/06/2026,Sharjah,,Melvin,2026-06-13 11:12:01
 SP-26-13469,3469,Dispatched,12/06/2026,Sharjah,,Melvin,2026-06-13 11:12:01
-SP-26-13481,3481,Pending,12/06/2026,Ajman,,Melvin,2026-06-13 11:17:51
+SP-26-13481,3481,Pending,12/06/2026,Sharjah,,Melvin,2026-06-13 11:17:51
 SP-26-13482,3482,Dispatched,12/06/2026,Sharjah,,Melvin,2026-06-13 11:12:01
 SP-26-13406,3406,Dispatched,12/06/2026,Al Quoz,,jay,2026-06-16 05:22:25
 SP-26-13407,3407,Dispatched,12/06/2026,Al Quoz,,jay,2026-06-16 05:22:25
@@ -1395,3 +1395,13 @@ SP-26-13479,3479,Pending,12/06/2026,Al Quoz,,jay,2026-06-16 05:22:25
 SP-26-13480,3480,Dispatched,12/06/2026,Al Quoz,,jay,2026-06-16 05:22:25
 SP-26-13485,3485,Dispatched,12/06/2026,Al Quoz,,jay,2026-06-16 05:22:25
 SP-26-13486,3486,Dispatched,12/06/2026,Al Quoz,,jay,2026-06-16 05:22:25
+SP-26-13416,3416,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13418,3418,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13419,3419,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13420,3420,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13465,3465,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13472,3472,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13473,3473,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13474,3474,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13477,3477,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
+SP-26-13483,3483,Dispatched,12/06/2026,Abu Dhabi,,Shaman,2026-06-16 05:23:44
