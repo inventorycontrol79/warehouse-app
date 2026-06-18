@@ -17,7 +17,7 @@ st_autorefresh(interval=30000, key="auto_refresh")
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
     .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
     label, .stWidgetLabel p { color: #94A3B8 !important; font-weight: 600 !important; }
@@ -45,7 +45,6 @@ st.markdown("""
 def get_google_client():
     """Reads the raw JSON string bypass from secrets and authenticates securely."""
     try:
-        # Load the raw string and let Python's native JSON parser handle the \n characters properly
         raw_json = st.secrets["GCP_JSON"]
         creds_dict = json.loads(raw_json)
         
@@ -105,8 +104,31 @@ def save_inventory_to_sheets(dataframe):
         st.error(f"🚨 Data backup transmission failed: {e}")
         return False
 
-# --- DATA INITIALIZATION ---
-df = load_inventory_from_sheets()
+# --- DATA INITIALIZATION WITH SMART SESSION STATE CACHING ---
+# Ensures user interface updates do not spam Google API
+if "master_data" not in st.session_state:
+    st.session_state.master_data = pd.DataFrame()
+if "last_fetch_time" not in st.session_state:
+    st.session_state.last_fetch_time = None
+
+current_time = datetime.now()
+should_fetch = False
+
+if st.session_state.master_data.empty:
+    should_fetch = True
+elif st.session_state.last_fetch_time is None:
+    should_fetch = True
+elif (current_time - st.session_state.last_fetch_time).total_seconds() >= 30:
+    should_fetch = True
+
+if should_fetch:
+    fetched_df = load_inventory_from_sheets()
+    if not fetched_df.empty:
+        st.session_state.master_data = fetched_df
+        st.session_state.last_fetch_time = current_time
+
+# Localized frame copy isolated from API traffic loops
+df = st.session_state.master_data.copy()
 
 if not df.empty:
     df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
@@ -173,6 +195,10 @@ else:
             combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
             
             if save_inventory_to_sheets(combined):
+                # Invalidate memory cache to force an immediate re-fetch
+                st.session_state.master_data = pd.DataFrame()
+                st.session_state.last_fetch_time = None
+                
                 df = combined
                 df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
                 df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
@@ -322,6 +348,10 @@ else:
                     base.loc[base["DO_Number"] == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 if save_inventory_to_sheets(base):
+                    # Reset memory state cache to force immediate system sync on reload
+                    st.session_state.master_data = pd.DataFrame()
+                    st.session_state.last_fetch_time = None
+                    
                     st.success("System database overwritten successfully! Reloading canvas matrix...")
                     st.rerun()
 
