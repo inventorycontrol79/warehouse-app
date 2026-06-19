@@ -22,12 +22,16 @@ st.markdown("""
     .sabin-logo span { color: #0EA5E9 !important; }
     .sabin-sub { font-size: 12px; font-weight: 600; letter-spacing: 3px; color: #94A3B8 !important; text-transform: uppercase; margin-top: 4px; }
     
-    /* Option 2: Live Analytics Metric Cards styling */
+    /* Sidebar Dark Theme Alignment */
+    section[data-testid="stSidebar"] { background-color: #0F172A !important; border-right: 1px solid #1E293B; }
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] p { color: #F8FAFC !important; }
+    
+    /* Live Analytics Metric Cards styling */
     div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #EF4444; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     .stMetric-value { color: #F8FAFC !important; font-size: 32px !important; font-weight: 600 !important; }
     .stMetric-label { color: #94A3B8 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 1px; text-transform: uppercase; }
     
-    /* Option 3: Premium UI Action Container boxes */
+    /* Premium UI Action Container boxes */
     .action-card { background-color: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 24px; margin-bottom: 20px; }
     .conflict-box { background: linear-gradient(90deg, #1E1B4B 0%, #111827 100%); border-left: 4px solid #EAB308; border-radius: 6px; padding: 15px; margin-bottom: 12px; }
     </style>
@@ -71,11 +75,11 @@ def load_historical_returns_log():
     if not gc: return pd.DataFrame()
     try:
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        worksheet = sh.get_worksheet(2) # 3rd tab (Sales_Returns)
+        worksheet = sh.get_worksheet(2) 
         data = worksheet.get_all_records()
         return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Return_Date","Match_Status","Return_Type","Return_Remarks","Logged_By","Timestamp"])
     except Exception as e:
-        return pd.DataFrame() # Fallback silently if tab is just empty or uninitialized
+        return pd.DataFrame()
 
 def save_inventory_to_sheets(dataframe):
     gc = get_google_client()
@@ -102,7 +106,7 @@ def log_returns_to_archive_sheet(return_rows):
     if not gc: return False
     try:
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        worksheet = sh.get_worksheet(2)  # Tab Index 2 (Sales_Returns)
+        worksheet = sh.get_worksheet(2)  
         worksheet.append_rows(return_rows)
         return True
     except Exception as e:
@@ -122,14 +126,11 @@ url_warehouse = url_params.get("warehouse", None)
 if url_warehouse: url_warehouse = url_warehouse.strip()
 is_supervisor_session = True if url_warehouse and not df_master.empty and url_warehouse in df_master["Warehouse_Name"].unique() else False
 
-# ====================================================================
-# FEATURE 2: LIVE ANALYTICS ROW (TOP STATUS SNAPSHOT)
-# ====================================================================
+# --- LIVE ANALYTICS ROW ---
 st.markdown("### 📊 Return Operations Snapshot (Today)")
 today_str = datetime.now().strftime("%d/%m/%Y")
 
 if not df_returns_history.empty:
-    # Ensure standard string type matching
     df_returns_history["Return_Date"] = df_returns_history["Return_Date"].astype(str).str.strip()
     today_returns = df_returns_history[df_returns_history["Return_Date"] == today_str]
     
@@ -155,7 +156,6 @@ st.markdown("Upload daily commercial return files to scan for operational delive
 if is_supervisor_session:
     st.warning("🔒 Access Denied: Sales return posting operations are restricted to corporate administrative terminals.")
 else:
-    # Use Action Card Container Layout
     st.markdown("<div class='action-card'>", unsafe_allow_html=True)
     uploaded_return = st.file_uploader("Upload ERP Sales Return Sheet (.xlsx)", type=["xlsx"], key="return_upload_unique")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -173,39 +173,48 @@ else:
                     if q.lower() in o.lower(): return o
             return options[0] if options else ""
             
-        sel_do = st.selectbox("Confirm Return [DO Number] Column:", ret_cols, index=ret_cols.index(match_ret(["voucher", "do", "delivery", "invoice"], ret_cols)))
+        sel_do = st.selectbox("Confirm Return [DO Number] Column:", ret_cols, index=ret_cols.index(match_ret(["invoice no", "invoice_no", "voucher", "do"], ret_cols)))
         sel_date = st.selectbox("Confirm Return [Date] Column:", ret_cols, index=ret_cols.index(match_ret(["date", "return", "posting"], ret_cols)))
-        sel_user = st.selectbox("Confirm Return [Operator] Column:", ret_cols, index=ret_cols.index(match_ret(["user", "created", "by", "operator"], ret_cols)))
+        sel_user = st.selectbox("Confirm Return [Operator] Column:", ret_cols, index=ret_cols.index(match_ret(["created by", "created_by", "user", "operator"], ret_cols)))
         
         if st.button("🔍 RUN RECONCILIATION SCAN", use_container_width=True):
+            
+            # PREFIX REMOVAL FILTER ENGINE:
+            # Safely extracts "DLNS:SP-26-13721" and shreds out "DLNS:" to produce "SP-26-13721"
+            clean_dos = ret_df[sel_do].astype(str)\
+                                      .str.replace("DLNS:", "", case=False, regex=False)\
+                                      .str.strip()
+
             cleaned_returns = pd.DataFrame({
-                "DO_Number": ret_df[sel_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
+                "DO_Number": clean_dos,
                 "Return_Date": pd.to_datetime(ret_df[sel_date], errors="coerce").dt.strftime('%d/%m/%Y'),
                 "Logged_By": ret_df[sel_user].astype(str).str.strip()
-            }).drop_duplicates(subset=["DO_Number"])
+            }).dropna(subset=["DO_Number"]).drop_duplicates(subset=["DO_Number"])
+            
+            cleaned_returns = cleaned_returns[cleaned_returns["DO_Number"] != ""]
             
             active_dos = df_master["DO_Number"].tolist() if not df_master.empty else []
             conflicts = []
             standards = []
             
             for _, r in cleaned_returns.iterrows():
-                if r["DO_Number"] in active_dos:
-                    curr_status = df_master[df_master["DO_Number"] == r["DO_Number"]]["Status"].values[0]
+                target_do = str(r["DO_Number"]).strip()
+                
+                if target_do in active_dos:
+                    curr_status = df_master[df_master["DO_Number"] == target_do]["Status"].values[0]
                     if curr_status in ["Pending", "Dispatched"]:
                         conflicts.append({
-                            "DO_Number": r["DO_Number"], "Return_Date": r["Return_Date"],
+                            "DO_Number": target_do, "Return_Date": r["Return_Date"],
                             "Current_Status": curr_status, "Return_Type": "Full", "Remarks": "", "Logged_By": r["Logged_By"]
                         })
                         continue
-                standards.append([r["DO_Number"], r["Return_Date"], "Standard Return", "Full", "Auto-logged", r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+                standards.append([target_do, r["Return_Date"], "Standard Return", "Full", "Auto-logged", r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
             
             st.session_state["detected_conflicts"] = conflicts
             st.session_state["detected_standards"] = standards
             st.success(f"Scan Finished! Found {len(conflicts)} Live Queue Conflicts and {len(standards)} Standard System Returns.")
 
-    # ====================================================================
-    # FEATURE 3: PREMIUM INTERACTIVE UX CONFLICT MATRIX
-    # ====================================================================
+    # --- INTERACTIVE UX CONFLICT MATRIX ---
     if "detected_conflicts" in st.session_state and st.session_state["detected_conflicts"]:
         st.markdown("---")
         st.markdown("### ⚠️ ACTION REQUIRED: Active Ledger Conflicts Detected")
@@ -215,7 +224,6 @@ else:
         all_valid = True
         
         for idx, item in enumerate(st.session_state["detected_conflicts"]):
-            # Wrap rows inside structured stylized boxes
             st.markdown(f"<div class='conflict-box'>", unsafe_allow_html=True)
             
             col1, col2, col3, col4 = st.columns([2, 2, 2, 4])
@@ -234,7 +242,6 @@ else:
             with col4:
                 rem_val = st.text_input(f"Operational Remarks for {item['DO_Number']}", value=item["Remarks"], key=f"rem_{idx}_{item['DO_Number']}", placeholder="Enter tracking remarks...")
             
-            # Form Validation Checkpoint
             if ret_type == "Partial" and not rem_val.strip():
                 all_valid = False
                 
@@ -287,9 +294,7 @@ else:
                 st.success("Standard records logged directly to cold-storage tab successfully.")
                 st.rerun()
 
-# ====================================================================
-# HIGH-END DATA VIEW LOGS (HISTORICAL AUDIT MATRIX)
-# ====================================================================
+# --- HISTORICAL AUDIT MATRIX ---
 st.markdown("###")
 st.markdown("---")
 st.markdown("### 📜 Sales Return Master Ledger (Cloud Storage Archive)")
