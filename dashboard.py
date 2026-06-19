@@ -222,7 +222,7 @@ if not df.empty and pd.notna(df["Date_Issued"].min()):
 else:
     today = datetime.today().date()
     min_date = today
-Max_date = today
+    max_date = today
 
 st.sidebar.markdown("### 📅 TIMEFRAME")
 start_date = st.sidebar.date_input("Start Date", min_date)
@@ -284,7 +284,7 @@ c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 st.markdown("###")
 
 # ====================================================================
-# NEW INTEGRATION: LOGISTICS DATE-RANGE ARCHIVE MANAGEMENT ENGINE
+# LOGISTICS DATE-RANGE ARCHIVE MANAGEMENT ENGINE
 # ====================================================================
 if not is_supervisor_session:
     with st.expander("💼 LOGISTICS DATA ARCHIVE MODULE", expanded=False):
