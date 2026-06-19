@@ -17,7 +17,7 @@ st_autorefresh(interval=30000, key="auto_refresh")
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
     .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
     label, .stWidgetLabel p { color: #94A3B8 !important; font-weight: 600 !important; }
@@ -105,7 +105,6 @@ def save_inventory_to_sheets(dataframe):
         return False
 
 # --- DATA INITIALIZATION WITH SMART SESSION STATE CACHING ---
-# Ensures user interface updates do not spam Google API
 if "master_data" not in st.session_state:
     st.session_state.master_data = pd.DataFrame()
 if "last_fetch_time" not in st.session_state:
@@ -195,7 +194,6 @@ else:
             combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
             
             if save_inventory_to_sheets(combined):
-                # Invalidate memory cache to force an immediate re-fetch
                 st.session_state.master_data = pd.DataFrame()
                 st.session_state.last_fetch_time = None
                 
@@ -224,7 +222,7 @@ if not df.empty and pd.notna(df["Date_Issued"].min()):
 else:
     today = datetime.today().date()
     min_date = today
-    max_date = today
+Max_date = today
 
 st.sidebar.markdown("### 📅 TIMEFRAME")
 start_date = st.sidebar.date_input("Start Date", min_date)
@@ -284,6 +282,68 @@ c5.metric("DISPATCH %", f"{dispatch_rate}%")
 c6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
 st.markdown("###")
+
+# ====================================================================
+# NEW INTEGRATION: LOGISTICS DATE-RANGE ARCHIVE MANAGEMENT ENGINE
+# ====================================================================
+if not is_supervisor_session:
+    with st.expander("💼 LOGISTICS DATA ARCHIVE MODULE", expanded=False):
+        st.markdown("<small style='color: #94A3B8;'>Offload historical rows into cold-storage ('Archived_Dispatches' tab) to clean up layout load times.</small>", unsafe_allow_html=True)
+        
+        arc_col1, arc_col2, arc_col3 = st.columns([2, 2, 3])
+        with arc_col1:
+            arc_start = st.date_input("Archive Threshold Start", value=min_date, key="arch_start_input")
+        with arc_col2:
+            arc_end = st.date_input("Archive Threshold End", value=datetime.today().date(), key="arch_end_input")
+            
+        # Isolate items inside target date parameters that are completed (Skip Pending)
+        if not df.empty:
+            to_archive = df[
+                (df["Date_Issued"].dt.date >= arc_start) & 
+                (df["Date_Issued"].dt.date <= arc_end) & 
+                (df["Status"].isin(["Dispatched", "Return"]))
+            ]
+        else:
+            to_archive = pd.DataFrame()
+            
+        with arc_col3:
+            st.markdown("##### Transfer Status Verification")
+            st.write(f"📦 Matching Archive Records Found: **{len(to_archive)} rows**")
+            if not to_archive.empty:
+                st.caption("⚠️ Operational Safety Lock Active: Items currently marked as 'Pending' are protected and will remain in the active queue.")
+
+        if not to_archive.empty:
+            if st.button("⚡ EXECUTE SECURE MIGRATION TO COLD STORAGE", use_container_width=True):
+                with st.status("Transmitting blocks to Archived_Dispatches worksheet...", expanded=True) as status_indicator:
+                    gc = get_google_client()
+                    if gc:
+                        try:
+                            sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+                            # Selects worksheet index 1 (the 2nd tab 'Archived_Dispatches')
+                            archive_sheet = sh.get_worksheet(1)
+                            
+                            status_indicator.write("Configuring export schema elements...")
+                            df_export = to_archive.copy()
+                            df_export["Date_Issued"] = df_export["Date_Issued"].apply(
+                                lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
+                            )
+                            rows_export = df_export.fillna("").astype(str).values.tolist()
+                            
+                            status_indicator.write("Streaming records to archive storage...")
+                            archive_sheet.append_rows(rows_export)
+                            
+                            status_indicator.write("Dropping rows from operational list frame...")
+                            lean_master_df = df.drop(to_archive.index)
+                            
+                            status_indicator.write("Rewriting live ledger tab index...")
+                            if save_inventory_to_sheets(lean_master_df):
+                                st.session_state.master_data = pd.DataFrame()
+                                st.session_state.last_fetch_time = None
+                                status_indicator.update(label="Archive Transfer Completed! Dashboard optimized.", state="complete")
+                                st.success(f"Success! Relocated {len(to_archive)} entries cleanly.")
+                                st.rerun()
+                        except Exception as archive_error:
+                            status_indicator.update(label=f"Archive Error Encountered: {archive_error}", state="error")
 
 if filt.empty:
     st.info("📌 System Online: Waiting for Cloud synchronized interface link connection.")
@@ -348,7 +408,6 @@ else:
                     base.loc[base["DO_Number"] == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 if save_inventory_to_sheets(base):
-                    # Reset memory state cache to force immediate system sync on reload
                     st.session_state.master_data = pd.DataFrame()
                     st.session_state.last_fetch_time = None
                     
