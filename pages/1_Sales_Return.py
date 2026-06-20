@@ -179,19 +179,21 @@ else:
         sel_do = st.selectbox("Confirm Return [DO Number] Column:", ret_cols, index=ret_cols.index(match_ret(["invoice no", "invoice_no", "voucher", "do"], ret_cols)))
         sel_date = st.selectbox("Confirm Return [Date] Column:", ret_cols, index=ret_cols.index(match_ret(["date", "return", "posting"], ret_cols)))
         sel_user = st.selectbox("Confirm Return [Operator] Column:", ret_cols, index=ret_cols.index(match_ret(["created by", "created_by", "user", "operator"], ret_cols)))
+        sel_reason = st.selectbox("Confirm Return [Reason] Column:", ret_cols, index=ret_cols.index(match_ret(["reason", "remark", "narration"], ret_cols)))
         
         if st.button("🔍 RUN RECONCILIATION SCAN", use_container_width=True):
             
             # PREFIX REMOVAL FILTER ENGINE:
-            # Safely extracts "DLNS:SP-26-13721" and shreds out "DLNS:" to produce "SP-26-13721"
             clean_dos = ret_df[sel_do].astype(str)\
                                       .str.replace("DLNS:", "", case=False, regex=False)\
                                       .str.strip()
 
+            # Capture Reason column mapping directly from Focus ERP data structure
             cleaned_returns = pd.DataFrame({
                 "DO_Number": clean_dos,
                 "Return_Date": pd.to_datetime(ret_df[sel_date], errors="coerce").dt.strftime('%d/%m/%Y'),
-                "Logged_By": ret_df[sel_user].astype(str).str.strip()
+                "Logged_By": ret_df[sel_user].astype(str).str.strip(),
+                "ERP_Reason": ret_df[sel_reason].astype(str).str.strip() if sel_reason in ret_cols else ""
             }).dropna(subset=["DO_Number"]).drop_duplicates(subset=["DO_Number"])
             
             cleaned_returns = cleaned_returns[cleaned_returns["DO_Number"] != ""]
@@ -200,27 +202,49 @@ else:
             conflicts = []
             standards = []
             
+            today_str = datetime.now().strftime("%d/%m/%Y")
+            
             for _, r in cleaned_returns.iterrows():
                 target_do = str(r["DO_Number"]).strip()
+                
+                # --- GUARDRAILS DOUBLE-UPLOAD SHIELD ---
+                if not df_returns_history.empty:
+                    already_processed = df_returns_history[
+                        (df_returns_history["DO_Number"].astype(str) == target_do) & 
+                        (df_returns_history["Timestamp"].astype(str).str.contains(datetime.now().strftime("%Y-%m-%d")))
+                    ]
+                    if not already_processed.empty:
+                        st.sidebar.warning(f"⚠️ Skipping Duplicate: DO {target_do} already processed today.")
+                        continue
+                
+                # Setup fallback string if ERP reason field is empty or missing
+                extracted_remarks = r["ERP_Reason"] if str(r["ERP_Reason"]).strip() and str(r["ERP_Reason"]).lower() != "nan" else "Auto-extracted from ERP"
                 
                 if target_do in active_dos:
                     curr_status = df_master[df_master["DO_Number"] == target_do]["Status"].values[0]
                     if curr_status in ["Pending", "Dispatched"]:
                         conflicts.append({
                             "DO_Number": target_do, "Return_Date": r["Return_Date"],
-                            "Current_Status": curr_status, "Return_Type": "Full", "Remarks": "", "Logged_By": r["Logged_By"]
+                            "Current_Status": curr_status, "Return_Type": "Full", "Remarks": extracted_remarks, "Logged_By": r["Logged_By"]
                         })
                         continue
-                standards.append([target_do, r["Return_Date"], "Standard Return", "Full", "Auto-logged", r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+                standards.append([target_do, r["Return_Date"], "Standard Return", "Full", extracted_remarks, r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
             
             st.session_state["detected_conflicts"] = conflicts
             st.session_state["detected_standards"] = standards
             st.success(f"Scan Finished! Found {len(conflicts)} Live Queue Conflicts and {len(standards)} Standard System Returns.")
 
-    # --- INTERACTIVE UX CONFLICT MATRIX ---
+    # --- INTERACTIVE UX CONFLICT MATRIX WITH BULK TOOLS ---
     if "detected_conflicts" in st.session_state and st.session_state["detected_conflicts"]:
         st.markdown("---")
         st.markdown("### ⚠️ ACTION REQUIRED: Active Ledger Conflicts Detected")
+        
+        # --- INNOVATIVE BULK APPLY DESK BAR ---
+        st.markdown("<div class='action-card'>", unsafe_allow_html=True)
+        st.markdown("#### ⚡ Bulk Action Control Desk")
+        bulk_choice = st.radio("Bulk Preset All Live Conflict Selection Rows:", ["Interactive Custom Review", "Force All Rows to Full Return"], horizontal=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        
         st.info("The following DO numbers are currently flagged as active in your dispatch queues. You must review and declare partial/full details below.")
         
         updated_conflicts = []
@@ -234,7 +258,9 @@ else:
                 st.markdown(f"**DO Number:** `{item['DO_Number']}`")
                 st.markdown(f"Status: <span style='color:#0EA5E9;font-weight:bold;'>{item['Current_Status']}</span>", unsafe_allow_html=True)
             with col2:
-                ret_type = st.radio(f"Return Type for {item['DO_Number']}", ["Full", "Partial"], key=f"type_{idx}_{item['DO_Number']}", horizontal=True)
+                # Bulk Toggle Override Injector Logic
+                preset_idx = 0 if bulk_choice == "Force All to Full Return" else 0 if item["Return_Type"] == "Full" else 1
+                ret_type = st.radio(f"Return Type for {item['DO_Number']}", ["Full", "Partial"], index=preset_idx, key=f"type_{idx}_{item['DO_Number']}", horizontal=True)
             with col3:
                 if ret_type == "Partial":
                     st.markdown("<span style='color:#EAB308; font-weight:bold;'>⚠️ REMARKS MANDATORY</span>", unsafe_allow_html=True)
@@ -243,6 +269,7 @@ else:
                     st.markdown("<span style='color:#10B981; font-weight:bold;'>🟢 READY FOR RESET</span>", unsafe_allow_html=True)
                     st.caption("Full reversal will occur.")
             with col4:
+                # Pre-filled using the automatically pulled ERP Reason Code
                 rem_val = st.text_input(f"Operational Remarks for {item['DO_Number']}", value=item["Remarks"], key=f"rem_{idx}_{item['DO_Number']}", placeholder="Enter tracking remarks...")
             
             if ret_type == "Partial" and not rem_val.strip():
