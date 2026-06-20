@@ -127,22 +127,25 @@ if url_warehouse: url_warehouse = url_warehouse.strip()
 is_supervisor_session = True if url_warehouse and not df_master.empty and url_warehouse in df_master["Warehouse_Name"].unique() else False
 
 # --- LIVE ANALYTICS ROW ---
-st.markdown("### 📊 Return Operations Snapshot (Today)")
-today_str = datetime.now().strftime("%d/%m/%Y")
+st.markdown("### 📊 Return Operations Snapshot (Current Processing Run)")
 
-if not df_returns_history.empty:
-    df_returns_history["Return_Date"] = df_returns_history["Return_Date"].astype(str).str.strip()
-    today_returns = df_returns_history[df_returns_history["Return_Date"] == today_str]
+# Calculate metrics based on the currently uploaded and detected batch instead of strict calendar dates
+if "detected_conflicts" in st.session_state or "detected_standards" in st.session_state:
+    conflicts_list = st.session_state.get("detected_conflicts", [])
+    standards_list = st.session_state.get("detected_standards", [])
     
-    total_today = len(today_returns)
-    full_today = len(today_returns[today_returns["Return_Type"] == "Full"])
-    partial_today = len(today_returns[today_returns["Return_Type"] == "Partial"])
-    conflicts_resolved = len(today_returns[today_returns["Match_Status"] == "Active Ledger Conflict"])
+    total_today = len(conflicts_list) + len(standards_list)
+    conflicts_resolved = len(conflicts_list)
+    
+    # Track full vs partial selections from active conflicts if they exist
+    full_today = len(standards_list) + len([c for c in conflicts_list if c.get("Return_Type") == "Full"])
+    partial_today = len([c for c in conflicts_list if c.get("Return_Type") == "Partial"])
 else:
+    # Fallback to general log counts if no active file is loaded
     total_today = full_today = partial_today = conflicts_resolved = 0
 
 m1, m2, m3, m4 = st.columns(4)
-with m1: st.metric("Total Processing Run (Today)", f"{total_today} DOs")
+with m1: st.metric("Total Processing Run", f"{total_today} DOs")
 with m2: st.metric("Full Clearances", f"{full_today} Orders")
 with m3: st.metric("Partial Exceptions", f"{partial_today} Flagged")
 with m4: st.metric("Active Queue Reconciled", f"{conflicts_resolved} Items")
