@@ -275,55 +275,71 @@ else:
         leaderboard_df = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
         st.dataframe(leaderboard_df, use_container_width=True, hide_index=True, height=280)
 
-    # --- BRAND NEW ENTERPRISE AGEING ANALYSIS ENGINE ---
+    # --- ENTERPRISE DRILL-DOWN AGEING ANALYSIS ENGINE ---
     st.markdown("---")
-    st.markdown("##### ⏳ Pending Orders Ageing Analysis")
+    st.markdown("##### ⏳ Pending Orders Ageing Breakdown")
     
     pending_df = filt[filt["Status"] == "Pending"].copy()
     if pending_df.empty:
         st.success("🟢 Outstanding Backlog Cleared: No pending orders detected within current filters.")
     else:
-        # Calculate active delayed delta days in memory
+        # 1. Calculate the exact age of each individual order in memory
         today_ts = pd.Timestamp(datetime.now().date())
         pending_df["Days_Open"] = (today_ts - pending_df["Date_Issued"]).dt.days
         
-        # Define clean, institutional operational time-buckets
-        def assign_bucket(days):
-            if days <= 3: return "0 - 3 Days (Normal)"
-            elif days <= 7: return "4 - 7 Days (Warning)"
-            elif days <= 14: return "8 - 14 Days (Critical)"
-            else: return "15+ Days (Severely Overdue)"
+        # 2. Assign clear operational time-buckets and visual indicators
+        def assign_bucket_details(days):
+            if days <= 3: return "0 - 3 Days (Normal)", "🟢 Normal"
+            elif days <= 7: return "4 - 7 Days (Warning)", "🟡 Warning"
+            elif days <= 14: return "8 - 14 Days (Critical)", "🟠 Critical"
+            else: return "15+ Days (Severely Overdue)", "🔴 Overdue"
             
-        pending_df["Ageing_Bucket"] = pending_df["Days_Open"].apply(assign_bucket)
+        bucket_res = pending_df["Days_Open"].apply(assign_bucket_details)
+        pending_df["Ageing_Bucket"] = [r[0] for r in bucket_res]
+        pending_df["Risk_Level"] = [r[1] for r in bucket_res]
         
-        # Build High-Density Multi-Dimensional Cross-Tab Matrix
-        bucket_order = ["0 - 3 Days (Normal)", "4 - 7 Days (Warning)", "8 - 14 Days (Critical)", "15+ Days (Severely Overdue)"]
+        # 3. Add Drill-Down Filters so managers can isolate specific problem areas
+        st.markdown("<div style='font-size: 13px; color: #94A3B8; margin-bottom: 10px;'>Use the filters below to pinpoint exactly which orders are stuck:</div>", unsafe_allow_html=True)
+        f_col1, f_col2 = st.columns(2)
         
-        # Group metrics cleanly by location
-        ageing_matrix = pending_df.groupby(["Warehouse_Name", "Ageing_Bucket"]).size().unstack(fill_value=0)
+        with f_col1:
+            all_b_options = ["All Buckets", "0 - 3 Days (Normal)", "4 - 7 Days (Warning)", "8 - 14 Days (Critical)", "15+ Days (Severely Overdue)"]
+            selected_bucket = st.selectbox("Filter by Age Category", all_b_options, key="age_bucket_filter")
+            
+        with f_col2:
+            all_w_options = ["All Locations"] + sorted(pending_df["Warehouse_Name"].unique().tolist())
+            selected_wh = st.selectbox("Filter by Pending Location", all_w_options, key="age_wh_filter")
+            
+        # Apply the drill-down selection logic
+        drill_df = pending_df.copy()
+        if selected_bucket != "All Buckets":
+            drill_df = drill_df[drill_df["Ageing_Bucket"] == selected_bucket]
+        if selected_wh != "All Locations":
+            drill_df = drill_df[drill_df["Warehouse_Name"] == selected_wh]
+            
+        # 4. Sort by oldest orders first so the most urgent items remain on top
+        drill_df = drill_df.sort_values(by="Days_Open", ascending=False)
         
-        # Re-index securely to guarantee all time columns display even if they have 0 values
-        for b in bucket_order:
-            if b not in ageing_matrix.columns:
-                ageing_matrix[b] = 0
-        ageing_matrix = ageing_matrix[bucket_order].reset_index()
+        # 5. Format columns cleanly for presentation
+        drill_df["Formatted_Date"] = drill_df["Date_Issued"].dt.strftime('%d/%m/%Y')
         
-        # Append a clean, bold row total metric
-        ageing_matrix["Total Pending Rows"] = ageing_matrix[bucket_order].sum(axis=1)
-        ageing_matrix = ageing_matrix.sort_values(by="Total Pending Rows", ascending=False)
+        # Select and rename columns for a professional grid layout
+        display_drill = drill_df[["DO_Number", "Formatted_Date", "Warehouse_Name", "Days_Open", "Risk_Level", "Remarks"]]
         
-        # Draw high-performance operational layout
+        st.markdown(f"📋 Showing **{len(display_drill)}** outstanding order(s) matching selection:")
+        
+        # Render high-performance read-only audit grid
         st.dataframe(
-            ageing_matrix,
+            display_drill,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Warehouse_Name": st.column_config.TextColumn("Warehouse Location / Godown"),
-                "0 - 3 Days (Normal)": st.column_config.NumberColumn("0-3 Days", format="%d Orders"),
-                "4 - 7 Days (Warning)": st.column_config.NumberColumn("4-7 Days ⚠️", format="%d Orders"),
-                "8 - 14 Days (Critical)": st.column_config.NumberColumn("8-14 Days 🚨", format="%d Orders"),
-                "15+ Days (Severely Overdue)": st.column_config.NumberColumn("15+ Days 🔥", format="%d Orders"),
-                "Total Pending Rows": st.column_config.NumberColumn("Total Pending", format="%d Rows")
+                "DO_Number": st.column_config.TextColumn("DO Number"),
+                "Formatted_Date": st.column_config.TextColumn("Date Issued"),
+                "Warehouse_Name": st.column_config.TextColumn("Warehouse Location"),
+                "Days_Open": st.column_config.NumberColumn("Days Stagnant", format="%d Days Pending ⏳"),
+                "Risk_Level": st.column_config.TextColumn("Risk Status"),
+                "Remarks": st.column_config.TextColumn("Operational Notes")
             }
         )
 
