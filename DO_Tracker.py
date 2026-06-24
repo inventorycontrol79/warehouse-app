@@ -208,7 +208,7 @@ filt = df.copy()
 if not filt.empty:
     if search: 
         # Safe string matching strategy prevents crashing on complex characters
-        filt = filt[filt["DO_Number"].str.contains(search, case=False, na=False)]
+        filt = filt[filt["DO_Number"].str.contains(search, case=False, na=False) | filt["Warehouse_Name"].str.contains(search, case=False, na=False)]
     if warehouse != "All": filt = filt[filt["Warehouse_Name"] == warehouse]
     if status != "All": filt = filt[filt["Status"] == status]
     filt = filt[(filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)]
@@ -268,12 +268,64 @@ else:
             theta="Count:Q", 
             color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#EAB308","#10B981","#EF4444"])), 
             tooltip=["Status","Count"]
-        ).properties(height=300, background="transparent").configure_view(stroke=None)
+        ).properties(height=280, background="transparent").configure_view(stroke=None)
         st.altair_chart(chart, use_container_width=True)
     with right:
         st.markdown("##### Facility Workload Leaderboard")
         leaderboard_df = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
-        st.dataframe(leaderboard_df, use_container_width=True, hide_index=True, height=300)
+        st.dataframe(leaderboard_df, use_container_width=True, hide_index=True, height=280)
+
+    # --- BRAND NEW ENTERPRISE AGEING ANALYSIS ENGINE ---
+    st.markdown("---")
+    st.markdown("##### ⏳ Pending Orders Ageing Analysis")
+    
+    pending_df = filt[filt["Status"] == "Pending"].copy()
+    if pending_df.empty:
+        st.success("🟢 Outstanding Backlog Cleared: No pending orders detected within current filters.")
+    else:
+        # Calculate active delayed delta days in memory
+        today_ts = pd.Timestamp(datetime.now().date())
+        pending_df["Days_Open"] = (today_ts - pending_df["Date_Issued"]).dt.days
+        
+        # Define clean, institutional operational time-buckets
+        def assign_bucket(days):
+            if days <= 3: return "0 - 3 Days (Normal)"
+            elif days <= 7: return "4 - 7 Days (Warning)"
+            elif days <= 14: return "8 - 14 Days (Critical)"
+            else: return "15+ Days (Severely Overdue)"
+            
+        pending_df["Ageing_Bucket"] = pending_df["Days_Open"].apply(assign_bucket)
+        
+        # Build High-Density Multi-Dimensional Cross-Tab Matrix
+        bucket_order = ["0 - 3 Days (Normal)", "4 - 7 Days (Warning)", "8 - 14 Days (Critical)", "15+ Days (Severely Overdue)"]
+        
+        # Group metrics cleanly by location
+        ageing_matrix = pending_df.groupby(["Warehouse_Name", "Ageing_Bucket"]).size().unstack(fill_value=0)
+        
+        # Re-index securely to guarantee all time columns display even if they have 0 values
+        for b in bucket_order:
+            if b not in ageing_matrix.columns:
+                ageing_matrix[b] = 0
+        ageing_matrix = ageing_matrix[bucket_order].reset_index()
+        
+        # Append a clean, bold row total metric
+        ageing_matrix["Total Pending Rows"] = ageing_matrix[bucket_order].sum(axis=1)
+        ageing_matrix = ageing_matrix.sort_values(by="Total Pending Rows", ascending=False)
+        
+        # Draw high-performance operational layout
+        st.dataframe(
+            ageing_matrix,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Warehouse_Name": st.column_config.TextColumn("Warehouse Location / Godown"),
+                "0 - 3 Days (Normal)": st.column_config.NumberColumn("0-3 Days", format="%d Orders"),
+                "4 - 7 Days (Warning)": st.column_config.NumberColumn("4-7 Days ⚠️", format="%d Orders"),
+                "8 - 14 Days (Critical)": st.column_config.NumberColumn("8-14 Days 🚨", format="%d Orders"),
+                "15+ Days (Severely Overdue)": st.column_config.NumberColumn("15+ Days 🔥", format="%d Orders"),
+                "Total Pending Rows": st.column_config.NumberColumn("Total Pending", format="%d Rows")
+            }
+        )
 
     # --- LIVE OPERATIONS INTERACTIVE LEDGER ---
     st.markdown("---")
