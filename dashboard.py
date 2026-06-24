@@ -12,6 +12,8 @@ from streamlit_autorefresh import st_autorefresh
 # --- CONFIGURATION ---
 st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
 BOT_STATUS_FILE = "bot_status.txt"
+
+# Modern background polling interval (30 Seconds)
 st_autorefresh(interval=30000, key="auto_refresh")
 
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
@@ -21,16 +23,25 @@ st.markdown("""
     .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
     label, .stWidgetLabel p { color: #94A3B8 !important; font-weight: 600 !important; }
+    
+    /* Branding Header Components */
     .premium-header { border-bottom: 1px solid #1E293B; padding-bottom: 1.5rem; margin-bottom: 2rem; margin-top: 1rem; }
     .sabin-logo { font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #F8FAFC !important; margin: 0; line-height: 1.2; }
     .sabin-logo span { color: #0EA5E9 !important; }
     .sabin-sub { font-size: 12px; font-weight: 600; letter-spacing: 3px; color: #94A3B8 !important; text-transform: uppercase; margin-top: 4px; }
-    div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: border-color 0.2s ease; }
-    div[data-testid="metric-container"]:hover { border-color: #38BDF8; }
+    
+    /* Industrial Grade KPI Card Containers */
+    div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; }
+    div[data-testid="metric-container"]:hover { border-color: #38BDF8; transform: translateY(-2px); }
     .stMetric-value { color: #F8FAFC !important; font-size: 32px !important; font-weight: 600 !important; }
     .stMetric-label { color: #94A3B8 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 1px; text-transform: uppercase; }
+    
+    /* Sidebar Overrides */
     section[data-testid="stSidebar"] { background-color: #0F172A; border-right: 1px solid #1E293B; }
     section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4, section[data-testid="stSidebar"] label { color: #F8FAFC !important; }
+    
+    /* Form Wrapper Module Cards */
+    .action-card { background-color: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -41,26 +52,23 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- NATIVE AUTHENTICATION ENGINE ---
-def get_google_client():
+# --- NATIVE AUTHENTICATION & SHEET CONNECTION ENGINE ---
+def get_google_sheet_connection():
     try:
         raw_json = st.secrets["GCP_JSON"]
         creds_dict = json.loads(raw_json)
         scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         gc = gspread.authorize(creds)
-        gc.open_by_url(st.secrets["GSHEET_URL"])
-        return gc
+        return gc.open_by_url(st.secrets["GSHEET_URL"])
     except Exception as e:
         st.error(f"🚨 Authentication Failed: {e}")
         return None
 
-# --- GOOGLE SHEETS CORE ENGINE ---
 def load_inventory_from_sheets():
-    gc = get_google_client()
-    if not gc: return pd.DataFrame()
+    sh = get_google_sheet_connection()
+    if not sh: return pd.DataFrame()
     try:
-        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
         data = worksheet.get_all_records()
         return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
@@ -69,14 +77,15 @@ def load_inventory_from_sheets():
         return pd.DataFrame()
 
 def save_inventory_to_sheets(dataframe):
-    gc = get_google_client()
-    if not gc: return False
+    sh = get_google_sheet_connection()
+    if not sh: return False
     try:
-        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
         worksheet.clear()
         headers = dataframe.columns.tolist()
         df_to_save = dataframe.copy()
+        
+        # Consistent String Conversion Engine Safeguard
         if "Date_Issued" in df_to_save.columns:
             df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
                 lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
@@ -88,13 +97,14 @@ def save_inventory_to_sheets(dataframe):
         st.error(f"🚨 Main Data backup failed: {e}")
         return False
 
-# --- STATE AND CACHE LAYER ---
+# --- STATE AND CACHE REFRESH CONTROL LAYER ---
 if "master_data" not in st.session_state:
     st.session_state.master_data = pd.DataFrame()
 if "last_fetch_time" not in st.session_state:
     st.session_state.last_fetch_time = None
 
 current_time = datetime.now()
+# Automated Cache Invalidation Gate
 if st.session_state.master_data.empty or st.session_state.last_fetch_time is None or (current_time - st.session_state.last_fetch_time).total_seconds() >= 30:
     fetched_df = load_inventory_from_sheets()
     if not fetched_df.empty:
@@ -107,7 +117,7 @@ if not df.empty:
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
-# --- PARAMETER ROUTING ---
+# --- PARAMETER ROUTING SECURITY ---
 url_params = st.query_params
 url_warehouse = url_params.get("warehouse", None)
 if url_warehouse: url_warehouse = url_warehouse.strip()
@@ -140,7 +150,7 @@ else:
         chosen_wh = st.sidebar.selectbox("Match [Warehouse]:", available_cols, index=available_cols.index(guess_wh) if guess_wh in available_cols else 0)
         chosen_user = st.sidebar.selectbox("Match [Created By]:", available_cols, index=available_cols.index(guess_user) if guess_user in available_cols else 0)
         
-        if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT"):
+        if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT", use_container_width=True):
             new_df = pd.DataFrame({
                 "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
                 "Date_Issued": pd.to_datetime(raw_erp[chosen_date], errors="coerce"),
@@ -156,12 +166,14 @@ else:
             combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
             
             if save_inventory_to_sheets(combined):
+                # Clean Cache Memory States immediately for smooth cross-page tracking sync
                 st.session_state.master_data = pd.DataFrame()
                 st.session_state.last_fetch_time = None
                 st.sidebar.success("Live Sheet synchronized successfully!")
                 st.rerun()
 
 search = st.sidebar.text_input("🔍 Global DO Search")
+
 if is_supervisor_session:
     warehouse_options = [url_warehouse]
     st.sidebar.markdown(f"📦 **Facility Bound:** `{url_warehouse}`")
@@ -194,7 +206,9 @@ else: st.sidebar.info("🤖 API: Standby Mode")
 # --- CENTRAL PIPELINE FILTER LOGIC ---
 filt = df.copy()
 if not filt.empty:
-    if search: filt = filt[filt.astype(str).apply(lambda x: x.str.contains(search, case=False, na=False)).any(axis=1)]
+    if search: 
+        # Safe string matching strategy prevents crashing on complex characters
+        filt = filt[filt["DO_Number"].str.contains(search, case=False, na=False)]
     if warehouse != "All": filt = filt[filt["Warehouse_Name"] == warehouse]
     if status != "All": filt = filt[filt["Status"] == status]
     filt = filt[(filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)]
@@ -207,13 +221,13 @@ returned = len(filt[filt["Status"]=="Return"]) if not filt.empty else 0
 dispatch_rate = round((dispatched/total)*100,1) if total else 0
 avg_age = round(((pd.Timestamp.today() - filt[filt["Status"] == "Pending"]["Date_Issued"]).dt.days).mean(), 1) if not filt.empty and not filt[filt["Status"] == "Pending"].empty else 0
 
-c1, c2, c3, c4, c5, c6 = st.columns(6)
-c1.metric("TOTAL DO", total)
-c2.metric("DISPATCHED", dispatched)
-c3.metric("PENDING", pending)
-c4.metric("RETURNS", returned)
-c5.metric("DISPATCH %", f"{dispatch_rate}%")
-c6.metric("AVG PENDING AGE", f"{avg_age} Days")
+m1, m2, m3, m4, m5, m6 = st.columns(6)
+m1.metric("TOTAL DO", total)
+m2.metric("DISPATCHED", dispatched)
+m3.metric("PENDING", pending)
+m4.metric("RETURNS", returned)
+m5.metric("DISPATCH %", f"{dispatch_rate}%")
+m6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
 # --- LOGISTICS ARCHIVE EXPANDER MODULE ---
 if not is_supervisor_session:
@@ -224,67 +238,94 @@ if not is_supervisor_session:
         with arc_col2: arc_end = st.date_input("Archive Threshold End", value=datetime.today().date(), key="arch_end_input")
         to_archive = df[(df["Date_Issued"].dt.date >= arc_start) & (df["Date_Issued"].dt.date <= arc_end) & (df["Status"].isin(["Dispatched", "Return"]))] if not df.empty else pd.DataFrame()
         with arc_col3:
-            st.write(f"📦 Matching Archive Records Found: **{len(to_archive)} rows**")
-        if not to_archive.empty and st.button("⚡ EXECUTE SECURE MIGRATION TO COLD STORAGE", use_container_width=True):
-            gc = get_google_client()
-            if gc:
-                try:
-                    sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-                    archive_sheet = sh.get_worksheet(1)
-                    df_export = to_archive.copy()
-                    df_export["Date_Issued"] = df_export["Date_Issued"].apply(lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x))
-                    archive_sheet.append_rows(df_export.fillna("").astype(str).values.tolist())
-                    if save_inventory_to_sheets(df.drop(to_archive.index)):
-                        st.session_state.master_data = pd.DataFrame()
-                        st.session_state.last_fetch_time = None
-                        st.success("Archive Transfer Completed!")
-                        st.rerun()
-                except Exception as ex: st.error(f"Archive processing error: {ex}")
+            st.markdown(f"<div style='padding-top:1.5rem;'>📦 Archive Target Records Found: <b>{len(to_archive)} rows</b></div>", unsafe_allow_html=True)
+        
+        if not to_archive.empty:
+            if st.button("⚡ EXECUTE SECURE MIGRATION TO COLD STORAGE", use_container_width=True):
+                sh = get_google_sheet_connection()
+                if sh:
+                    try:
+                        archive_sheet = sh.get_worksheet(1)
+                        df_export = to_archive.copy()
+                        df_export["Date_Issued"] = df_export["Date_Issued"].apply(lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x))
+                        archive_sheet.append_rows(df_export.fillna("").astype(str).values.tolist())
+                        
+                        if save_inventory_to_sheets(df.drop(to_archive.index)):
+                            st.session_state.master_data = pd.DataFrame()
+                            st.session_state.last_fetch_time = None
+                            st.success("Archive Transfer Completed!")
+                            st.rerun()
+                    except Exception as ex: st.error(f"Archive processing error: {ex}")
 
 if filt.empty:
     st.info("📌 System Online: Waiting for Cloud synchronized interface link connection.")
 else:
     left, right = st.columns([1,1])
     with left:
-        st.markdown("##### Distribution Pipeline")
+        st.markdown("##### Distribution Pipeline Breakdown")
         chart_df = pd.DataFrame({"Status":["Pending","Dispatched","Return"], "Count":[pending,dispatched,returned]})
         chart = alt.Chart(chart_df).mark_arc(innerRadius=80).encode(
-            theta="Count:Q", color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#EAB308","#10B981","#EF4444"])), tooltip=["Status","Count"]
-        ).properties(height=350, background="transparent").configure_view(stroke=None)
+            theta="Count:Q", 
+            color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#EAB308","#10B981","#EF4444"])), 
+            tooltip=["Status","Count"]
+        ).properties(height=300, background="transparent").configure_view(stroke=None)
         st.altair_chart(chart, use_container_width=True)
     with right:
         st.markdown("##### Facility Workload Leaderboard")
-        st.dataframe(filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False), use_container_width=True, hide_index=True)
+        leaderboard_df = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
+        st.dataframe(leaderboard_df, use_container_width=True, hide_index=True, height=300)
 
     # --- LIVE OPERATIONS INTERACTIVE LEDGER ---
     st.markdown("---")
     st.markdown("##### Active Operations Ledger")
+    
     display_filt = filt.copy()
     display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
     grid_disabled = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
     
-    edited = st.data_editor(display_filt, use_container_width=True, hide_index=True, column_config={"Status": st.column_config.SelectboxColumn("Status", options=["Pending","Dispatched","Return"])}, disabled=grid_disabled)
+    # Modern Enterprise Grid Interface Configuration
+    edited = st.data_editor(
+        display_filt, 
+        use_container_width=True, 
+        hide_index=True, 
+        column_config={
+            "DO_Number": st.column_config.TextColumn("DO Number"),
+            "Status": st.column_config.SelectboxColumn("Status", options=["Pending","Dispatched","Return"], required=True),
+            "Remarks": st.column_config.TextColumn("Operational Notes & Exceptions"),
+            "Last_Modified": st.column_config.TextColumn("System Timestamp", disabled=True)
+        }, 
+        disabled=grid_disabled
+    )
 
-    if not is_supervisor_session and st.button("💾 COMMIT RECORD TO DATABASE"):
+    if not is_supervisor_session and st.button("💾 COMMIT RECORD TO DATABASE", type="primary", use_container_width=True):
         base = load_inventory_from_sheets()
         if not base.empty:
             base["DO_Number"] = base["DO_Number"].astype(str).str.strip()
+            timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             for _, row in edited.iterrows():
-                do = str(row["DO_Number"]).strip()
-                base.loc[base["DO_Number"] == do, "Status"] = row["Status"]
-                base.loc[base["DO_Number"] == do, "Remarks"] = row["Remarks"]
-                base.loc[base["DO_Number"] == do, "Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                do_target = str(row["DO_Number"]).strip()
+                base.loc[base["DO_Number"] == do_target, "Status"] = row["Status"]
+                base.loc[base["DO_Number"] == do_target, "Remarks"] = row["Remarks"]
+                base.loc[base["DO_Number"] == do_target, "Last_Modified"] = timestamp_now
+                
             if save_inventory_to_sheets(base):
                 st.session_state.master_data = pd.DataFrame()
                 st.session_state.last_fetch_time = None
                 st.success("Database overwritten successfully!")
                 st.rerun()
 
+    # --- SECURE DATA EXPORT ENGINE ---
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        pd.DataFrame({"Metric":["Total DO","Dispatched","Pending","Return","Dispatch %"], "Value":[total,dispatched,pending,returned,f"{dispatch_rate}%"]}).to_excel(writer, sheet_name="Executive Summary", index=False)
+        pd.DataFrame({
+            "Metric": ["Total DO","Dispatched","Pending","Return","Dispatch %", "Average Pending Age"], 
+            "Value": [total, dispatched, pending, returned, f"{dispatch_rate}%", f"{avg_age} Days"]
+        }).to_excel(writer, sheet_name="Executive Summary", index=False)
+        
         excel_filt = filt.copy()
         excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
         excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
+        
     st.markdown("###")
-    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx")
+    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", use_container_width=True)
