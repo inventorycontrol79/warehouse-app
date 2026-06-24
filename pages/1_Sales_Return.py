@@ -27,7 +27,7 @@ st.markdown("""
     section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] p { color: #F8FAFC !important; }
     
     /* Live Analytics Metric Cards styling */
-    div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     .stMetric-value { color: #F8FAFC !important; font-size: 32px !important; font-weight: 600 !important; }
     .stMetric-label { color: #94A3B8 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 1px; text-transform: uppercase; }
     
@@ -128,20 +128,38 @@ is_supervisor_session = True if url_warehouse and not df_master.empty and url_wa
 tab_intake, tab_ledger = st.tabs(["📥 Return Reconcile Engine", "📜 Master Audit Archive"])
 
 with tab_intake:
-    st.markdown("### 📊 Return Operations Snapshot (Current Run)")
-
-    # Dynamic KPI Calculations
-    if "conflict_df" in st.session_state and "standard_df" in st.session_state:
-        total_run = len(st.session_state["conflict_df"]) + len(st.session_state["standard_df"])
-        conflicts_count = len(st.session_state["conflict_df"])
-        standards_count = len(st.session_state["standard_df"])
+    # --- INNOVATIVE HYBRID METRICS CONTROLLER ---
+    is_live_run = "conflict_df" in st.session_state or "standard_df" in st.session_state
+    
+    if is_live_run:
+        st.markdown("### 📊 Return Operations Snapshot (<span style='color:#0EA5E9;'>Active Batch Run</span>)", unsafe_allow_html=True)
+        conflicts_count = len(st.session_state.get("conflict_df", pd.DataFrame()))
+        standards_count = len(st.session_state.get("standard_df", pd.DataFrame()))
+        total_run = conflicts_count + standards_count
+        label_suffix = "In Batch"
+        color_bridge = "#0EA5E9"  # High-Visibility Technical Blue for active updates
     else:
-        total_run = conflicts_count = standards_count = 0
+        st.markdown("### 📊 Return Operations Snapshot (<span style='color:#10B981;'>System Lifetime Audit</span>)", unsafe_allow_html=True)
+        if not df_returns_history.empty:
+            total_run = len(df_returns_history)
+            conflicts_count = len(df_returns_history[df_returns_history["Match_Status"] == "Active Ledger Conflict"])
+            standards_count = len(df_returns_history[df_returns_history["Match_Status"] == "Standard Return"])
+        else:
+            total_run = conflicts_count = standards_count = 0
+        label_suffix = "Total"
+        color_bridge = "#10B981"  # Corporate Secure Emerald Green for static history
+
+    # Injecting the dynamic active state border colors directly into the components
+    st.markdown(f"""
+        <style>
+        div[data-testid="metric-container"] {{ border-top: 3px solid {color_bridge} !important; }}
+        </style>
+    """, unsafe_allow_html=True)
 
     m1, m2, m3 = st.columns(3)
-    with m1: st.metric("Total Batch Detected", f"{total_run} Orders")
-    with m2: st.metric("Active Ledger Conflicts", f"{conflicts_count} Requires Action")
-    with m3: st.metric("Clean Pass-Throughs", f"{standards_count} Automated")
+    with m1: st.metric(f"Processed ({label_suffix})", f"{total_run} Orders")
+    with m2: st.metric(f"Ledger Conflicts ({label_suffix})", f"{conflicts_count} Orders")
+    with m3: st.metric(f"Clean Pass-Throughs ({label_suffix})", f"{standards_count} Orders")
 
     st.markdown("---")
 
@@ -156,7 +174,7 @@ with tab_intake:
             ret_df = pd.read_excel(uploaded_return, engine="openpyxl")
             ret_df.columns = [str(c).strip() for c in ret_df.columns]
             
-            # Smart Target Mapping Alignment
+            # Target Column Mapping Aligners
             ret_cols = ret_df.columns.tolist()
             def match_ret(queries, options):
                 for q in queries:
@@ -171,6 +189,7 @@ with tab_intake:
             with c4: sel_reason = st.selectbox("Reason Column:", ret_cols, index=ret_cols.index(match_ret(["reason", "remark", "narration"], ret_cols)))
             
             if st.button("🔍 EXECUTE RECONCILIATION SCAN", type="primary", use_container_width=True):
+                # Execute Prefix Strip Automation Engine Rule
                 clean_dos = ret_df[sel_do].astype(str).str.replace("DLNS:", "", case=False, regex=False).str.strip()
 
                 cleaned_returns = pd.DataFrame({
@@ -189,7 +208,7 @@ with tab_intake:
                 for _, r in cleaned_returns.iterrows():
                     target_do = str(r["DO_Number"]).strip()
                     
-                    # Double-Upload Shield
+                    # Guardrails Double-Upload Shield
                     if not df_returns_history.empty:
                         already_processed = df_returns_history[
                             (df_returns_history["DO_Number"].astype(str) == target_do) & 
@@ -217,20 +236,19 @@ with tab_intake:
                 st.session_state["standard_df"] = pd.DataFrame(standards)
                 st.rerun()
 
-        # --- INTERACTIVE EDITING MATRIX ---
+        # --- HIGH-DENSITY GRID INTERACTIVE DESK ---
         if "conflict_df" in st.session_state and not st.session_state["conflict_df"].empty:
             st.markdown("### ⚠️ Action Required: Active Ledger Conflicts")
-            st.info("The following DO numbers exist in active dispatch pipelines. Review types and operational logs directly inside the grid below.")
+            st.info("The following DO numbers exist inside active queues. Modify data inside the rows directly using the grid workspace.")
             
-            # Global Override Quick Tools
-            b_col1, b_col2 = st.columns([2, 6])
+            # Quick Global Adjustment Presets Bar
+            b_col1, b_col2 = st.columns([3, 5])
             with b_col1:
-                bulk_all_full = st.button("⚡ Quick-Set All Rows to Full Reversal")
-                if bulk_all_full:
+                if st.button("⚡ Force All Rows to Full Reversal Mode"):
                     st.session_state["conflict_df"]["Return_Type"] = "Full"
                     st.rerun()
             
-            # Interactive Premium Grid
+            # Modern Dynamic Editing Workspace Grid
             edited_df = st.data_editor(
                 st.session_state["conflict_df"],
                 column_config={
@@ -246,11 +264,14 @@ with tab_intake:
                 key="conflict_editor"
             )
             
-            # Guardrails validation checker
-            partial_missing_remarks = edited_df[(edited_df["Return_Type"] == "Partial") & ((edited_df["Remarks"].str.strip() == "") | (edited_df["Remarks"] == "Auto-extracted from ERP"))]
+            # Rigid Validation Exception Engine Rule
+            partial_missing_remarks = edited_df[
+                (edited_df["Return_Type"] == "Partial") & 
+                ((edited_df["Remarks"].str.strip() == "") | (edited_df["Remarks"] == "Auto-extracted from ERP"))
+            ]
             
             if not partial_missing_remarks.empty:
-                st.error("🔒 Post Lockout: Operational details must be added in the remarks column for all 'Partial' returns.")
+                st.error("🔒 Post Lockout: Custom operation remark inputs must be provided to clarify partial inventory variance drops.")
                 st.button("⚡ TRANSMIT & PROCESS BALANCE DATA", disabled=True, use_container_width=True)
             else:
                 if st.button("⚡ TRANSMIT & PROCESS BALANCE DATA", type="primary", use_container_width=True):
@@ -282,7 +303,7 @@ with tab_intake:
 
         elif "standard_df" in st.session_state and not st.session_state["standard_df"].empty:
             st.markdown("### 🟢 Clean Return Batches Identified")
-            st.info(f"System identified **{len(st.session_state['standard_df'])}** standard returns clearing with zero active queue conflicts.")
+            st.info(f"System identified **{len(st.session_state['standard_df'])}** standard bookkeeping rows matching zero current tracking pipeline blockages.")
             
             if st.button("⚡ COMMIT STANDARD RETURN LOGS ONLY", type="primary", use_container_width=True):
                 timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -295,14 +316,14 @@ with tab_intake:
                     st.success("Standard ledger logs successfully synchronized to cloud archive.")
                     st.rerun()
 
-# --- HISTORICAL AUDIT MATRIX TAB ---
+# --- HISTORICAL AUDIT WORKSPACE MATRIX ---
 with tab_ledger:
     st.markdown("### 📜 Sales Return Master Ledger (Cloud Storage Archive)")
     if not df_returns_history.empty:
-        # Mini Sidebar-style filtering within the main page context
-        f_col1, f_col2 = st.columns([2, 6])
+        # High-Speed Multi-Context Search Controller Bar
+        f_col1, _ = st.columns([3, 5])
         with f_col1:
-            search_query = st.text_input("🔍 Quick Query Filter (DO / Operator):", placeholder="Type to filter...")
+            search_query = st.text_input("🔍 Quick Query Filter (DO / Operator ID):", placeholder="Type keywords to filter historical logs...")
         
         filtered_history = df_returns_history.copy()
         if search_query:
@@ -326,4 +347,4 @@ with tab_ledger:
             }
         )
     else:
-        st.info("No historical return records found in the archive sheet.")
+        st.info("No historical return records found inside the cloud archive engine.")
