@@ -384,7 +384,7 @@ else:
     )
 
     # Secure Gated Action Trigger Button
-    if is_admin and not is_supervisor_session:[cite: 2]
+    if is_admin and not is_supervisor_session:
         if st.button("💾 COMMIT RECORD TO DATABASE", type="primary", use_container_width=True):
             base = load_inventory_from_sheets()
             if not base.empty:
