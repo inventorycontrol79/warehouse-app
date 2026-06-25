@@ -122,7 +122,7 @@ st.markdown("---")
 st.markdown("## 📥 Sales Return Intake Engine")
 
 # Gated Verification for Sheet Uploader Widget
-if not is_admin:[cite: 2]
+if not is_admin:
     st.info("🔒 Return submission engine locked. Please use authorized terminal paths to commit database write variations.")
 else:
     uploaded_return = st.file_uploader("Upload ERP Sales Return Sheet (.xlsx)", type=["xlsx"], key="return_upload_unique")
@@ -169,7 +169,7 @@ else:
             st.session_state["detected_standards"] = standards
             st.success(f"Scan Finished! Found {len(conflicts)} Live Queue Conflicts and {len(standards)} Standard System Returns.")
 
-    # Interactive Resolution Terminal Layout (Only processes if Admin key parameter validates successfully)
+    # Interactive Resolution Terminal Layout
     if "detected_conflicts" in st.session_state and st.session_state["detected_conflicts"]:
         st.markdown("---### ⚠️ ACTION REQUIRED: Active Ledger Conflicts Detected")
         updated_conflicts, all_valid = [], True

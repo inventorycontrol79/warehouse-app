@@ -1,419 +1,249 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
-import io
-import os
 import json
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
-from streamlit_autorefresh import st_autorefresh
+from datetime import datetime, timedelta
 
-# --- CONFIGURATION ---
-st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
-BOT_STATUS_FILE = "bot_status.txt"
-
-# Modern background polling interval (30 Seconds)
-st_autorefresh(interval=30000, key="auto_refresh")
+st.set_page_config(page_title="SABIN PLASTIC // Returns Engine", layout="wide")
 
 # --- SECRET KEY ADMIN ACCESS GATEWAY ---
 url_params = st.query_params
-# Strict structural verification for your personal secret key
+# Synchronized structural access parameter check
 is_admin = url_params.get("key", "") == "sabin_inventory"
 
-# --- PREMIUM HIGH-CONTRAST ERP STYLING ---
+# High-Contrast Premium Dark Theme Style Overrides
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
     .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
     label, .stWidgetLabel p { color: #94A3B8 !important; font-weight: 600 !important; }
-    
-    /* Branding Header Components */
     .premium-header { border-bottom: 1px solid #1E293B; padding-bottom: 1.5rem; margin-bottom: 2rem; margin-top: 1rem; }
     .sabin-logo { font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #F8FAFC !important; margin: 0; line-height: 1.2; }
     .sabin-logo span { color: #0EA5E9 !important; }
     .sabin-sub { font-size: 12px; font-weight: 600; letter-spacing: 3px; color: #94A3B8 !important; text-transform: uppercase; margin-top: 4px; }
-    
-    /* Industrial Grade KPI Card Containers */
-    div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; }
-    div[data-testid="metric-container"]:hover { border-color: #38BDF8; transform: translateY(-2px); }
-    .stMetric-value { color: #F8FAFC !important; font-size: 32px !important; font-weight: 600 !important; }
-    .stMetric-label { color: #94A3B8 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 1px; text-transform: uppercase; }
-    
-    /* Sidebar Overrides */
-    section[data-testid="stSidebar"] { background-color: #0F172A; border-right: 1px solid #1E293B; }
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4, section[data-testid="stSidebar"] label { color: #F8FAFC !important; }
-    
-    /* Form Wrapper Module Cards */
-    .action-card { background-color: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    section[data-testid="stSidebar"] { background-color: #0F172A !important; border-right: 1px solid #1E293B; }
+    div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #EF4444; border-radius: 6px; padding: 20px; }
+    .action-card { background-color: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 24px; margin-bottom: 20px; }
+    .conflict-box { background: linear-gradient(90deg, #1E1B4B 0%, #111827 100%); border-left: 4px solid #EAB308; border-radius: 6px; padding: 15px; margin-bottom: 12px; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-    <div class='premium-header'>
-        <div class='sabin-logo'>SABIN <span>PLASTIC</span></div>
-        <div class='sabin-sub'>Enterprise Warehouse Tracking System</div>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown("<div class='premium-header'><div class='sabin-logo'>SABIN <span>PLASTIC</span></div><div class='sabin-sub'>Enterprise Warehouse Tracking System</div></div>", unsafe_allow_html=True)
 
-# --- NATIVE AUTHENTICATION & SHEET CONNECTION ENGINE ---
-def get_google_sheet_connection():
+def get_google_client():
     try:
         raw_json = st.secrets["GCP_JSON"]
         creds_dict = json.loads(raw_json)
         scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        gc = gspread.authorize(creds)
-        return gc.open_by_url(st.secrets["GSHEET_URL"])
+        return gspread.authorize(creds)
     except Exception as e:
         st.error(f"🚨 Authentication Failed: {e}")
         return None
 
 def load_inventory_from_sheets():
-    sh = get_google_sheet_connection()
-    if not sh: return pd.DataFrame()
+    gc = get_google_client()
+    if not gc: return pd.DataFrame()
     try:
-        worksheet = sh.get_worksheet(0)
-        data = worksheet.get_all_records()
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        data = sh.get_worksheet(0).get_all_records()
         return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
     except Exception as e:
         st.error(f"🛑 Error reading main sheet: {e}")
         return pd.DataFrame()
 
 def load_historical_returns_log():
-    sh = get_google_sheet_connection()
-    if not sh: return pd.DataFrame()
+    gc = get_google_client()
+    if not gc: return pd.DataFrame()
     try:
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         data = sh.get_worksheet(2).get_all_records()
         return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Voucher_Number","Return_Date","Match_Status","Return_Type","Return_Remarks","Logged_By","Timestamp"])
     except Exception as e:
         return pd.DataFrame()
 
 def save_inventory_to_sheets(dataframe):
-    sh = get_google_sheet_connection()
-    if not sh: return False
+    gc = get_google_client()
+    if not gc: return False
     try:
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         worksheet = sh.get_worksheet(0)
         worksheet.clear()
         headers = dataframe.columns.tolist()
         df_to_save = dataframe.copy()
-        
         if "Date_Issued" in df_to_save.columns:
-            df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
-                lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
-            )
-        rows = df_to_save.fillna("").astype(str).values.tolist()
-        worksheet.append_rows([headers] + rows)
+            df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x))
+        worksheet.append_rows([headers] + df_to_save.fillna("").astype(str).values.tolist())
         return True
     except Exception as e:
         st.error(f"🚨 Main Data backup failed: {e}")
         return False
 
-# --- STATE AND CACHE REFRESH CONTROL LAYER ---
-if "master_data" not in st.session_state:
-    st.session_state.master_data = pd.DataFrame()
-if "last_fetch_time" not in st.session_state:
-    st.session_state.last_fetch_time = None
-
-current_time = datetime.now()
-if st.session_state.master_data.empty or st.session_state.last_fetch_time is None or (current_time - st.session_state.last_fetch_time).total_seconds() >= 30:
-    fetched_df = load_inventory_from_sheets()
-    if not fetched_df.empty:
-        st.session_state.master_data = fetched_df
-        st.session_state.last_fetch_time = current_time
-
-df = st.session_state.master_data.copy()
-if not df.empty:
-    df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
-    df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
-    df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
-
-# --- PARAMETER ROUTING SECURITY ---
-url_warehouse = url_params.get("warehouse", None)
-if url_warehouse: url_warehouse = url_warehouse.strip()
-is_supervisor_session = True if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique() else False
-
-# --- SIDEBAR CONTROL PANEL ---
-st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
-
-# Secure Admin Gate for Raw ERP Excel Upload Logic
-if not is_admin:
-    st.sidebar.info("🔒 Administrative pipeline locked. Ledger modifications are running in read-only terminal mode.")
-elif is_supervisor_session:
-    st.sidebar.warning("🔒 Supervisor profile bound. File uploading interface suspended.")
-else:
-    uploaded = st.sidebar.file_uploader("Upload Raw ERP Excel File", type=["xlsx"])
-    if uploaded is not None:
-        raw_erp = pd.read_excel(uploaded, engine="openpyxl")
-        available_cols = [str(col).strip() for col in raw_erp.columns]
-        raw_erp.columns = available_cols 
-        
-        def auto_match(possibilities, options):
-            for p in possibilities:
-                for opt in options:
-                    if p.lower() in opt.lower(): return opt
-            return options[0] if options else ""
-        
-        guess_do = auto_match(["voucher", "do number", "do_no", "invoice", "document", "delivery"], available_cols)
-        guess_date = auto_match(["date", "issued", "time", "posting"], available_cols)
-        guess_wh = auto_match(["godown", "warehouse", "location", "facility", "branch", "site"], available_cols)
-        guess_user = auto_match(["created by", "user", "operator", "creator", "entered"], available_cols)
-        
-        chosen_do = st.sidebar.selectbox("Match [DO Number]:", available_cols, index=available_cols.index(guess_do) if guess_do in available_cols else 0)
-        chosen_date = st.sidebar.selectbox("Match [Date Issued]:", available_cols, index=available_cols.index(guess_date) if guess_date in available_cols else 0)
-        chosen_wh = st.sidebar.selectbox("Match [Warehouse]:", available_cols, index=available_cols.index(guess_wh) if guess_wh in available_cols else 0)
-        chosen_user = st.sidebar.selectbox("Match [Created By]:", available_cols, index=available_cols.index(guess_user) if guess_user in available_cols else 0)
-        
-        if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT", use_container_width=True):
-            new_df = pd.DataFrame({
-                "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
-                "Date_Issued": pd.to_datetime(raw_erp[chosen_date], errors="coerce"),
-                "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(),
-                "Created_By": raw_erp[chosen_user].astype(str).str.strip()
-            })
-            new_df["Last_4"] = new_df["DO_Number"].str[-4:]
-            new_df["Status"] = "Pending"
-            new_df["Remarks"] = ""
-            new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            df_returns_hist = load_historical_returns_log()
-            if not df_returns_hist.empty:
-                df_returns_hist["DO_Number"] = df_returns_hist["DO_Number"].astype(str).str.strip()
-                matched_returns = df_returns_hist[df_returns_hist["DO_Number"].isin(new_df["DO_Number"].tolist())]
-                
-                if not matched_returns.empty:
-                    st.sidebar.warning(f"🔄 Auto-Reconciliation Engine: Intercepted {len(matched_returns)} retroactive returns!")
-                    for _, ret_row in matched_returns.iterrows():
-                        r_do = str(ret_row["DO_Number"]).strip()
-                        r_type = str(ret_row["Return_Type"]).strip()
-                        r_rem = str(ret_row["Return_Remarks"]).strip()
-                        
-                        new_df.loc[new_df["DO_Number"] == r_do, "Status"] = "Return"
-                        new_df.loc[new_df["DO_Number"] == r_do, "Remarks"] = f"[{r_type}] {r_rem} (Retro-Reconciled)"
-
-            combined = pd.concat([df, new_df], ignore_index=True)
-            combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
-            
-            if save_inventory_to_sheets(combined):
-                st.session_state.master_data = pd.DataFrame()
-                st.session_state.last_fetch_time = None
-                st.sidebar.success("Live Sheet synchronized successfully!")
-                st.rerun()
-
-search = st.sidebar.text_input("🔍 Global DO Search")
-
-if is_supervisor_session:
-    warehouse_options = [url_warehouse]
-    st.sidebar.markdown(f"📦 **Facility Bound:** `{url_warehouse}`")
-else:
-    warehouse_options = ["All"] + sorted(df["Warehouse_Name"].astype(str).unique().tolist()) if not df.empty else ["All"]
-
-warehouse = st.sidebar.selectbox("Filter Facility", warehouse_options)
-status = st.sidebar.selectbox("Filter Status", ["All","Pending","Dispatched","Return"])
-
-if not df.empty and pd.notna(df["Date_Issued"].min()):
-    min_date, max_date = df["Date_Issued"].min().date(), df["Date_Issued"].max().date()
-else:
-    min_date = max_date = datetime.today().date()
-
-st.sidebar.markdown("### 📅 TIMEFRAME")
-start_date = st.sidebar.date_input("Start Date", min_date)
-end_date = st.sidebar.date_input("End Date", max_date)
-
-st.sidebar.markdown("---")
-if os.path.exists(BOT_STATUS_FILE):
+def log_returns_to_archive_sheet(return_rows):
+    gc = get_google_client()
+    if not gc: return False
     try:
-        ts = open(BOT_STATUS_FILE).read().strip()
-        if (datetime.now() - datetime.strptime(ts,"%Y-%m-%d %H:%M:%S")).total_seconds() < 120:
-            st.sidebar.success("🟢 API: Active & Routing")
-        else:
-            st.sidebar.error("🔴 API: Connection Lost")
-    except: st.sidebar.warning("API Status: Unknown")
-else: st.sidebar.info("🤖 API: Standby Mode")
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        sh.get_worksheet(2).append_rows(return_rows)
+        return True
+    except Exception as e:
+        st.error(f"🚨 Failed logging returns to cloud archive: {e}")
+        return False
 
-# --- CENTRAL PIPELINE FILTER LOGIC ---
-filt = df.copy()
-if not filt.empty:
-    if search: 
-        filt = filt[filt["DO_Number"].str.contains(search, case=False, na=False) | filt["Warehouse_Name"].str.contains(search, case=False, na=False)]
-    if warehouse != "All": filt = filt[filt["Warehouse_Name"] == warehouse]
-    if status != "All": filt = filt[filt["Status"] == status]
-    filt = filt[(filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)]
+# Load Datasets
+df_master = load_inventory_from_sheets()
+if not df_master.empty:
+    df_master["DO_Number"] = df_master["DO_Number"].astype(str).str.strip()
+df_returns_history = load_historical_returns_log()
 
-# --- EXECUTIVE SUMMARY METRICS ---
-total = len(filt) if not filt.empty else 0
-dispatched = len(filt[filt["Status"]=="Dispatched"]) if not filt.empty else 0
-pending = len(filt[filt["Status"]=="Pending"]) if not filt.empty else 0
-returned = len(filt[filt["Status"]=="Return"]) if not filt.empty else 0
-dispatch_rate = round((dispatched/total)*100,1) if total else 0
-avg_age = round(((pd.Timestamp.today() - filt[filt["Status"] == "Pending"]["Date_Issued"]).dt.days).mean(), 1) if not filt.empty and not filt[filt["Status"] == "Pending"].empty else 0
+# Live Metrics Snapshot Computation
+st.markdown("### 📊 Return Operations Snapshot")
+yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y")
+total_historic = len(df_returns_history) if not df_returns_history.empty else 0
 
-m1, m2, m3, m4, m5, m6 = st.columns(6)
-m1.metric("TOTAL DO", total)
-m2.metric("DISPATCHED", dispatched)
-m3.metric("PENDING", pending)
-m4.metric("RETURNS", returned)
-m5.metric("DISPATCH %", f"{dispatch_rate}%")
-m6.metric("AVG PENDING AGE", f"{avg_age} Days")
-
-# --- LOGISTICS ARCHIVE EXPANDER MODULE (ADMIN SECURED) ---
-if is_admin and not is_supervisor_session:
-    st.markdown("###")
-    with st.expander("💼 LOGISTICS DATA ARCHIVE MODULE", expanded=False):
-        arc_col1, arc_col2, arc_col3 = st.columns([2, 2, 3])
-        with arc_col1: arc_start = st.date_input("Archive Threshold Start", value=min_date, key="arch_start_input")
-        with arc_col2: arc_end = st.date_input("Archive Threshold End", value=datetime.today().date(), key="arch_end_input")
-        to_archive = df[(df["Date_Issued"].dt.date >= arc_start) & (df["Date_Issued"].dt.date <= arc_end) & (df["Status"].isin(["Dispatched", "Return"]))] if not df.empty else pd.DataFrame()
-        with arc_col3:
-            st.markdown(f"<div style='padding-top:1.5rem;'>📦 Archive Target Records Found: <b>{len(to_archive)} rows</b></div>", unsafe_allow_html=True)
-        
-        if not to_archive.empty:
-            if st.button("⚡ EXECUTE SECURE MIGRATION TO COLD STORAGE", use_container_width=True):
-                sh = get_google_sheet_connection()
-                if sh:
-                    try:
-                        archive_sheet = sh.get_worksheet(1)
-                        df_export = to_archive.copy()
-                        df_export["Date_Issued"] = df_export["Date_Issued"].apply(lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x))
-                        archive_sheet.append_rows(df_export.fillna("").astype(str).values.tolist())
-                        
-                        if save_inventory_to_sheets(df.drop(to_archive.index)):
-                            st.session_state.master_data = pd.DataFrame()
-                            st.session_state.last_fetch_time = None
-                            st.success("Archive Transfer Completed!")
-                            st.rerun()
-                    except Exception as ex: st.error(f"Archive processing error: {ex}")
-
-if filt.empty:
-    st.info("📌 System Online: Waiting for Cloud synchronized interface link connection.")
+if not df_returns_history.empty:
+    df_returns_history["Return_Date"] = df_returns_history["Return_Date"].astype(str).str.strip()
+    yesterday_returns = df_returns_history[df_returns_history["Return_Date"] == yesterday_str]
+    total_yesterday = len(yesterday_returns)
+    full_yesterday = len(yesterday_returns[yesterday_returns["Return_Type"] == "Full"])
+    partial_yesterday = len(yesterday_returns[yesterday_returns["Return_Type"] == "Partial"])
 else:
-    left, right = st.columns([1,1])
-    with left:
-        st.markdown("##### Distribution Pipeline Breakdown")
-        chart_df = pd.DataFrame({"Status":["Pending","Dispatched","Return"], "Count":[pending,dispatched,returned]})
-        chart = alt.Chart(chart_df).mark_arc(innerRadius=80).encode(
-            theta="Count:Q", 
-            color=alt.Color("Status:N", scale=alt.Scale(domain=["Pending","Dispatched","Return"], range=["#EAB308","#10B981","#EF4444"])), 
-            tooltip=["Status","Count"]
-        ).properties(height=280, background="transparent").configure_view(stroke=None)
-        st.altair_chart(chart, use_container_width=True)
-    with right:
-        st.markdown("##### Facility Workload Leaderboard")
-        leaderboard_df = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
-        st.dataframe(leaderboard_df, use_container_width=True, hide_index=True, height=280)
+    total_yesterday = full_yesterday = partial_yesterday = 0
 
-    # --- PENDING ORDERS AGEING BREAKDOWN ---
-    st.markdown("---")
-    st.markdown("##### ⏳ Pending Orders Ageing Breakdown")
-    
-    pending_df = filt[filt["Status"] == "Pending"].copy()
-    if pending_df.empty:
-        st.success("🟢 Outstanding Backlog Cleared: No pending orders detected within current filters.")
-    else:
-        today_ts = pd.Timestamp(datetime.now().date())
-        pending_df["Days_Open"] = (today_ts - pending_df["Date_Issued"]).dt.days
-        
-        def assign_bucket_details(days):
-            if days <= 3: return "0 - 3 Days (Normal)", "🟢 Normal"
-            elif days <= 7: return "4 - 7 Days (Warning)", "🟡 Warning"
-            elif days <= 14: return "8 - 14 Days (Critical)", "🟠 Critical"
-            else: return "15+ Days (Severely Overdue)", "🔴 Overdue"
-            
-        bucket_res = pending_df["Days_Open"].apply(assign_bucket_details)
-        pending_df["Ageing_Bucket"] = [r[0] for r in bucket_res]
-        pending_df["Risk_Level"] = [r[1] for r in bucket_res]
-        
-        st.markdown("<div style='font-size: 13px; color: #94A3B8; margin-bottom: 10px;'>Use the filters below to pinpoint exactly which orders are stuck:</div>", unsafe_allow_html=True)
-        f_col1, f_col2 = st.columns(2)
-        
-        with f_col1:
-            all_b_options = ["All Buckets", "0 - 3 Days (Normal)", "4 - 7 Days (Warning)", "8 - 14 Days (Critical)", "15+ Days (Severely Overdue)"]
-            selected_bucket = st.selectbox("Filter by Age Category", all_b_options, key="age_bucket_filter")
-            
-        with f_col2:
-            all_w_options = ["All Locations"] + sorted(pending_df["Warehouse_Name"].unique().tolist())
-            selected_wh = st.selectbox("Filter by Pending Location", all_w_options, key="age_wh_filter")
-            
-        drill_df = pending_df.copy()
-        if selected_bucket != "All Buckets":
-            drill_df = drill_df[drill_df["Ageing_Bucket"] == selected_bucket]
-        if selected_wh != "All Locations":
-            drill_df = drill_df[drill_df["Warehouse_Name"] == selected_wh]
-            
-        drill_df = drill_df.sort_values(by="Days_Open", ascending=False)
-        drill_df["Formatted_Date"] = drill_df["Date_Issued"].dt.strftime('%d/%m/%Y')
-        display_drill = drill_df[["DO_Number", "Formatted_Date", "Warehouse_Name", "Days_Open", "Risk_Level", "Remarks"]]
-        
-        st.markdown(f"📋 Showing **{len(display_drill)}** outstanding order(s) matching selection:")
-        st.dataframe(
-            display_drill,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "DO_Number": st.column_config.TextColumn("DO Number"),
-                "Formatted_Date": st.column_config.TextColumn("Date Issued"),
-                "Warehouse_Name": st.column_config.TextColumn("Warehouse Location"),
-                "Days_Open": st.column_config.NumberColumn("Days Stagnant", format="%d Days Pending ⏳"),
-                "Risk_Level": st.column_config.TextColumn("Risk Status"),
-                "Remarks": st.column_config.TextColumn("Operational Notes")
-            }
-        )
+m1, m2, m3, m4 = st.columns(4)
+with m1: st.metric("Processed (Yesterday)", f"{total_yesterday} DOs")
+with m2: st.metric("Full Returns (Yesterday)", f"{full_yesterday} Orders")
+with m3: st.metric("Partial Returns (Yesterday)", f"{partial_yesterday} Flagged")
+with m4: st.metric("All-Time Logged Archive", f"{total_historic} Total Records")
 
-    # --- LIVE OPERATIONS INTERACTIVE LEDGER (GATED) ---
-    st.markdown("---")
-    st.markdown("##### Active Operations Ledger")
-    
-    display_filt = filt.copy()
-    display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
-    
-    # Grid input locking mechanism triggers if session lacks valid credentials or matches supervisor profile constraints
-    grid_disabled = True if (is_supervisor_session or not is_admin) else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
-    
-    edited = st.data_editor(
-        display_filt, 
-        use_container_width=True, 
-        hide_index=True, 
-        column_config={
-            "DO_Number": st.column_config.TextColumn("DO Number"),
-            "Status": st.column_config.SelectboxColumn("Status", options=["Pending","Dispatched","Return"], required=True),
-            "Remarks": st.column_config.TextColumn("Operational Notes & Exceptions"),
-            "Last_Modified": st.column_config.TextColumn("System Timestamp", disabled=True)
-        }, 
-        disabled=grid_disabled
-    )
+st.markdown("---")
+st.markdown("## 📥 Sales Return Intake Engine")
 
-    # Secure Gated Action Trigger Button
-    if is_admin and not is_supervisor_session:
-        if st.button("💾 COMMIT RECORD TO DATABASE", type="primary", use_container_width=True):
-            base = load_inventory_from_sheets()
-            if not base.empty:
-                base["DO_Number"] = base["DO_Number"].astype(str).str.strip()
-                timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                for _, row in edited.iterrows():
-                    do_target = str(row["DO_Number"]).strip()
-                    base.loc[base["DO_Number"] == do_target, "Status"] = row["Status"]
-                    base.loc[base["DO_Number"] == do_target, "Remarks"] = row["Remarks"]
-                    base.loc[base["DO_Number"] == do_target, "Last_Modified"] = timestamp_now
-                    
-                if save_inventory_to_sheets(base):
-                    st.session_state.master_data = pd.DataFrame()
-                    st.session_state.last_fetch_time = None
-                    st.success("Database overwritten successfully!")
+# Gated Verification for Sheet Uploader Widget
+if not is_admin:
+    st.info("🔒 Return submission engine locked. Please use authorized terminal paths to commit database write variations.")
+else:
+    uploaded_return = st.file_uploader("Upload ERP Sales Return Sheet (.xlsx)", type=["xlsx"], key="return_upload_unique")
+    if uploaded_return is not None:
+        ret_df = pd.read_excel(uploaded_return, engine="openpyxl")
+        ret_df.columns = [str(c).strip() for c in ret_df.columns]
+        ret_cols = ret_df.columns.tolist()
+        
+        def match_ret(queries, options):
+            for q in queries:
+                for o in options:
+                    if q.lower() in o.lower(): return o
+            return options[0] if options else ""
+            
+        sel_do = st.selectbox("Confirm Return [DO Number] Column:", ret_cols, index=ret_cols.index(match_ret(["do number", "do_no", "delivery order"], ret_cols)))
+        sel_vouch = st.selectbox("Confirm Sales [Voucher / Invoice Number] Column:", ret_cols, index=ret_cols.index(match_ret(["invoice no", "invoice_no", "voucher", "sales number"], ret_cols)))
+        sel_date = st.selectbox("Confirm Return [Date] Column:", ret_cols, index=ret_cols.index(match_ret(["date", "posting"], ret_cols)))
+        sel_user = st.selectbox("Confirm Return [Operator] Column:", ret_cols, index=ret_cols.index(match_ret(["created by", "user"], ret_cols)))
+        
+        if st.button("🔍 RUN RECONCILIATION SCAN", use_container_width=True):
+            clean_dos = ret_df[sel_do].astype(str).str.replace("DLNS:", "", case=False, regex=False).str.strip()
+            cleaned_returns = pd.DataFrame({
+                "DO_Number": clean_dos,
+                "Voucher_Number": ret_df[sel_vouch].astype(str).str.strip(),
+                "Return_Date": pd.to_datetime(ret_df[sel_date], errors="coerce").dt.strftime('%d/%m/%Y'),
+                "Logged_By": ret_df[sel_user].astype(str).str.strip()
+            }).dropna(subset=["DO_Number"]).drop_duplicates(subset=["DO_Number"])
+            cleaned_returns = cleaned_returns[cleaned_returns["DO_Number"] != ""]
+            
+            active_dos = df_master["DO_Number"].tolist() if not df_master.empty else []
+            conflicts, standards = [], []
+            
+            for _, r in cleaned_returns.iterrows():
+                target_do = str(r["DO_Number"]).strip()
+                vouch_no = str(r["Voucher_Number"]).strip()
+                if target_do in active_dos:
+                    curr_status = df_master[df_master["DO_Number"] == target_do]["Status"].values[0]
+                    if curr_status in ["Pending", "Dispatched"]:
+                        conflicts.append({"DO_Number": target_do, "Voucher_Number": vouch_no, "Return_Date": r["Return_Date"], "Current_Status": curr_status, "Return_Type": "Full", "Remarks": "", "Logged_By": r["Logged_By"]})
+                        continue
+                standards.append([target_do, vouch_no, r["Return_Date"], "Unmatched Backlog Return", "Full", "Awaiting Warehouse File Upload", r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+            
+            st.session_state["detected_conflicts"] = conflicts
+            st.session_state["detected_standards"] = standards
+            st.success(f"Scan Finished! Found {len(conflicts)} Live Queue Conflicts and {len(standards)} Standard System Returns.")
+
+    # Interactive Resolution Terminal Layout
+    if "detected_conflicts" in st.session_state and st.session_state["detected_conflicts"]:
+        st.markdown("---### ⚠️ ACTION REQUIRED: Active Ledger Conflicts Detected")
+        updated_conflicts, all_valid = [], True
+        
+        for idx, item in enumerate(st.session_state["detected_conflicts"]):
+            st.markdown(f"<div class='conflict-box'>", unsafe_allow_html=True)
+            col1, col2, col3, col4 = st.columns([2, 2, 2, 4])
+            with col1:
+                st.markdown(f"**DO Number:** `{item['DO_Number']}`")
+                st.markdown(f"**Voucher No:** `{item['Voucher_Number']}`")
+                st.markdown(f"Status: <span style='color:#0EA5E9;font-weight:bold;'>{item['Current_Status']}</span>", unsafe_allow_html=True)
+            with col2:
+                ret_type = st.radio(f"Return Type for {item['DO_Number']}", ["Full", "Partial"], key=f"type_{idx}_{item['DO_Number']}", horizontal=True)
+            with col3:
+                if ret_type == "Partial":
+                    st.markdown("<span style='color:#EAB308; font-weight:bold;'>⚠️ REMARKS MANDATORY</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<span style='color:#10B981; font-weight:bold;'>🟢 READY FOR RESET</span>", unsafe_allow_html=True)
+            with col4:
+                rem_val = st.text_input(f"Operational Remarks for {item['DO_Number']}", value=item["Remarks"], key=f"rem_{idx}_{item['DO_Number']}")
+            
+            if ret_type == "Partial" and not rem_val.strip(): all_valid = False
+            updated_conflicts.append({"DO_Number": item["DO_Number"], "Voucher_Number": item["Voucher_Number"], "Return_Date": item["Return_Date"], "Match_Status": "Active Ledger Conflict", "Return_Type": ret_type, "Return_Remarks": rem_val if rem_val.strip() else "Full Return Entry", "Logged_By": item["Logged_By"]})
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        if not all_valid:
+            st.error("🔒 Submission Locked: Provide a mandatory remark description for all Partial Returns to unlock database updates.")
+        else:
+            if st.button("⚡ POST RECONCILED DISPATCH VALUES", type="primary", use_container_width=True):
+                base_ledger = load_inventory_from_sheets()
+                archive_rows, timestamp_str = [], datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                if not base_ledger.empty:
+                    base_ledger["DO_Number"] = base_ledger["DO_Number"].astype(str).str.strip()
+                    for c in updated_conflicts:
+                        base_ledger.loc[base_ledger["DO_Number"] == c["DO_Number"], "Status"] = "Return"
+                        base_ledger.loc[base_ledger["DO_Number"] == c["DO_Number"], "Remarks"] = f"[{c['Return_Type']}] " + c["Return_Remarks"]
+                        base_ledger.loc[base_ledger["DO_Number"] == c["DO_Number"], "Last_Modified"] = timestamp_str
+                        archive_rows.append([c["DO_Number"], c["Voucher_Number"], c["Return_Date"], c["Match_Status"], c["Return_Type"], c["Return_Remarks"], c["Logged_By"], timestamp_str])
+                for s in st.session_state.get("detected_standards", []): archive_rows.append(s)
+                if save_inventory_to_sheets(base_ledger) and log_returns_to_archive_sheet(archive_rows):
+                    del st.session_state["detected_conflicts"], st.session_state["detected_standards"]
+                    st.success("Perfect! System Overwritten.")
                     st.rerun()
 
-    # --- SECURE DATA EXPORT ENGINE ---
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        pd.DataFrame({
-            "Metric": ["Total DO","Dispatched","Pending","Return","Dispatch %", "Average Pending Age"], 
-            "Value": [total, dispatched, pending, returned, f"{dispatch_rate}%", f"{avg_age} Days"]
-        }).to_excel(writer, sheet_name="Executive Summary", index=False)
-        
-        excel_filt = filt.copy()
-        excel_filt["Date_Issued"] = excel_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
-        excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
-        
-    st.markdown("###")
-    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", use_container_width=True)
+    elif "detected_standards" in st.session_state and st.session_state["detected_standards"]:
+        if st.button("⚡ COMMIT STANDARD RETURN LOGS", use_container_width=True):
+            if log_returns_to_archive_sheet(st.session_state["detected_standards"]):
+                del st.session_state["detected_standards"]
+                st.rerun()
+
+# Permanent Sales Returns Archive Ledger display (Always accessible to all viewers)
+st.markdown("---")
+st.markdown("### 📜 Permanent Sales Returns Archive Ledger")
+
+if df_returns_history.empty:
+    st.info("ℹ️ No historical return transactions logged inside cloud storage archive yet.")
+else:
+    if "Timestamp" in df_returns_history.columns:
+        display_history = df_returns_history.sort_values(by="Timestamp", ascending=False)
+    else:
+        display_history = df_returns_history
+
+    st.dataframe(
+        display_history,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "DO_Number": st.column_config.TextColumn("DO Number"),
+            "Voucher_Number": st.column_config.TextColumn("Voucher / Invoice Reference"),
+            "Return_Date": st.column_config.TextColumn("ERP Posting Date"),
+            "Match_Status": st.column_config.TextColumn("Validation Flag"),
+            "Return_Type": st.column_config.TextColumn("Return Scope"),
+            "Return_Remarks": st.column_config.TextColumn("Operational Exceptions / Notes"),
+            "Logged_By": st.column_config.TextColumn("Authorized Operator"),
+            "Timestamp": st.column_config.TextColumn("Database Commit Time")
+        }
+    )
