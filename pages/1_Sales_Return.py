@@ -3,9 +3,9 @@ import pandas as pd
 import json
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
+from datetime import datetime, timedelta
 
-st.set_page_config(page_title="SABIN PLASTIC // Returns Engine", layout="wide")
+st.set_page_config(page_title=\"SABIN PLASTIC // Returns Engine\", layout=\"wide\")
 
 # High-Contrast Premium Dark Theme Style Overrides
 st.markdown("""
@@ -93,22 +93,24 @@ if not df_master.empty:
     df_master["DO_Number"] = df_master["DO_Number"].astype(str).str.strip()
 df_returns_history = load_historical_returns_log()
 
-# Live Metrics Snapshot Computation
+# Live Metrics Snapshot Computation (Shifted from Today to Yesterday)
 st.markdown("### 📊 Return Operations Snapshot")
-today_str = datetime.now().strftime("%d/%m/%Y")
+yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y")
 total_historic = len(df_returns_history) if not df_returns_history.empty else 0
 
 if not df_returns_history.empty:
     df_returns_history["Return_Date"] = df_returns_history["Return_Date"].astype(str).str.strip()
-    today_returns = df_returns_history[df_returns_history["Return_Date"] == today_str]
-    total_today, full_today, partial_today = len(today_returns), len(today_returns[today_returns["Return_Type"] == "Full"]), len(today_returns[today_returns["Return_Type"] == "Partial"])
+    yesterday_returns = df_returns_history[df_returns_history["Return_Date"] == yesterday_str]
+    total_yesterday = len(yesterday_returns)
+    full_yesterday = len(yesterday_returns[yesterday_returns["Return_Type"] == "Full"])
+    partial_yesterday = len(yesterday_returns[yesterday_returns["Return_Type"] == "Partial"])
 else:
-    total_today = full_today = partial_today = 0
+    total_yesterday = full_yesterday = partial_yesterday = 0
 
 m1, m2, m3, m4 = st.columns(4)
-with m1: st.metric("Processed Today", f"{total_today} DOs")
-with m2: st.metric("Full Returns (Today)", f"{full_today} Orders")
-with m3: st.metric("Partial Returns (Today)", f"{partial_today} Flagged")
+with m1: st.metric("Processed (Yesterday)", f"{total_yesterday} DOs")
+with m2: st.metric("Full Returns (Yesterday)", f"{full_yesterday} Orders")
+with m3: st.metric("Partial Returns (Yesterday)", f"{partial_yesterday} Flagged")
 with m4: st.metric("All-Time Logged Archive", f"{total_historic} Total Records")
 
 st.markdown("---")
@@ -209,14 +211,13 @@ elif "detected_standards" in st.session_state and st.session_state["detected_sta
             del st.session_state["detected_standards"]
             st.rerun()
 
-# --- NEW ADDITION: LIVE ARCHIVE AUDIT GRID DISPLAY ---
+# Permanent Sales Returns Archive Ledger display
 st.markdown("---")
 st.markdown("### 📜 Permanent Sales Returns Archive Ledger")
 
 if df_returns_history.empty:
     st.info("ℹ️ No historical return transactions logged inside cloud storage archive yet.")
 else:
-    # Sort by the system timestamp column to put the newest entries at the very top
     if "Timestamp" in df_returns_history.columns:
         display_history = df_returns_history.sort_values(by="Timestamp", ascending=False)
     else:
