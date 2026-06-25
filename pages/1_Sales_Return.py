@@ -5,7 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 
-st.set_page_config(page_title=\"SABIN PLASTIC // Returns Engine\", layout=\"wide\")
+st.set_page_config(page_title=\"SABIN PLASTIC // Returns Engine\", layout="wide")
 
 # High-Contrast Premium Dark Theme Style Overrides
 st.markdown("""
