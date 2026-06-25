@@ -16,6 +16,11 @@ BOT_STATUS_FILE = "bot_status.txt"
 # Modern background polling interval (30 Seconds)
 st_autorefresh(interval=30000, key="auto_refresh")
 
+# --- SECRET KEY ADMIN ACCESS GATEWAY ---
+url_params = st.query_params
+# Strict structural verification for your personal secret key
+is_admin = url_params.get("key", "") == "sabin_inventory"
+
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
@@ -94,7 +99,6 @@ def save_inventory_to_sheets(dataframe):
         headers = dataframe.columns.tolist()
         df_to_save = dataframe.copy()
         
-        # Consistent String Conversion Engine Safeguard
         if "Date_Issued" in df_to_save.columns:
             df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
                 lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
@@ -113,7 +117,6 @@ if "last_fetch_time" not in st.session_state:
     st.session_state.last_fetch_time = None
 
 current_time = datetime.now()
-# Automated Cache Invalidation Gate
 if st.session_state.master_data.empty or st.session_state.last_fetch_time is None or (current_time - st.session_state.last_fetch_time).total_seconds() >= 30:
     fetched_df = load_inventory_from_sheets()
     if not fetched_df.empty:
@@ -127,15 +130,18 @@ if not df.empty:
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
 # --- PARAMETER ROUTING SECURITY ---
-url_params = st.query_params
 url_warehouse = url_params.get("warehouse", None)
 if url_warehouse: url_warehouse = url_warehouse.strip()
 is_supervisor_session = True if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique() else False
 
 # --- SIDEBAR CONTROL PANEL ---
 st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
-if is_supervisor_session:
-    st.sidebar.info("🔒 Administrative operations locked. Core ledger modifications are read-only for your terminal role.")
+
+# Secure Admin Gate for Raw ERP Excel Upload Logic
+if not is_admin:
+    st.sidebar.info("🔒 Administrative pipeline locked. Ledger modifications are running in read-only terminal mode.")[cite: 2]
+elif is_supervisor_session:
+    st.sidebar.warning("🔒 Supervisor profile bound. File uploading interface suspended.")
 else:
     uploaded = st.sidebar.file_uploader("Upload Raw ERP Excel File", type=["xlsx"])
     if uploaded is not None:
@@ -171,11 +177,9 @@ else:
             new_df["Remarks"] = ""
             new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # 🔄 BACKWARD-LOOKING AUTO RECONCILIATION ENGINE
             df_returns_hist = load_historical_returns_log()
             if not df_returns_hist.empty:
                 df_returns_hist["DO_Number"] = df_returns_hist["DO_Number"].astype(str).str.strip()
-                # Pinpoint if any freshly added warehouse DOs have an existing registered record inside the return archives
                 matched_returns = df_returns_hist[df_returns_hist["DO_Number"].isin(new_df["DO_Number"].tolist())]
                 
                 if not matched_returns.empty:
@@ -185,7 +189,6 @@ else:
                         r_type = str(ret_row["Return_Type"]).strip()
                         r_rem = str(ret_row["Return_Remarks"]).strip()
                         
-                        # Dynamically alter standard default state values to the archived return specifications
                         new_df.loc[new_df["DO_Number"] == r_do, "Status"] = "Return"
                         new_df.loc[new_df["DO_Number"] == r_do, "Remarks"] = f"[{r_type}] {r_rem} (Retro-Reconciled)"
 
@@ -254,8 +257,8 @@ m4.metric("RETURNS", returned)
 m5.metric("DISPATCH %", f"{dispatch_rate}%")
 m6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
-# --- LOGISTICS ARCHIVE EXPANDER MODULE ---
-if not is_supervisor_session:
+# --- LOGISTICS ARCHIVE EXPANDER MODULE (ADMIN SECURED) ---
+if is_admin and not is_supervisor_session:
     st.markdown("###")
     with st.expander("💼 LOGISTICS DATA ARCHIVE MODULE", expanded=False):
         arc_col1, arc_col2, arc_col3 = st.columns([2, 2, 3])
@@ -300,7 +303,7 @@ else:
         leaderboard_df = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
         st.dataframe(leaderboard_df, use_container_width=True, hide_index=True, height=280)
 
-    # --- ENTERPRISE DRILL-DOWN AGEING ANALYSIS ENGINE ---
+    # --- PENDING ORDERS AGEING BREAKDOWN ---
     st.markdown("---")
     st.markdown("##### ⏳ Pending Orders Ageing Breakdown")
     
@@ -343,7 +346,6 @@ else:
         display_drill = drill_df[["DO_Number", "Formatted_Date", "Warehouse_Name", "Days_Open", "Risk_Level", "Remarks"]]
         
         st.markdown(f"📋 Showing **{len(display_drill)}** outstanding order(s) matching selection:")
-        
         st.dataframe(
             display_drill,
             use_container_width=True,
@@ -358,13 +360,15 @@ else:
             }
         )
 
-    # --- LIVE OPERATIONS INTERACTIVE LEDGER ---
+    # --- LIVE OPERATIONS INTERACTIVE LEDGER (GATED) ---
     st.markdown("---")
     st.markdown("##### Active Operations Ledger")
     
     display_filt = filt.copy()
     display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
-    grid_disabled = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
+    
+    # Grid input locking mechanism triggers if session lacks valid credentials or matches supervisor profile constraints
+    grid_disabled = True if (is_supervisor_session or not is_admin) else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"][cite: 2]
     
     edited = st.data_editor(
         display_filt, 
@@ -379,23 +383,25 @@ else:
         disabled=grid_disabled
     )
 
-    if not is_supervisor_session and st.button("💾 COMMIT RECORD TO DATABASE", type="primary", use_container_width=True):
-        base = load_inventory_from_sheets()
-        if not base.empty:
-            base["DO_Number"] = base["DO_Number"].astype(str).str.strip()
-            timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            for _, row in edited.iterrows():
-                do_target = str(row["DO_Number"]).strip()
-                base.loc[base["DO_Number"] == do_target, "Status"] = row["Status"]
-                base.loc[base["DO_Number"] == do_target, "Remarks"] = row["Remarks"]
-                base.loc[base["DO_Number"] == do_target, "Last_Modified"] = timestamp_now
+    # Secure Gated Action Trigger Button
+    if is_admin and not is_supervisor_session:[cite: 2]
+        if st.button("💾 COMMIT RECORD TO DATABASE", type="primary", use_container_width=True):
+            base = load_inventory_from_sheets()
+            if not base.empty:
+                base["DO_Number"] = base["DO_Number"].astype(str).str.strip()
+                timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-            if save_inventory_to_sheets(base):
-                st.session_state.master_data = pd.DataFrame()
-                st.session_state.last_fetch_time = None
-                st.success("Database overwritten successfully!")
-                st.rerun()
+                for _, row in edited.iterrows():
+                    do_target = str(row["DO_Number"]).strip()
+                    base.loc[base["DO_Number"] == do_target, "Status"] = row["Status"]
+                    base.loc[base["DO_Number"] == do_target, "Remarks"] = row["Remarks"]
+                    base.loc[base["DO_Number"] == do_target, "Last_Modified"] = timestamp_now
+                    
+                if save_inventory_to_sheets(base):
+                    st.session_state.master_data = pd.DataFrame()
+                    st.session_state.last_fetch_time = None
+                    st.success("Database overwritten successfully!")
+                    st.rerun()
 
     # --- SECURE DATA EXPORT ENGINE ---
     buffer = io.BytesIO()
@@ -410,4 +416,4 @@ else:
         excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
         
     st.markdown("###")
-    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", use_container_width=True)
+    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", use_container_width=True)[cite: 2]
