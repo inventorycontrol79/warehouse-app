@@ -154,7 +154,8 @@ if uploaded_return is not None:
                 if curr_status in ["Pending", "Dispatched"]:
                     conflicts.append({"DO_Number": target_do, "Voucher_Number": vouch_no, "Return_Date": r["Return_Date"], "Current_Status": curr_status, "Return_Type": "Full", "Remarks": "", "Logged_By": r["Logged_By"]})
                     continue
-            standards.append([target_do, vouch_no, r["Return_Date"], "Standard Return", "Full", "Auto-logged", r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+            # Standard Returns are safely tagged as "Unmatched Backlog" so the Tracker page can read them later if uploaded out-of-order
+            standards.append([target_do, vouch_no, r["Return_Date"], "Unmatched Backlog Return", "Full", "Awaiting Warehouse File Upload", r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
         
         st.session_state["detected_conflicts"] = conflicts
         st.session_state["detected_standards"] = standards

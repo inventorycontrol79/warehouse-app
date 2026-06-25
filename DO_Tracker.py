@@ -76,6 +76,15 @@ def load_inventory_from_sheets():
         st.error(f"🛑 Error reading main sheet: {e}")
         return pd.DataFrame()
 
+def load_historical_returns_log():
+    sh = get_google_sheet_connection()
+    if not sh: return pd.DataFrame()
+    try:
+        data = sh.get_worksheet(2).get_all_records()
+        return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Voucher_Number","Return_Date","Match_Status","Return_Type","Return_Remarks","Logged_By","Timestamp"])
+    except Exception as e:
+        return pd.DataFrame()
+
 def save_inventory_to_sheets(dataframe):
     sh = get_google_sheet_connection()
     if not sh: return False
@@ -162,11 +171,28 @@ else:
             new_df["Remarks"] = ""
             new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+            # 🔄 BACKWARD-LOOKING AUTO RECONCILIATION ENGINE
+            df_returns_hist = load_historical_returns_log()
+            if not df_returns_hist.empty:
+                df_returns_hist["DO_Number"] = df_returns_hist["DO_Number"].astype(str).str.strip()
+                # Pinpoint if any freshly added warehouse DOs have an existing registered record inside the return archives
+                matched_returns = df_returns_hist[df_returns_hist["DO_Number"].isin(new_df["DO_Number"].tolist())]
+                
+                if not matched_returns.empty:
+                    st.sidebar.warning(f"🔄 Auto-Reconciliation Engine: Intercepted {len(matched_returns)} retroactive returns!")
+                    for _, ret_row in matched_returns.iterrows():
+                        r_do = str(ret_row["DO_Number"]).strip()
+                        r_type = str(ret_row["Return_Type"]).strip()
+                        r_rem = str(ret_row["Return_Remarks"]).strip()
+                        
+                        # Dynamically alter standard default state values to the archived return specifications
+                        new_df.loc[new_df["DO_Number"] == r_do, "Status"] = "Return"
+                        new_df.loc[new_df["DO_Number"] == r_do, "Remarks"] = f"[{r_type}] {r_rem} (Retro-Reconciled)"
+
             combined = pd.concat([df, new_df], ignore_index=True)
             combined.drop_duplicates(subset=["DO_Number"], keep="last", inplace=True)
             
             if save_inventory_to_sheets(combined):
-                # Clean Cache Memory States immediately for smooth cross-page tracking sync
                 st.session_state.master_data = pd.DataFrame()
                 st.session_state.last_fetch_time = None
                 st.sidebar.success("Live Sheet synchronized successfully!")
@@ -207,7 +233,6 @@ else: st.sidebar.info("🤖 API: Standby Mode")
 filt = df.copy()
 if not filt.empty:
     if search: 
-        # Safe string matching strategy prevents crashing on complex characters
         filt = filt[filt["DO_Number"].str.contains(search, case=False, na=False) | filt["Warehouse_Name"].str.contains(search, case=False, na=False)]
     if warehouse != "All": filt = filt[filt["Warehouse_Name"] == warehouse]
     if status != "All": filt = filt[filt["Status"] == status]
@@ -283,11 +308,9 @@ else:
     if pending_df.empty:
         st.success("🟢 Outstanding Backlog Cleared: No pending orders detected within current filters.")
     else:
-        # 1. Calculate the exact age of each individual order in memory
         today_ts = pd.Timestamp(datetime.now().date())
         pending_df["Days_Open"] = (today_ts - pending_df["Date_Issued"]).dt.days
         
-        # 2. Assign clear operational time-buckets and visual indicators
         def assign_bucket_details(days):
             if days <= 3: return "0 - 3 Days (Normal)", "🟢 Normal"
             elif days <= 7: return "4 - 7 Days (Warning)", "🟡 Warning"
@@ -298,7 +321,6 @@ else:
         pending_df["Ageing_Bucket"] = [r[0] for r in bucket_res]
         pending_df["Risk_Level"] = [r[1] for r in bucket_res]
         
-        # 3. Add Drill-Down Filters so managers can isolate specific problem areas
         st.markdown("<div style='font-size: 13px; color: #94A3B8; margin-bottom: 10px;'>Use the filters below to pinpoint exactly which orders are stuck:</div>", unsafe_allow_html=True)
         f_col1, f_col2 = st.columns(2)
         
@@ -310,25 +332,18 @@ else:
             all_w_options = ["All Locations"] + sorted(pending_df["Warehouse_Name"].unique().tolist())
             selected_wh = st.selectbox("Filter by Pending Location", all_w_options, key="age_wh_filter")
             
-        # Apply the drill-down selection logic
         drill_df = pending_df.copy()
         if selected_bucket != "All Buckets":
             drill_df = drill_df[drill_df["Ageing_Bucket"] == selected_bucket]
         if selected_wh != "All Locations":
             drill_df = drill_df[drill_df["Warehouse_Name"] == selected_wh]
             
-        # 4. Sort by oldest orders first so the most urgent items remain on top
         drill_df = drill_df.sort_values(by="Days_Open", ascending=False)
-        
-        # 5. Format columns cleanly for presentation
         drill_df["Formatted_Date"] = drill_df["Date_Issued"].dt.strftime('%d/%m/%Y')
-        
-        # Select and rename columns for a professional grid layout
         display_drill = drill_df[["DO_Number", "Formatted_Date", "Warehouse_Name", "Days_Open", "Risk_Level", "Remarks"]]
         
         st.markdown(f"📋 Showing **{len(display_drill)}** outstanding order(s) matching selection:")
         
-        # Render high-performance read-only audit grid
         st.dataframe(
             display_drill,
             use_container_width=True,
@@ -351,7 +366,6 @@ else:
     display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
     grid_disabled = True if is_supervisor_session else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
     
-    # Modern Enterprise Grid Interface Configuration
     edited = st.data_editor(
         display_filt, 
         use_container_width=True, 
