@@ -94,21 +94,22 @@ if not df_master.empty:
 df_returns_history = load_historical_returns_log()
 
 # Live Metrics Snapshot Computation
-st.markdown("### 📊 Return Operations Snapshot (Today)")
+st.markdown("### 📊 Return Operations Snapshot")
 today_str = datetime.now().strftime("%d/%m/%Y")
+total_historic = len(df_returns_history) if not df_returns_history.empty else 0
+
 if not df_returns_history.empty:
     df_returns_history["Return_Date"] = df_returns_history["Return_Date"].astype(str).str.strip()
     today_returns = df_returns_history[df_returns_history["Return_Date"] == today_str]
     total_today, full_today, partial_today = len(today_returns), len(today_returns[today_returns["Return_Type"] == "Full"]), len(today_returns[today_returns["Return_Type"] == "Partial"])
-    conflicts_resolved = len(today_returns[today_returns["Match_Status"] == "Active Ledger Conflict"])
 else:
-    total_today = full_today = partial_today = conflicts_resolved = 0
+    total_today = full_today = partial_today = 0
 
 m1, m2, m3, m4 = st.columns(4)
-with m1: st.metric("Total Processing Run (Today)", f"{total_today} DOs")
-with m2: st.metric("Full Clearances", f"{full_today} Orders")
-with m3: st.metric("Partial Exceptions", f"{partial_today} Flagged")
-with m4: st.metric("Active Queue Reconciled", f"{conflicts_resolved} Items")
+with m1: st.metric("Processed Today", f"{total_today} DOs")
+with m2: st.metric("Full Returns (Today)", f"{full_today} Orders")
+with m3: st.metric("Partial Returns (Today)", f"{partial_today} Flagged")
+with m4: st.metric("All-Time Logged Archive", f"{total_historic} Total Records")
 
 st.markdown("---")
 st.markdown("## 📥 Sales Return Intake Engine")
@@ -131,7 +132,6 @@ if uploaded_return is not None:
     sel_user = st.selectbox("Confirm Return [Operator] Column:", ret_cols, index=ret_cols.index(match_ret(["created by", "user"], ret_cols)))
     
     if st.button("🔍 RUN RECONCILIATION SCAN", use_container_width=True):
-        # The Prefix Strip Rule Execution
         clean_dos = ret_df[sel_do].astype(str).str.replace("DLNS:", "", case=False, regex=False).str.strip()
         cleaned_returns = pd.DataFrame({
             "DO_Number": clean_dos,
@@ -149,7 +149,7 @@ if uploaded_return is not None:
             vouch_no = str(r["Voucher_Number"]).strip()
             if target_do in active_dos:
                 curr_status = df_master[df_master["DO_Number"] == target_do]["Status"].values[0]
-                if curr_status in [["Pending", "Dispatched"]]:
+                if curr_status in ["Pending", "Dispatched"]:
                     conflicts.append({"DO_Number": target_do, "Voucher_Number": vouch_no, "Return_Date": r["Return_Date"], "Current_Status": curr_status, "Return_Type": "Full", "Remarks": "", "Logged_By": r["Logged_By"]})
                     continue
             standards.append([target_do, vouch_no, r["Return_Date"], "Standard Return", "Full", "Auto-logged", r["Logged_By"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
@@ -208,3 +208,32 @@ elif "detected_standards" in st.session_state and st.session_state["detected_sta
         if log_returns_to_archive_sheet(st.session_state["detected_standards"]):
             del st.session_state["detected_standards"]
             st.rerun()
+
+# --- NEW ADDITION: LIVE ARCHIVE AUDIT GRID DISPLAY ---
+st.markdown("---")
+st.markdown("### 📜 Permanent Sales Returns Archive Ledger")
+
+if df_returns_history.empty:
+    st.info("ℹ️ No historical return transactions logged inside cloud storage archive yet.")
+else:
+    # Sort by the system timestamp column to put the newest entries at the very top
+    if "Timestamp" in df_returns_history.columns:
+        display_history = df_returns_history.sort_values(by="Timestamp", ascending=False)
+    else:
+        display_history = df_returns_history
+
+    st.dataframe(
+        display_history,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "DO_Number": st.column_config.TextColumn("DO Number"),
+            "Voucher_Number": st.column_config.TextColumn("Voucher / Invoice Reference"),
+            "Return_Date": st.column_config.TextColumn("ERP Posting Date"),
+            "Match_Status": st.column_config.TextColumn("Validation Flag"),
+            "Return_Type": st.column_config.TextColumn("Return Scope"),
+            "Return_Remarks": st.column_config.TextColumn("Operational Exceptions / Notes"),
+            "Logged_By": st.column_config.TextColumn("Authorized Operator"),
+            "Timestamp": st.column_config.TextColumn("Database Commit Time")
+        }
+    )
