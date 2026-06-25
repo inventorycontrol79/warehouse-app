@@ -139,7 +139,7 @@ st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
 
 # Secure Admin Gate for Raw ERP Excel Upload Logic
 if not is_admin:
-    st.sidebar.info("🔒 Administrative pipeline locked. Ledger modifications are running in read-only terminal mode.")[cite: 2]
+    st.sidebar.info("🔒 Administrative pipeline locked. Ledger modifications are running in read-only terminal mode.")
 elif is_supervisor_session:
     st.sidebar.warning("🔒 Supervisor profile bound. File uploading interface suspended.")
 else:
@@ -368,7 +368,7 @@ else:
     display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
     
     # Grid input locking mechanism triggers if session lacks valid credentials or matches supervisor profile constraints
-    grid_disabled = True if (is_supervisor_session or not is_admin) else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"][cite: 2]
+    grid_disabled = True if (is_supervisor_session or not is_admin) else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
     
     edited = st.data_editor(
         display_filt, 
@@ -416,4 +416,4 @@ else:
         excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
         
     st.markdown("###")
-    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", use_container_width=True)[cite: 2]
+    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", use_container_width=True)
