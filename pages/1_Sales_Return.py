@@ -7,10 +7,17 @@ from datetime import datetime, timedelta
 
 st.set_page_config(page_title="SABIN PLASTIC // Returns Engine", layout="wide")
 
-# --- SECRET KEY ADMIN ACCESS GATEWAY ---
+# --- MULTI-PAGE ADMIN PERSISTENCE GATEWAY ---
+if "is_admin" not in st.session_state:
+    st.session_state.is_admin = False
+
+# Evaluate URL query strings in case they refresh directly on this engine page
 url_params = st.query_params
-# Synchronized structural access parameter check
-is_admin = url_params.get("key", "") == "sabin_inventory"
+if url_params.get("key", "") == "sabin_inventory":
+    st.session_state.is_admin = True
+
+# Read authority privileges from persistent memory
+is_admin = st.session_state.is_admin
 
 # High-Contrast Premium Dark Theme Style Overrides
 st.markdown("""

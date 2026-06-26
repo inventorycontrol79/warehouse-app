@@ -9,17 +9,24 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION & MULTI-PAGE ADMIN PERSISTENCE ---
 st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
 BOT_STATUS_FILE = "bot_status.txt"
 
 # Modern background polling interval (30 Seconds)
 st_autorefresh(interval=30000, key="auto_refresh")
 
-# --- SECRET KEY ADMIN ACCESS GATEWAY ---
+# Initialize persistent session state admin gate
+if "is_admin" not in st.session_state:
+    st.session_state.is_admin = False
+
+# Evaluate URL parameters and capture admin session status
 url_params = st.query_params
-# Strict structural verification for your personal secret key
-is_admin = url_params.get("key", "") == "sabin_inventory"
+if url_params.get("key", "") == "sabin_inventory":
+    st.session_state.is_admin = True
+
+# Explicit routing parameter assignment
+is_admin = st.session_state.is_admin
 
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
