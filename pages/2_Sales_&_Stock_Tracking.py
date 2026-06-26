@@ -11,12 +11,10 @@ st.set_page_config(page_title="SABIN PLASTIC // Inventory Intelligence", layout=
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
-# Evaluate URL query strings in case you refresh or land directly on this page
 url_params = st.query_params
 if url_params.get("key", "") == "sabin_inventory":
     st.session_state.is_admin = True
 
-# Read authority privileges from persistent memory
 is_admin = st.session_state.is_admin
 
 # --- PREMIUM HIGH-CONTRAST ERP STYLING ---
@@ -33,6 +31,7 @@ st.markdown("""
     section[data-testid="stSidebar"] { background-color: #0F172A !important; border-right: 1px solid #1E293B; }
     div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; }
     .upload-box { background-color: #111827; border: 1px dashed #1E293B; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .admin-box { background-color: #1E1B4B; border: 1px solid #4338CA; border-radius: 8px; padding: 20px; margin-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -66,26 +65,34 @@ def load_data_from_sheet(ws, fallback_cols):
 # --- INGEST SHEETS ---
 ws_stock, ws_log, ws_batches = get_worksheets()
 
-df_stock = load_data_from_sheet(ws_stock, ["Item_Code", "Item_Name", "Current_Stock", "ABC_Category", "Avg_Daily_Sales"])
+df_stock = load_data_from_sheet(ws_stock, ["Item_Code", "Item_Name", "Product_Category", "Current_Stock", "ABC_Category", "Avg_Daily_Sales"])
 df_log = load_data_from_sheet(ws_log, ["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp"])
 df_batches = load_data_from_sheet(ws_batches, ["Batch_ID", "Upload_Type", "Timestamp"])
 
-# Clean up baseline string spaces
 for d in [df_stock, df_log, df_batches]:
     if not d.empty:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
+
+# --- SIDEBAR INTERACTIVE FILTERS ---
+st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
+if not df_stock.empty:
+    # Filter empty or blank strings out to display nicely
+    df_stock["Product_Category"] = df_stock["Product_Category"].replace("", "Uncategorized").fillna("Uncategorized")
+    cat_options = ["All Categories"] + sorted(df_stock["Product_Category"].unique().tolist())
+else:
+    cat_options = ["All Categories"]
+selected_category_filter = st.sidebar.selectbox("Filter by Material Group", cat_options)
 
 # --- RECALCULATE ABC CATEGORIES & RUNNING STATS ---
 def recalculate_abc_and_velocity(stock_df, log_df):
     if log_df.empty or stock_df.empty:
         return stock_df
         
-    # Standardize data formats
+    stock_df["Current_Stock"] = pd.to_numeric(stock_df["Current_Stock"], errors='coerce').fillna(0)
     log_df["Qty_Delta"] = pd.to_numeric(log_df["Qty_Delta"], errors='coerce').fillna(0)
     log_df["Timestamp"] = pd.to_datetime(log_df["Timestamp"], errors='coerce')
     
-    # Filter for Sales over a rolling 30 days window
     thirty_days_ago = datetime.now() - timedelta(days=30)
     sales_30 = log_df[(log_df["Transaction_Type"] == "Sales") & (log_df["Timestamp"] >= thirty_days_ago)]
     
@@ -94,12 +101,10 @@ def recalculate_abc_and_velocity(stock_df, log_df):
         stock_df["Avg_Daily_Sales"] = 0.0
         return stock_df
         
-    # Sum total sales quantity per item
     item_sales = sales_30.groupby("Item_Code")["Qty_Delta"].sum().reset_index()
-    item_sales["Qty_Delta"] = item_sales["Qty_Delta"].abs() # Ensure tracking absolute usage values
+    item_sales["Qty_Delta"] = item_sales["Qty_Delta"].abs()
     item_sales = item_sales.sort_values(by="Qty_Delta", ascending=False)
     
-    # Calculate Pareto Distribution Metrics
     total_volume = item_sales["Qty_Delta"].sum()
     if total_volume > 0:
         item_sales["Cum_Percentage"] = item_sales["Qty_Delta"].cumsum() / total_volume
@@ -114,7 +119,6 @@ def recalculate_abc_and_velocity(stock_df, log_df):
     item_sales["ABC_Category"] = item_sales["Cum_Percentage"].apply(assign_abc)
     item_sales["Avg_Daily_Sales"] = round(item_sales["Qty_Delta"] / 30, 2)
     
-    # Map updates back into Master Stock Profile
     stock_df.set_index("Item_Code", inplace=True)
     item_sales.set_index("Item_Code", inplace=True)
     
@@ -125,32 +129,32 @@ def recalculate_abc_and_velocity(stock_df, log_df):
     
     return stock_df
 
-# --- SNAPSHOT KPIS SUMMARY ---
-st.markdown("### 📊 Inventory Intelligence KPIs")
-total_skus = len(df_stock) if not df_stock.empty else 0
-
-# Calculate Days of Coverage safety limits
+# --- PROCESSING METRIC METADATA MATHS ---
 if not df_stock.empty:
     df_stock["Current_Stock"] = pd.to_numeric(df_stock["Current_Stock"], errors='coerce').fillna(0)
     df_stock["Avg_Daily_Sales"] = pd.to_numeric(df_stock["Avg_Daily_Sales"], errors='coerce').fillna(0.0)
-    
-    def calc_doc(row):
-        if row["Avg_Daily_Sales"] <= 0: return 999 # Safe/No demand tracking
-        return round(row["Current_Stock"] / row["Avg_Daily_Sales"], 1)
-        
-    df_stock["Days_of_Coverage"] = df_stock.apply(calc_doc, axis=1)
-    
-    stockout_count = len(df_stock[(df_stock["ABC_Category"] == "A") & (df_stock["Days_of_Coverage"] <= 7)])
-    overstock_count = len(df_stock[(df_stock["ABC_Category"] == "C") & (df_stock["Days_of_Coverage"] >= 90)])
-    a_count = len(df_stock[df_stock["ABC_Category"] == "A"])
+    df_stock["Days_of_Coverage"] = df_stock.apply(lambda r: 999 if r["Avg_Daily_Sales"] <= 0 else round(r["Current_Stock"] / r["Avg_Daily_Sales"], 1), axis=1)
+
+# Apply global category slice to calculations
+filt_stock = df_stock.copy()
+if not filt_stock.empty and selected_category_filter != "All Categories":
+    filt_stock = filt_stock[filt_stock["Product_Category"] == selected_category_filter]
+
+# --- SNAPSHOT KPIS SUMMARY ---
+st.markdown(f"### 📊 Inventory Summary: {selected_category_filter}")
+total_skus = len(filt_stock) if not filt_stock.empty else 0
+if not filt_stock.empty:
+    stockout_count = len(filt_stock[(filt_stock["ABC_Category"] == "A") & (filt_stock["Days_of_Coverage"] <= 7)])
+    overstock_count = len(filt_stock[(filt_stock["ABC_Category"] == "C") & (filt_stock["Days_of_Coverage"] >= 90)])
+    a_count = len(filt_stock[filt_stock["ABC_Category"] == "A"])
 else:
     stockout_count = overstock_count = a_count = 0
 
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-kpi1.metric("TOTAL TRACKED SKUS", total_skus)
-kpi2.metric("FAST MOVING SKUS (CLASS A)", a_count)
-kpi3.metric("CRITICAL STOCKOUT RISK (<7 DAYS)", stockout_count, delta="Check Class A", delta_color="inverse")
-kpi4.metric("DEAD STOCK OVERFLOW (>90 DAYS)", overstock_count, delta="Check Class C", delta_color="off")
+kpi1.metric("SKU COUNT IN FILTER", total_skus)
+kpi2.metric("FAST MOVING (CLASS A)", a_count)
+kpi3.metric("STOCKOUT RISK (<7 DAYS)", stockout_count, delta="Check Class A", delta_color="inverse")
+kpi4.metric("DEAD STOCK (>90 DAYS)", overstock_count, delta="Check Class C", delta_color="off")
 
 st.markdown("---")
 
@@ -160,28 +164,25 @@ if not is_admin:
 else:
     col_left, col_right = st.columns(2)
     
-    # --- MODULE A: MATERIAL RECEIPT NOTES (MRN) ---
+    # --- MODULE A: MATERIAL RECEIPT NOTES / INITIAL BALANCES ---
     with col_left:
-        st.markdown("<div class='upload-box'><h5>📥 Process Incoming Stock (MRN File)</h5>", unsafe_allow_html=True)
-        mrn_file = st.file_uploader("Upload MRN Excel (.xlsx)", type=["xlsx"], key="mrn_loader")
+        st.markdown("<div class='upload-box'><h5>📥 Process Incoming Stock (MRN / Opening Balance)</h5>", unsafe_allow_html=True)
+        mrn_file = st.file_uploader("Upload Inbound Excel (.xlsx)", type=["xlsx"], key="mrn_loader")
         if mrn_file:
             df_mrn_raw = pd.read_excel(mrn_file, engine="openpyxl")
             df_mrn_raw.columns = [str(c).strip() for c in df_mrn_raw.columns]
             
-            # Map standard columns automatically based on user image selection
             req_mrn = ["Date", "Document No.", "Item.Code", "Item.Name", "Quantity"]
             if all(c in df_mrn_raw.columns for c in req_mrn):
-                # Unique file reference serving as verification batch ID
                 unique_batch = str(df_mrn_raw["Document No."].iloc[0]).strip()
                 
                 if not df_batches.empty and unique_batch in df_batches["Batch_ID"].values:
-                    st.error(f"🛑 Double-Upload Blocked! Document Reference `{unique_batch}` has already been committed to stock.")
+                    st.error(f"🛑 Double-Upload Blocked! Document Batch `{unique_batch}` has already been processed.")
                 else:
-                    if st.button("⚡ INTEGRATE MRN ENTRY INTO STOCK", use_container_width=True):
+                    if st.button("⚡ INTEGRATE INBOUND LOG INTO STOCK", use_container_width=True):
                         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         new_logs, new_stock_map = [], {}
                         
-                        # Process additions
                         for _, row in df_mrn_raw.iterrows():
                             icode = str(row["Item.Code"]).strip()
                             iname = str(row["Item.Name"]).strip()
@@ -190,25 +191,24 @@ else:
                             new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str])
                             new_stock_map[icode] = {"Item_Name": iname, "Qty": qty}
                         
-                        # Merge updates to the local snapshot
                         updated_stock = df_stock.copy()
                         for code, info in new_stock_map.items():
                             if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                                 updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] += info["Qty"]
                             else:
-                                new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": info["Item_Name"], "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0}])
+                                # New item discovered! Assign to placeholder "Uncategorized" temporarily
+                                new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": "Uncategorized", "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0}])
                                 updated_stock = pd.concat([updated_stock, new_row], ignore_index=True)
                                 
-                        # Save execution logs back to Google Sheets
                         ws_stock.clear()
                         ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
                         ws_log.append_rows(new_logs)
                         ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
                         
-                        st.success(f"MRN Entry `{unique_batch}` processed! Stock profiles synchronized.")
+                        st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
                         st.rerun()
             else:
-                st.error(f"Required headers matching structure missing. File must contain: {req_mrn}")
+                st.error(f"Missing column fields. File must match format: {req_mrn}")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # --- MODULE B: DAILY SALES INGESTION ---
@@ -219,7 +219,6 @@ else:
             df_sales_raw = pd.read_excel(sales_file, engine="openpyxl")
             df_sales_raw.columns = [str(c).strip() for c in df_sales_raw.columns]
             
-            # Map columns dynamically using flexible match lists
             cols = df_sales_raw.columns.tolist()
             def find_col(guesses):
                 for g in guesses:
@@ -236,7 +235,7 @@ else:
             sales_batch_id = str(df_sales_raw[match_vouch].iloc[0]).strip() + "_SALES"
             
             if not df_batches.empty and sales_batch_id in df_batches["Batch_ID"].values:
-                st.error("🛑 Double-Upload Blocked! This specific daily sales file batch has already been deducted from inventory records.")
+                st.error("🛑 Double-Upload Blocked! This daily sales spreadsheet has already been deducted from inventory.")
             else:
                 if st.button("⚡ EXECUTE QUANTITY DEDUCTION & ABC ANALYSIS", use_container_width=True):
                     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -250,44 +249,39 @@ else:
                         new_sales_logs.append([str(row[match_date]), icode, iname, "Sales", -qty, str(row[match_vouch]).strip(), timestamp_str])
                         sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + qty
                         
-                    # Execute inventory dynamic deductions
                     updated_stock = df_stock.copy()
                     for code, qty_sold in sales_deduction_map.items():
                         if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                             updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold
                         else:
-                            new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": "Unknown ERP Ingestion", "Current_Stock": -qty_sold, "ABC_Category": "C", "Avg_Daily_Sales": 0.0}])
+                            target_name = df_sales_raw[df_sales_raw[match_code].astype(str).str.strip() == code][match_name].iloc[0]
+                            new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": target_name, "Product_Category": "Uncategorized", "Current_Stock": -qty_sold, "ABC_Category": "C", "Avg_Daily_Sales": 0.0}])
                             updated_stock = pd.concat([updated_stock, new_row], ignore_index=True)
                     
-                    # Temporarily append logs to feed accurate calculation formulas
                     temp_log_df = pd.concat([df_log, pd.DataFrame(new_sales_logs, columns=df_log.columns)], ignore_index=True)
-                    
-                    # Recompute Pareto metrics dynamically
                     updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
                     
-                    # Back up modified array tables down to cloud architecture sheets
                     ws_stock.clear()
                     ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
                     ws_log.append_rows(new_sales_logs)
                     ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
                     
-                    st.success("Sales ledger deducted! ABC Matrix distributions refreshed.")
+                    st.success("Sales data deducted successfully!")
                     st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
 # --- MASTER INVENTORY DISPATCH REPORT GRID ---
-st.markdown("### 📜 Real-Time Master Stock Ledger & Operational Velocity")
+st.markdown("### 📜 Material Segment Tracking Ledger")
 
-if df_stock.empty:
-    st.info("📌 Stock Ledger Blank. Use Admin interfaces to upload opening warehouse balances or process MRN entries.")
+if filt_stock.empty:
+    st.info("📌 No items found matching the selected material category filter criteria.")
 else:
-    # Color indicators based on ABC priority classification configurations
     def color_abc(val):
         if val == "A": return "🟩 Fast (A)"
         elif val == "B": return "🟨 Medium (B)"
         return "🟥 Slow (C)"
         
-    df_stock_display = df_stock.copy()
+    df_stock_display = filt_stock.copy()
     df_stock_display["ABC_Category"] = df_stock_display["ABC_Category"].apply(color_abc)
     
     st.dataframe(
@@ -296,10 +290,48 @@ else:
         hide_index=True,
         column_config={
             "Item_Code": st.column_config.TextColumn("Item Code"),
-            "Item_Name": st.column_config.TextColumn("Product Specification / Name"),
-            "Current_Stock": st.column_config.NumberColumn("Current On-Hand Balance", format="%d Units"),
-            "ABC_Category": st.column_config.TextColumn("ABC Class (Rolling 30d Volume)"),
-            "Avg_Daily_Sales": st.column_config.NumberColumn("Daily Run-Rate Velocity", format="%.2f Units/Day 📈"),
-            "Days_of_Coverage": st.column_config.NumberColumn("Available Days of Coverage", format="%d Days ⏳")
+            "Item_Name": st.column_config.TextColumn("Product Specification / Description"),
+            "Product_Category": st.column_config.TextColumn("Material Group"),
+            "Current_Stock": st.column_config.NumberColumn("Current Balance", format="%d Units"),
+            "ABC_Category": st.column_config.TextColumn("ABC Class (30d Sales Vol)"),
+            "Avg_Daily_Sales": st.column_config.NumberColumn("Daily Velocity Run-Rate", format="%.2f Units/Day 📈"),
+            "Days_of_Coverage": st.column_config.NumberColumn("Estimated Days of Coverage", format="%d Days ⏳")
         }
     )
+
+# --- NEW: ADMIN SELF-LEARNING CATEGORY CONFIGURATOR ---
+if is_admin and not df_stock.empty:
+    uncat_items = df_stock[df_stock["Product_Category"] == "Uncategorized"]
+    
+    if not uncat_items.empty:
+        st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Assign Categories</b>", unsafe_allow_html=True)
+        st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads. Assign them below to map your workspace permanently.")
+        
+        # Pull distinct existing non-blank groups for effortless assignment dropdown options
+        known_cats = sorted(list(set(df_stock["Product_Category"].unique()) - {"Uncategorized"}))
+        
+        # Pick the first unmapped target row
+        target_row = uncat_items.iloc[0]
+        st.warning(f"**Target Code:** `{target_row['Item_Code']}` | **Specification:** `{target_row['Item_Name']}`")
+        
+        assign_col1, assign_col2 = st.columns(2)
+        with assign_col1:
+            chosen_existing = st.selectbox("Assign to an Existing Material Group:", ["-- Create Completely New --"] + known_cats)
+        with assign_col2:
+            custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Rods, Adhesives, Mirror Sheet):")
+            
+        if st.button("💾 SAVE CATEGORIZATION ASSIGNMENT", use_container_width=True):
+            final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
+            
+            if final_cat_selection in ["-- Create Completely New --", ""]:
+                st.error("Please enter or choose a valid target category label before clicking update.")
+            else:
+                # Update the master stock database
+                df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
+                
+                # Commit down to cloud storage architecture rows
+                ws_stock.clear()
+                ws_stock.append_rows([df_stock.columns.tolist()] + df_stock.fillna("").astype(str).values.tolist())
+                st.success(f"Item `{target_row['Item_Code']}` mapped to `{final_cat_selection}`! Re-indexing terminal framework...")
+                st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
