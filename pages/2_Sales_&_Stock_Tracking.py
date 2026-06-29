@@ -70,13 +70,17 @@ def get_google_client():
     except Exception as e:
         st.error(f"🚨 Authentication Failed: {e}")
         return None
-
+@st.cache_resource(ttl=3600) # Cache the connection for 1 hour
 def get_worksheets():
     gc = get_google_client()
     if not gc: return None, None, None, None
-    sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-    # Index 3: Stock, Index 4: Log, Index 5: Batches, Index 6: Archive
-    return sh.get_worksheet(3), sh.get_worksheet(4), sh.get_worksheet(5), sh.get_worksheet(6)
+    try:
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        # Index 3: Stock, Index 4: Log, Index 5: Batches, Index 6: Archive
+        return sh.get_worksheet(3), sh.get_worksheet(4), sh.get_worksheet(5), sh.get_worksheet(6)
+    except Exception as e:
+        st.error(f"🚨 Sheet Connection Failed: {e}")
+        return None, None, None, None
 
 @st.cache_data(ttl=300)  # Keeps data cached for 5 minutes to ensure high performance
 def load_data_from_sheet(ws_index, fallback_cols):
