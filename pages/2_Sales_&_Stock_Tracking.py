@@ -32,12 +32,34 @@ st.markdown("""
     div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; }
     .upload-box { background-color: #111827; border: 1px dashed #1E293B; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     .admin-box { background-color: #1E1B4B; border: 1px solid #4338CA; border-radius: 8px; padding: 20px; margin-top: 20px; }
+    
+    /* Segment Control Styling */
+    div[data-testid="stRadio"] > label { display: none; }
+    div[data-testid="stRadio"] div[role="radiogroup"] { gap: 10px; }
+    div[data-testid="stRadio"] label[data-baseweb="radio"] {
+        background-color: #111827;
+        border: 1px solid #1E293B;
+        padding: 8px 16px;
+        border-radius: 20px;
+        color: #94A3B8;
+        transition: all 0.2s ease-in-out;
+    }
+    div[data-testid="stRadio"] label[data-baseweb="radio"]:hover {
+        border-color: #0EA5E9;
+        color: #F8FAFC;
+    }
+    div[data-testid="stRadio"] label[data-baseweb="radio"][data-checked="true"] {
+        background-color: #0EA5E9 !important;
+        border-color: #0EA5E9 !important;
+        color: #0B0F19 !important;
+        font-weight: bold;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown("<div class='premium-header'><div class='sabin-logo'>SABIN <span>PLASTIC</span></div><div class='sabin-sub'>Enterprise Warehouse Tracking System</div></div>", unsafe_allow_html=True)
 
-# --- GOOGLE SHEETS CONNECTION INTERFACE ---
+# --- GOOGLE SHEETS CONNECTION INTERFACE WITH TTL CACHING ---
 def get_google_client():
     try:
         raw_json = st.secrets["GCP_JSON"]
@@ -51,33 +73,64 @@ def get_google_client():
 
 def get_worksheets():
     gc = get_google_client()
-    if not gc: return None, None, None
+    if not gc: return None, None, None, None
     sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-    return sh.get_worksheet(3), sh.get_worksheet(4), sh.get_worksheet(5)
+    # Index 3: Stock, Index 4: Log, Index 5: Batches, Index 6: Archive
+    return sh.get_worksheet(3), sh.get_worksheet(4), sh.get_worksheet(5), sh.get_worksheet(6)
 
-def load_data_from_sheet(ws, fallback_cols):
+@st.cache_data(ttl=300)  # Keeps data cached for 5 minutes to ensure high performance
+def load_data_from_sheet(ws_index, fallback_cols):
     try:
+        gc = get_google_client()
+        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        ws = sh.get_worksheet(ws_index)
         data = ws.get_all_records()
         return pd.DataFrame(data) if data else pd.DataFrame(columns=fallback_cols)
     except Exception:
         return pd.DataFrame(columns=fallback_cols)
 
-# --- INGEST SHEETS ---
-ws_stock, ws_log, ws_batches = get_worksheets()
+# --- AUTOMATED DATA ARCHIVING ENGINE ---
+def run_automatic_archiver(ws_log, ws_archive, df_log_current):
+    """Moves transaction rows older than 45 days into the secondary archive sheet tab."""
+    if df_log_current.empty: return
+    
+    df_log_current["Timestamp_Parsed"] = pd.to_datetime(df_log_current["Timestamp"], errors='coerce')
+    cutoff_date = datetime.now() - timedelta(days=45)
+    
+    df_to_keep = df_log_current[df_log_current["Timestamp_Parsed"] >= cutoff_date]
+    df_to_archive = df_log_current[df_log_current["Timestamp_Parsed"] < cutoff_date]
+    
+    if not df_to_archive.empty:
+        df_to_keep = df_to_keep.drop(columns=["Timestamp_Parsed"])
+        df_to_archive = df_to_archive.drop(columns=["Timestamp_Parsed"])
+        
+        # Append old records to archive sheet tab
+        ws_archive.append_rows(df_to_archive.fillna("").astype(str).values.tolist())
+        
+        # Overwrite active tracking sheet tab with clean records
+        ws_log.clear()
+        ws_log.append_rows([df_to_keep.columns.tolist()] + df_to_keep.fillna("").astype(str).values.tolist())
+        st.toast(f"📦 Performance Boost: Moved {len(df_to_archive)} historical logs to data archive tab.", icon="♻️")
 
-df_stock = load_data_from_sheet(ws_stock, ["Item_Code", "Item_Name", "Product_Category", "Current_Stock", "ABC_Category", "Avg_Daily_Sales"])
-df_log = load_data_from_sheet(ws_log, ["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp"])
-df_batches = load_data_from_sheet(ws_batches, ["Batch_ID", "Upload_Type", "Timestamp"])
+# --- INGEST SHEETS (Via Cached Engines) ---
+ws_stock, ws_log, ws_batches, ws_archive = get_worksheets()
+
+df_stock = load_data_from_sheet(3, ["Item_Code", "Item_Name", "Product_Category", "Current_Stock", "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date"])
+df_log = load_data_from_sheet(4, ["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp"])
+df_batches = load_data_from_sheet(5, ["Batch_ID", "Upload_Type", "Timestamp"])
 
 for d in [df_stock, df_log, df_batches]:
     if not d.empty:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
 
+# Make sure Last_Sold_Date field exists gracefully in memory if column was just created empty
+if "Last_Sold_Date" not in df_stock.columns:
+    df_stock["Last_Sold_Date"] = ""
+
 # --- SIDEBAR INTERACTIVE FILTERS ---
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
 if not df_stock.empty:
-    # Filter empty or blank strings out to display nicely
     df_stock["Product_Category"] = df_stock["Product_Category"].replace("", "Uncategorized").fillna("Uncategorized")
     cat_options = ["All Categories"] + sorted(df_stock["Product_Category"].unique().tolist())
 else:
@@ -142,11 +195,18 @@ if not filt_stock.empty and selected_category_filter != "All Categories":
 
 # --- SNAPSHOT KPIS SUMMARY ---
 st.markdown(f"### 📊 Inventory Summary: {selected_category_filter}")
+
+# Instant Option 1 Dead Stock Math (90-day stationary index via text stamps)
+ninety_days_ago_str = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+
 total_skus = len(filt_stock) if not filt_stock.empty else 0
 if not filt_stock.empty:
     stockout_count = len(filt_stock[(filt_stock["ABC_Category"] == "A") & (filt_stock["Days_of_Coverage"] <= 7)])
-    overstock_count = len(filt_stock[(filt_stock["ABC_Category"] == "C") & (filt_stock["Days_of_Coverage"] >= 90)])
     a_count = len(filt_stock[filt_stock["ABC_Category"] == "A"])
+    
+    # Dead stock calculation evaluates optimized timestamp tracker column natively
+    dead_stock_mask = (filt_stock["Last_Sold_Date"] < ninety_days_ago_str) | (filt_stock["Last_Sold_Date"] == "") | (filt_stock["Last_Sold_Date"].isna())
+    overstock_count = len(filt_stock[dead_stock_mask])
 else:
     stockout_count = overstock_count = a_count = 0
 
@@ -154,7 +214,23 @@ kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 kpi1.metric("SKU COUNT IN FILTER", total_skus)
 kpi2.metric("FAST MOVING (CLASS A)", a_count)
 kpi3.metric("STOCKOUT RISK (<7 DAYS)", stockout_count, delta="Check Class A", delta_color="inverse")
-kpi4.metric("DEAD STOCK (>90 DAYS)", overstock_count, delta="Check Class C", delta_color="off")
+kpi4.metric("DEAD STOCK (>90 DAYS NO SALE)", overstock_count, delta="Check Inactive", delta_color="off")
+
+# --- INTERACTIVE DRILL-DOWN SELECTOR PANEL ---
+st.markdown(" ")
+segment_view = st.radio(
+    "Filter Grid Segment View:",
+    options=["📋 Show All Rows", "🟩 Fast Moving Only (Class A)", "🚨 High Risk Only (<7 Days Coverage)", "📉 Dead Stock Only (>90 Days Inactive)"],
+    horizontal=True
+)
+
+# Apply drill down slicing rules using Option 1 optimized logic
+if segment_view == "🟩 Fast Moving Only (Class A)":
+    filt_stock = filt_stock[filt_stock["ABC_Category"] == "A"]
+elif segment_view == "🚨 High Risk Only (<7 Days Coverage)":
+    filt_stock = filt_stock[(filt_stock["ABC_Category"] == "A") & (filt_stock["Days_of_Coverage"] <= 7)]
+elif segment_view == "📉 Dead Stock Only (>90 Days Inactive)":
+    filt_stock = filt_stock[(filt_stock["Last_Sold_Date"] < ninety_days_ago_str) | (filt_stock["Last_Sold_Date"] == "") | (filt_stock["Last_Sold_Date"].isna())]
 
 st.markdown("---")
 
@@ -180,6 +256,7 @@ else:
                     st.error(f"🛑 Double-Upload Blocked! Document Batch `{unique_batch}` has already been processed.")
                 else:
                     if st.button("⚡ INTEGRATE INBOUND LOG INTO STOCK", use_container_width=True):
+                        st.cache_data.clear() # Clear cache to prepare fresh load
                         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         new_logs, new_stock_map = [], {}
                         
@@ -196,14 +273,17 @@ else:
                             if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                                 updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] += info["Qty"]
                             else:
-                                # New item discovered! Assign to placeholder "Uncategorized" temporarily
-                                new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": "Uncategorized", "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0}])
+                                new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": "Uncategorized", "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": ""}])
                                 updated_stock = pd.concat([updated_stock, new_row], ignore_index=True)
                                 
                         ws_stock.clear()
                         ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
                         ws_log.append_rows(new_logs)
                         ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
+                        
+                        # Run archiver pass dynamically to clean up any structural lag 
+                        full_current_logs = pd.concat([df_log, pd.DataFrame(new_logs, columns=df_log.columns)], ignore_index=True)
+                        run_automatic_archiver(ws_log, ws_archive, full_current_logs)
                         
                         st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
                         st.rerun()
@@ -238,6 +318,8 @@ else:
                 st.error("🛑 Double-Upload Blocked! This daily sales spreadsheet has already been deducted from inventory.")
             else:
                 if st.button("⚡ EXECUTE QUANTITY DEDUCTION & ABC ANALYSIS", use_container_width=True):
+                    st.cache_data.clear() # Clear cache to prepare fresh load
+                    today_stamp = datetime.now().strftime("%Y-%m-%d")
                     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     new_sales_logs, sales_deduction_map = [], {}
                     
@@ -253,9 +335,11 @@ else:
                     for code, qty_sold in sales_deduction_map.items():
                         if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                             updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold
+                            # Option 1 Update: Write today's date into the Last Sold tracking column
+                            updated_stock.loc[updated_stock["Item_Code"] == code, "Last_Sold_Date"] = today_stamp
                         else:
                             target_name = df_sales_raw[df_sales_raw[match_code].astype(str).str.strip() == code][match_name].iloc[0]
-                            new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": target_name, "Product_Category": "Uncategorized", "Current_Stock": -qty_sold, "ABC_Category": "C", "Avg_Daily_Sales": 0.0}])
+                            new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": target_name, "Product_Category": "Uncategorized", "Current_Stock": -qty_sold, "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": today_stamp}])
                             updated_stock = pd.concat([updated_stock, new_row], ignore_index=True)
                     
                     temp_log_df = pd.concat([df_log, pd.DataFrame(new_sales_logs, columns=df_log.columns)], ignore_index=True)
@@ -266,7 +350,10 @@ else:
                     ws_log.append_rows(new_sales_logs)
                     ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
                     
-                    st.success("Sales data deducted successfully!")
+                    # Performance Guard: Clean up active logs by shifting older history to archive tab
+                    run_automatic_archiver(ws_log, ws_archive, temp_log_df)
+                    
+                    st.success("Sales data successfully deducted and metrics optimized!")
                     st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -274,7 +361,7 @@ else:
 st.markdown("### 📜 Material Segment Tracking Ledger")
 
 if filt_stock.empty:
-    st.info("📌 No items found matching the selected material category filter criteria.")
+    st.info("📌 No items found matching the selected segment filter criteria.")
 else:
     def color_abc(val):
         if val == "A": return "🟩 Fast (A)"
@@ -283,6 +370,7 @@ else:
         
     df_stock_display = filt_stock.copy()
     df_stock_display["ABC_Category"] = df_stock_display["ABC_Category"].apply(color_abc)
+    df_stock_display["Last_Sold_Date"] = df_stock_display["Last_Sold_Date"].replace("", "Never Tracked").fillna("Never Tracked")
     
     st.dataframe(
         df_stock_display.sort_values(by="Current_Stock", ascending=True),
@@ -295,11 +383,12 @@ else:
             "Current_Stock": st.column_config.NumberColumn("Current Balance", format="%d Units"),
             "ABC_Category": st.column_config.TextColumn("ABC Class (30d Sales Vol)"),
             "Avg_Daily_Sales": st.column_config.NumberColumn("Daily Velocity Run-Rate", format="%.2f Units/Day 📈"),
-            "Days_of_Coverage": st.column_config.NumberColumn("Estimated Days of Coverage", format="%d Days ⏳")
+            "Days_of_Coverage": st.column_config.NumberColumn("Estimated Days of Coverage", format="%d Days ⏳"),
+            "Last_Sold_Date": st.column_config.TextColumn("Last Dispatched Activity Date")
         }
     )
 
-# --- NEW: ADMIN SELF-LEARNING CATEGORY CONFIGURATOR ---
+# --- ADMIN SELF-LEARNING CATEGORY CONFIGURATOR ---
 if is_admin and not df_stock.empty:
     uncat_items = df_stock[df_stock["Product_Category"] == "Uncategorized"]
     
@@ -307,10 +396,7 @@ if is_admin and not df_stock.empty:
         st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Assign Categories</b>", unsafe_allow_html=True)
         st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads. Assign them below to map your workspace permanently.")
         
-        # Pull distinct existing non-blank groups for effortless assignment dropdown options
         known_cats = sorted(list(set(df_stock["Product_Category"].unique()) - {"Uncategorized"}))
-        
-        # Pick the first unmapped target row
         target_row = uncat_items.iloc[0]
         st.warning(f"**Target Code:** `{target_row['Item_Code']}` | **Specification:** `{target_row['Item_Name']}`")
         
@@ -321,15 +407,13 @@ if is_admin and not df_stock.empty:
             custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Rods, Adhesives, Mirror Sheet):")
             
         if st.button("💾 SAVE CATEGORIZATION ASSIGNMENT", use_container_width=True):
+            st.cache_data.clear()
             final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
             
             if final_cat_selection in ["-- Create Completely New --", ""]:
                 st.error("Please enter or choose a valid target category label before clicking update.")
             else:
-                # Update the master stock database
                 df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
-                
-                # Commit down to cloud storage architecture rows
                 ws_stock.clear()
                 ws_stock.append_rows([df_stock.columns.tolist()] + df_stock.fillna("").astype(str).values.tolist())
                 st.success(f"Item `{target_row['Item_Code']}` mapped to `{final_cat_selection}`! Re-indexing terminal framework...")
