@@ -70,7 +70,8 @@ def get_google_client():
     except Exception as e:
         st.error(f"🚨 Authentication Failed: {e}")
         return None
-@st.cache_resource(ttl=3600) # Cache the connection for 1 hour
+
+@st.cache_resource(ttl=3600) # Cache the connection for 1 hour to prevent 429 quota errors
 def get_worksheets():
     gc = get_google_client()
     if not gc: return None, None, None, None
@@ -336,29 +337,41 @@ else:
                         sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + qty
                         
                     updated_stock = df_stock.copy()
+                    ignored_items_count = 0
+                    filtered_sales_logs = []
+                    
+                    # Core Validation Loop: Map deductions ONLY if code exists in Master Stock (MRN)
                     for code, qty_sold in sales_deduction_map.items():
                         if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                             updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold
-                            # Option 1 Update: Write today's date into the Last Sold tracking column
                             updated_stock.loc[updated_stock["Item_Code"] == code, "Last_Sold_Date"] = today_stamp
                         else:
-                            target_name = df_sales_raw[df_sales_raw[match_code].astype(str).str.strip() == code][match_name].iloc[0]
-                            new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": target_name, "Product_Category": "Uncategorized", "Current_Stock": -qty_sold, "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": today_stamp}])
-                            updated_stock = pd.concat([updated_stock, new_row], ignore_index=True)
+                            ignored_items_count += 1
+                            
+                    # Clean up rows meant for the log to match only permitted items
+                    for log_entry in new_sales_logs:
+                        if log_entry[1] in updated_stock["Item_Code"].values:
+                            filtered_sales_logs.append(log_entry)
                     
-                    temp_log_df = pd.concat([df_log, pd.DataFrame(new_sales_logs, columns=df_log.columns)], ignore_index=True)
-                    updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
-                    
-                    ws_stock.clear()
-                    ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
-                    ws_log.append_rows(new_sales_logs)
-                    ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
-                    
-                    # Performance Guard: Clean up active logs by shifting older history to archive tab
-                    run_automatic_archiver(ws_log, ws_archive, temp_log_df)
-                    
-                    st.success("Sales data successfully deducted and metrics optimized!")
-                    st.rerun()
+                    if ignored_items_count > 0:
+                        st.warning(f"⚠️ Ignored {ignored_items_count} item(s) from the sales file because they do not exist in your Master Stock list.")
+                        
+                    if filtered_sales_logs:
+                        temp_log_df = pd.concat([df_log, pd.DataFrame(filtered_sales_logs, columns=df_log.columns)], ignore_index=True)
+                        updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
+                        
+                        ws_stock.clear()
+                        ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
+                        ws_log.append_rows(filtered_sales_logs)
+                        ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
+                        
+                        # Performance Guard: Clean up active logs by shifting older history to archive tab
+                        run_automatic_archiver(ws_log, ws_archive, temp_log_df)
+                        
+                        st.success("Sales data successfully deducted and metrics optimized!")
+                        st.rerun()
+                    else:
+                        st.error("❌ No items from this sales upload matched your Master Stock list. Zero adjustments recorded.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 # --- MASTER INVENTORY DISPATCH REPORT GRID ---
