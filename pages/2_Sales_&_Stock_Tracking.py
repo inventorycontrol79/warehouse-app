@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import gspread
+import io  # Added for seamless memory-buffered file creation
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 
@@ -71,19 +72,18 @@ def get_google_client():
         st.error(f"🚨 Authentication Failed: {e}")
         return None
 
-@st.cache_resource(ttl=3600) # Cache the connection for 1 hour to prevent 429 quota errors
+@st.cache_resource(ttl=3600)
 def get_worksheets():
     gc = get_google_client()
     if not gc: return None, None, None, None
     try:
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        # Index 3: Stock, Index 4: Log, Index 5: Batches, Index 6: Archive
         return sh.get_worksheet(3), sh.get_worksheet(4), sh.get_worksheet(5), sh.get_worksheet(6)
     except Exception as e:
         st.error(f"🚨 Sheet Connection Failed: {e}")
         return None, None, None, None
 
-@st.cache_data(ttl=300)  # Keeps data cached for 5 minutes to ensure high performance
+@st.cache_data(ttl=300)
 def load_data_from_sheet(ws_index, fallback_cols):
     try:
         gc = get_google_client()
@@ -96,9 +96,7 @@ def load_data_from_sheet(ws_index, fallback_cols):
 
 # --- AUTOMATED DATA ARCHIVING ENGINE ---
 def run_automatic_archiver(ws_log, ws_archive, df_log_current):
-    """Moves transaction rows older than 45 days into the secondary archive sheet tab."""
     if df_log_current.empty: return
-    
     df_log_current["Timestamp_Parsed"] = pd.to_datetime(df_log_current["Timestamp"], errors='coerce')
     cutoff_date = datetime.now() - timedelta(days=45)
     
@@ -108,16 +106,12 @@ def run_automatic_archiver(ws_log, ws_archive, df_log_current):
     if not df_to_archive.empty:
         df_to_keep = df_to_keep.drop(columns=["Timestamp_Parsed"])
         df_to_archive = df_to_archive.drop(columns=["Timestamp_Parsed"])
-        
-        # Append old records to archive sheet tab
         ws_archive.append_rows(df_to_archive.fillna("").astype(str).values.tolist())
-        
-        # Overwrite active tracking sheet tab with clean records
         ws_log.clear()
         ws_log.append_rows([df_to_keep.columns.tolist()] + df_to_keep.fillna("").astype(str).values.tolist())
         st.toast(f"📦 Performance Boost: Moved {len(df_to_archive)} historical logs to data archive tab.", icon="♻️")
 
-# --- INGEST SHEETS (Via Cached Engines) ---
+# --- INGEST SHEETS ---
 ws_stock, ws_log, ws_batches, ws_archive = get_worksheets()
 
 df_stock = load_data_from_sheet(3, ["Item_Code", "Item_Name", "Product_Category", "Current_Stock", "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date"])
@@ -129,7 +123,6 @@ for d in [df_stock, df_log, df_batches]:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
 
-# Make sure Last_Sold_Date field exists gracefully in memory if column was just created empty
 if "Last_Sold_Date" not in df_stock.columns:
     df_stock["Last_Sold_Date"] = ""
 
@@ -144,9 +137,7 @@ selected_category_filter = st.sidebar.selectbox("Filter by Material Group", cat_
 
 # --- RECALCULATE ABC CATEGORIES & RUNNING STATS ---
 def recalculate_abc_and_velocity(stock_df, log_df):
-    if log_df.empty or stock_df.empty:
-        return stock_df
-        
+    if log_df.empty or stock_df.empty: return stock_df
     stock_df["Current_Stock"] = pd.to_numeric(stock_df["Current_Stock"], errors='coerce').fillna(0)
     log_df["Qty_Delta"] = pd.to_numeric(log_df["Qty_Delta"], errors='coerce').fillna(0)
     log_df["Timestamp"] = pd.to_datetime(log_df["Timestamp"], errors='coerce')
@@ -164,52 +155,41 @@ def recalculate_abc_and_velocity(stock_df, log_df):
     item_sales = item_sales.sort_values(by="Qty_Delta", ascending=False)
     
     total_volume = item_sales["Qty_Delta"].sum()
-    if total_volume > 0:
-        item_sales["Cum_Percentage"] = item_sales["Qty_Delta"].cumsum() / total_volume
-    else:
-        item_sales["Cum_Percentage"] = 1.0
+    item_sales["Cum_Percentage"] = item_sales["Qty_Delta"].cumsum() / total_volume if total_volume > 0 else 1.0
         
     def assign_abc(pct):
         if pct <= 0.80: return "A"
         elif pct <= 0.95: return "B"
-        else: return "C"
+        return "C"
         
     item_sales["ABC_Category"] = item_sales["Cum_Percentage"].apply(assign_abc)
     item_sales["Avg_Daily_Sales"] = round(item_sales["Qty_Delta"] / 30, 2)
     
     stock_df.set_index("Item_Code", inplace=True)
     item_sales.set_index("Item_Code", inplace=True)
-    
     stock_df.update(item_sales[["ABC_Category", "Avg_Daily_Sales"]])
     stock_df.reset_index(inplace=True)
     stock_df["ABC_Category"] = stock_df["ABC_Category"].fillna("C")
     stock_df["Avg_Daily_Sales"] = pd.to_numeric(stock_df["Avg_Daily_Sales"], errors='coerce').fillna(0.0)
-    
     return stock_df
 
-# --- PROCESSING METRIC METADATA MATHS ---
 if not df_stock.empty:
     df_stock["Current_Stock"] = pd.to_numeric(df_stock["Current_Stock"], errors='coerce').fillna(0)
     df_stock["Avg_Daily_Sales"] = pd.to_numeric(df_stock["Avg_Daily_Sales"], errors='coerce').fillna(0.0)
     df_stock["Days_of_Coverage"] = df_stock.apply(lambda r: 999 if r["Avg_Daily_Sales"] <= 0 else round(r["Current_Stock"] / r["Avg_Daily_Sales"], 1), axis=1)
 
-# Apply global category slice to calculations
 filt_stock = df_stock.copy()
 if not filt_stock.empty and selected_category_filter != "All Categories":
     filt_stock = filt_stock[filt_stock["Product_Category"] == selected_category_filter]
 
 # --- SNAPSHOT KPIS SUMMARY ---
 st.markdown(f"### 📊 Inventory Summary: {selected_category_filter}")
-
-# Instant Option 1 Dead Stock Math (90-day stationary index via text stamps)
 ninety_days_ago_str = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
 
 total_skus = len(filt_stock) if not filt_stock.empty else 0
 if not filt_stock.empty:
     stockout_count = len(filt_stock[(filt_stock["ABC_Category"] == "A") & (filt_stock["Days_of_Coverage"] <= 7)])
     a_count = len(filt_stock[filt_stock["ABC_Category"] == "A"])
-    
-    # Dead stock calculation evaluates optimized timestamp tracker column natively
     dead_stock_mask = (filt_stock["Last_Sold_Date"] < ninety_days_ago_str) | (filt_stock["Last_Sold_Date"] == "") | (filt_stock["Last_Sold_Date"].isna())
     overstock_count = len(filt_stock[dead_stock_mask])
 else:
@@ -221,7 +201,6 @@ kpi2.metric("FAST MOVING (CLASS A)", a_count)
 kpi3.metric("STOCKOUT RISK (<7 DAYS)", stockout_count, delta="Check Class A", delta_color="inverse")
 kpi4.metric("DEAD STOCK (>90 DAYS NO SALE)", overstock_count, delta="Check Inactive", delta_color="off")
 
-# --- INTERACTIVE DRILL-DOWN SELECTOR PANEL ---
 st.markdown(" ")
 segment_view = st.radio(
     "Filter Grid Segment View:",
@@ -229,7 +208,6 @@ segment_view = st.radio(
     horizontal=True
 )
 
-# Apply drill down slicing rules using Option 1 optimized logic
 if segment_view == "🟩 Fast Moving Only (Class A)":
     filt_stock = filt_stock[filt_stock["ABC_Category"] == "A"]
 elif segment_view == "🚨 High Risk Only (<7 Days Coverage)":
@@ -245,31 +223,26 @@ if not is_admin:
 else:
     col_left, col_right = st.columns(2)
     
-    # --- MODULE A: MATERIAL RECEIPT NOTES / INITIAL BALANCES ---
     with col_left:
         st.markdown("<div class='upload-box'><h5>📥 Process Incoming Stock (MRN / Opening Balance)</h5>", unsafe_allow_html=True)
         mrn_file = st.file_uploader("Upload Inbound Excel (.xlsx)", type=["xlsx"], key="mrn_loader")
         if mrn_file:
             df_mrn_raw = pd.read_excel(mrn_file, engine="openpyxl")
             df_mrn_raw.columns = [str(c).strip() for c in df_mrn_raw.columns]
-            
             req_mrn = ["Date", "Document No.", "Item.Code", "Item.Name", "Quantity"]
             if all(c in df_mrn_raw.columns for c in req_mrn):
                 unique_batch = str(df_mrn_raw["Document No."].iloc[0]).strip()
-                
                 if not df_batches.empty and unique_batch in df_batches["Batch_ID"].values:
                     st.error(f"🛑 Double-Upload Blocked! Document Batch `{unique_batch}` has already been processed.")
                 else:
                     if st.button("⚡ INTEGRATE INBOUND LOG INTO STOCK", use_container_width=True):
-                        st.cache_data.clear() # Clear cache to prepare fresh load
+                        st.cache_data.clear()
                         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         new_logs, new_stock_map = [], {}
-                        
                         for _, row in df_mrn_raw.iterrows():
                             icode = str(row["Item.Code"]).strip()
                             iname = str(row["Item.Name"]).strip()
                             qty = float(row["Quantity"])
-                            
                             new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str])
                             new_stock_map[icode] = {"Item_Name": iname, "Qty": qty}
                         
@@ -285,25 +258,20 @@ else:
                         ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
                         ws_log.append_rows(new_logs)
                         ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
-                        
-                        # Run archiver pass dynamically to clean up any structural lag 
                         full_current_logs = pd.concat([df_log, pd.DataFrame(new_logs, columns=df_log.columns)], ignore_index=True)
                         run_automatic_archiver(ws_log, ws_archive, full_current_logs)
-                        
                         st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
                         st.rerun()
             else:
                 st.error(f"Missing column fields. File must match format: {req_mrn}")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- MODULE B: DAILY SALES INGESTION ---
     with col_right:
         st.markdown("<div class='upload-box'><h5>📤 Process Outgoing Sales (Daily Ledger)</h5>", unsafe_allow_html=True)
         sales_file = st.file_uploader("Upload Yesterday's Sales Sheet (.xlsx)", type=["xlsx"], key="sales_loader")
         if sales_file:
             df_sales_raw = pd.read_excel(sales_file, engine="openpyxl")
             df_sales_raw.columns = [str(c).strip() for c in df_sales_raw.columns]
-            
             cols = df_sales_raw.columns.tolist()
             def find_col(guesses):
                 for g in guesses:
@@ -318,12 +286,11 @@ else:
             match_qty = st.selectbox("Match Sales [Quantity]:", cols, index=cols.index(find_col(["quantity", "qty", "sold"])))
             
             sales_batch_id = str(df_sales_raw[match_vouch].iloc[0]).strip() + "_SALES"
-            
             if not df_batches.empty and sales_batch_id in df_batches["Batch_ID"].values:
                 st.error("🛑 Double-Upload Blocked! This daily sales spreadsheet has already been deducted from inventory.")
             else:
                 if st.button("⚡ EXECUTE QUANTITY DEDUCTION & ABC ANALYSIS", use_container_width=True):
-                    st.cache_data.clear() # Clear cache to prepare fresh load
+                    st.cache_data.clear()
                     today_stamp = datetime.now().strftime("%Y-%m-%d")
                     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     new_sales_logs, sales_deduction_map = [], {}
@@ -332,7 +299,6 @@ else:
                         icode = str(row[match_code]).strip()
                         iname = str(row[match_name]).strip()
                         qty = float(row[match_qty])
-                        
                         new_sales_logs.append([str(row[match_date]), icode, iname, "Sales", -qty, str(row[match_vouch]).strip(), timestamp_str])
                         sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + qty
                         
@@ -340,7 +306,6 @@ else:
                     ignored_items_count = 0
                     filtered_sales_logs = []
                     
-                    # Core Validation Loop: Map deductions ONLY if code exists in Master Stock (MRN)
                     for code, qty_sold in sales_deduction_map.items():
                         if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                             updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold
@@ -348,7 +313,6 @@ else:
                         else:
                             ignored_items_count += 1
                             
-                    # Clean up rows meant for the log to match only permitted items
                     for log_entry in new_sales_logs:
                         if log_entry[1] in updated_stock["Item_Code"].values:
                             filtered_sales_logs.append(log_entry)
@@ -359,15 +323,11 @@ else:
                     if filtered_sales_logs:
                         temp_log_df = pd.concat([df_log, pd.DataFrame(filtered_sales_logs, columns=df_log.columns)], ignore_index=True)
                         updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
-                        
                         ws_stock.clear()
                         ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
                         ws_log.append_rows(filtered_sales_logs)
                         ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
-                        
-                        # Performance Guard: Clean up active logs by shifting older history to archive tab
                         run_automatic_archiver(ws_log, ws_archive, temp_log_df)
-                        
                         st.success("Sales data successfully deducted and metrics optimized!")
                         st.rerun()
                     else:
@@ -375,7 +335,110 @@ else:
         st.markdown("</div>", unsafe_allow_html=True)
 
 # --- MASTER INVENTORY DISPATCH REPORT GRID ---
-st.markdown("### 📜 Material Segment Tracking Ledger")
+grid_header_col, download_btn_col = st.columns([3, 1])
+
+with grid_header_col:
+    st.markdown("### 📜 Material Segment Tracking Ledger")
+
+# --- PREMIUM EXCEL GENERATION ENGINE ---
+def generate_professional_excel(dataframe, segment_name):
+    output = io.BytesIO()
+    
+    # Clean and rename dataframe for customer/executive facing sheets
+    clean_df = dataframe.copy()
+    abc_map = {"A": "🟩 Class A (Fast)", "B": "🟨 Class B (Medium)", "C": "🟥 Class C (Slow)"}
+    clean_df["ABC_Category"] = clean_df["ABC_Category"].map(abc_map).fillna("Unclassified")
+    clean_df["Last_Sold_Date"] = clean_df["Last_Sold_Date"].replace("", "Never Tracked").fillna("Never Tracked")
+    
+    clean_df = clean_df.rename(columns={
+        "Item_Code": "Item Code",
+        "Item_Name": "Product Specification / Description",
+        "Product_Category": "Material Group",
+        "Current_Stock": "Current Balance",
+        "ABC_Category": "Velocity Classification",
+        "Avg_Daily_Sales": "Daily Run-Rate Run Velocity",
+        "Days_of_Coverage": "Estimated Days of Coverage",
+        "Last_Sold_Date": "Last Active Dispatch Date"
+    })
+    
+    # Sort logically by stock levels
+    clean_df = clean_df.sort_values(by="Current Balance", ascending=True)
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        clean_df.to_excel(writer, sheet_name="Inventory Report", index=False, startrow=4)
+        
+        workbook = writer.book
+        worksheet = writer.sheets["Inventory Report"]
+        worksheet.views.sheetView[0].showGridLines = True # Ensure gridlines stay active
+        
+        # Color Palette Definition (Classic Executive Deep Navy)
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        
+        font_family = "Segoe UI"
+        navy_header_fill = PatternFill(start_color="1B2A4A", end_color="1B2A4A", fill_type="solid")
+        meta_fill = PatternFill(start_color="F4F6F9", end_color="F4F6F9", fill_type="solid")
+        
+        font_title = Font(name=font_family, size=16, bold=True, color="1B2A4A")
+        font_subtitle = Font(name=font_family, size=10, italic=True, color="555555")
+        font_headers = Font(name=font_family, size=11, bold=True, color="FFFFFF")
+        font_data = Font(name=font_family, size=10)
+        
+        thin_side = Side(border_style="thin", color="D1D5DB")
+        data_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+        
+        # Write Report Metadata Titles
+        worksheet["A1"] = "SABIN PLASTIC // ENTERPRISE WAREHOUSE LEDGER"
+        worksheet["A1"].font = font_title
+        worksheet["A2"] = f"Material Segment Slice: {segment_name} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        worksheet["A2"].font = font_subtitle
+        
+        # Style Header Row
+        header_row = 5
+        worksheet.row_dimensions[header_row].height = 26
+        for col_idx in range(1, len(clean_df.columns) + 1):
+            cell = worksheet.cell(row=header_row, column=col_idx)
+            cell.fill = navy_header_fill
+            cell.font = font_headers
+            cell.alignment = Alignment(horizontal="center" if col_idx != 2 else "left", vertical="center")
+            cell.border = data_border
+            
+        # Style Data Rows
+        for row_idx in range(6, len(clean_df) + 6):
+            worksheet.row_dimensions[row_idx].height = 20
+            for col_idx in range(1, len(clean_df.columns) + 1):
+                cell = worksheet.cell(row=row_idx, column=col_idx)
+                cell.font = font_data
+                cell.border = data_border
+                
+                # Check for standard data type column alignments
+                if col_idx in [4, 6, 7]:  # Numbers columns
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                    if col_idx == 4: cell.number_format = '#,##0'
+                    if col_idx == 6: cell.number_format = '#,##0.00'
+                    if col_idx == 7: cell.number_format = '#,##0'
+                elif col_idx in [1, 3, 5, 8]:  # Codes and category tags
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                else:
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+
+        # Auto-adjust column layouts to avoid clip truncation strings
+        for col in worksheet.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            col_letter = col[0].column_letter
+            worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+            
+    return output.getvalue()
+
+with download_btn_col:
+    if not filt_stock.empty:
+        excel_data = generate_professional_excel(filt_stock, segment_view)
+        st.download_button(
+            label="📥 Download Excel Ledger",
+            data=excel_data,
+            file_name=f"Sabin_Inventory_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
 
 if filt_stock.empty:
     st.info("📌 No items found matching the selected segment filter criteria.")
@@ -408,7 +471,6 @@ else:
 # --- ADMIN SELF-LEARNING CATEGORY CONFIGURATOR ---
 if is_admin and not df_stock.empty:
     uncat_items = df_stock[df_stock["Product_Category"] == "Uncategorized"]
-    
     if not uncat_items.empty:
         st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Assign Categories</b>", unsafe_allow_html=True)
         st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads. Assign them below to map your workspace permanently.")
