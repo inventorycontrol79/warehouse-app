@@ -221,12 +221,20 @@ segment_view = st.radio(
     horizontal=True
 )
 
+# 1. First, let the Radio Segment Button cut down the data frame
 if segment_view == "🟩 Fast Moving Only (Class A)":
     filt_stock = filt_stock[filt_stock["ABC_Category"] == "A"]
 elif segment_view == "🚨 High Risk Only (<7 Days Coverage)":
     filt_stock = filt_stock[(filt_stock["ABC_Category"] == "A") & (filt_stock["Days_of_Coverage"] <= 7)]
 elif segment_view == "📉 Dead Stock Only (>90 Days Inactive)":
     filt_stock = filt_stock[(filt_stock["Last_Sold_Date"] < ninety_days_ago_str) | (filt_stock["Last_Sold_Date"] == "") | (filt_stock["Last_Sold_Date"].isna())]
+
+# 2. CRITICAL FIX: Apply the text search LAST so it filters whatever is left on screen!
+if item_search:
+    filt_stock = filt_stock[
+        filt_stock["Item_Code"].astype(str).str.contains(item_search, case=False, na=False) | 
+        filt_stock["Item_Name"].astype(str).str.contains(item_search, case=False, na=False)
+    ]
 
 st.markdown("---")
 
