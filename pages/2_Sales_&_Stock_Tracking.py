@@ -134,7 +134,20 @@ if not df_stock.empty:
 else:
     cat_options = ["All Categories"]
 selected_category_filter = st.sidebar.selectbox("Filter by Material Group", cat_options)
+# --- NEW: SEARCH ELEMENT FOR MATERIAL SIZES / CODES ---
+item_search = st.sidebar.text_input("🔍 Search Item Code / Description")
 
+# Apply sidebar category filters first
+filt_stock = df_stock.copy()
+if not filt_stock.empty and selected_category_filter != "All Categories":
+    filt_stock = filt_stock[filt_stock["Product_Category"] == selected_category_filter]
+
+# Apply the text search filter dynamically across multiple columns
+if item_search:
+    filt_stock = filt_stock[
+        filt_stock["Item_Code"].str.contains(item_search, case=False, na=False) | 
+        filt_stock["Item_Name"].str.contains(item_search, case=False, na=False)
+    ]
 # --- RECALCULATE ABC CATEGORIES & RUNNING STATS ---
 def recalculate_abc_and_velocity(stock_df, log_df):
     if log_df.empty or stock_df.empty: return stock_df
