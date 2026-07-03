@@ -229,33 +229,26 @@ st.markdown("---")
 # 5. WORKSPACE PORTAL C: THE FORESIGHT DEMAND ADVISOR
 # =====================================================
 st.header("🧠 Intelligent Supply Redistribution Advisor")
-st.markdown("Evaluates global velocity against regional stock distributions to flag required transfers.")
-
-if df_stock.empty:
-    st.info("ℹ️ Master warehouse balance tables are currently uninitialized or processing stock sync values.")
-else:
-    for k in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]:
-        if k not in df_stock.columns:
-            df_stock[k] = 0
-            
-    st.subheader("📊 Dynamic Global Stock Allocation Matrix")
-    # Matrix display prioritizing the new warehouse breakdown
-    display_matrix = df_stock[["Item_Code", "Item_Name", "Current_Stock", 
-                               "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]]
-    st.dataframe(display_matrix, use_container_width=True, hide_index=True)
-    
-    st.markdown("### 💡 Recommended Optimization Routes")
+st.markdown("### 💡 Recommended Optimization Routes")
     
     advisor_routes_found = False
     priority_destinations = ["Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi"]
     
+    # --- SAFETY VALVE: Helper to clean numbers ---
+    def clean_float(value):
+        try:
+            return float(value) if str(value).strip() != "" else 0.0
+        except (ValueError, TypeError):
+            return 0.0
+    # ---------------------------------------------
+    
     for idx, row in df_stock.iterrows():
         sku = row["Item_Code"]
         name = row["Item_Name"]
-        global_velocity = float(row["Avg_Daily_Sales"]) if row["Avg_Daily_Sales"] else 0.5
+        global_velocity = clean_float(row["Avg_Daily_Sales"])
         
         for dest_wh in priority_destinations:
-            dest_qty = float(row[dest_wh])
+            dest_qty = clean_float(row[dest_wh]) # Uses our safety valve
             days_of_coverage = dest_qty / global_velocity if global_velocity > 0 else 999
             
             if days_of_coverage <= 7.0:
@@ -263,7 +256,7 @@ else:
                     if source_wh == dest_wh:
                         continue
                         
-                    src_qty = float(row[source_wh])
+                    src_qty = clean_float(row[source_wh]) # Uses our safety valve
                     src_coverage = src_qty / global_velocity if global_velocity > 0 else 0
                     
                     if src_coverage > 25.0:
