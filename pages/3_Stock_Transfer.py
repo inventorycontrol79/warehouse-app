@@ -4,6 +4,7 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+import numpy as np
 
 # =====================================================
 # 1. PAGE SETUP & SECURITY ASSIGNMENT
@@ -28,7 +29,7 @@ st.markdown("""
     /* Main App Background */
     .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
     
-    /* 🔥 UPDATED: Force Entire Sidebar Content & Navigation Links to White */
+    /* Force Entire Sidebar Content & Navigation Links to White */
     [data-testid="stSidebar"] div, 
     [data-testid="stSidebar"] p, 
     [data-testid="stSidebar"] label, 
@@ -137,14 +138,22 @@ if is_admin:
                         if col not in df_init.columns:
                             df_init[col] = "" 
                     
-                    # 🔥 FIXED: Run fillna("") BEFORE string casting to protect JSON compilation from NaN/Float errors
-                    df_to_upload = df_init[TARGET_COLUMNS].fillna("")
-                    clean_rows = df_to_upload.astype(str).values.tolist()
+                    # Target selection
+                    df_to_upload = df_init[TARGET_COLUMNS].copy()
+                    
+                    # 🔥 ULTRA-HARDENED SANITIZER FUNCTION: Converts nan/inf/NaT data types explicitly into valid JSON strings
+                    def serialize_cell(val):
+                        if pd.isna(val) or val is None or str(val).strip().lower() in ['nan', 'nat', 'inf', '-inf']:
+                            return ""
+                        return str(val).strip()
+                    
+                    # Apply cell-by-cell sanitation structure mapping across the dataframe
+                    clean_rows = df_to_upload.map(serialize_cell).values.tolist()
                     
                     ws_to_init.clear()
-                    ws_to_init.append_rows([df_to_upload.columns.tolist()] + clean_rows)
+                    ws_to_init.append_rows([TARGET_COLUMNS] + clean_rows)
                     
-                    st.success("🎉 Master database structure initialized successfully with zero empty-cell errors!")
+                    st.success("🎉 Master database structure initialized successfully with zero compliance errors!")
                     st.cache_data.clear()
                     st.rerun()
                 else:
