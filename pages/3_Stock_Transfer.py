@@ -21,7 +21,6 @@ if url_params.get("key", "") == "sabin_inventory":
 is_admin = st.session_state.is_admin
 
 # Premium High-Contrast Dark Theme CSS
-# Premium High-Contrast Dark Theme CSS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
@@ -29,19 +28,24 @@ st.markdown("""
     /* Main App Background */
     .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
     
-    /* 🚨 NEW: Force Sidebar to Match Dark Theme */
+    /* 🔥 UPDATED: Force Entire Sidebar Content & Navigation Links to White */
+    [data-testid="stSidebar"] div, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] a { 
+        color: #FFFFFF !important; 
+    }
     [data-testid="stSidebar"] { background-color: #0F172A !important; border-right: 1px solid #1E293B !important; }
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p, 
-    [data-testid="stSidebar"] label { color: #94A3B8 !important; }
     
-    /* 🚨 NEW: Style the File Uploader & Expander to look premium in dark mode */
+    /* Premium Sidebar Component Tweaks */
     [data-testid="stExpander"] { background-color: #111827 !important; border: 1px solid #1E293B !important; border-radius: 8px; }
-    [data-testid="stExpander"] summary { color: #F8FAFC !important; }
+    [data-testid="stExpander"] summary { color: #FFFFFF !important; }
     [data-testid="stFileUploader"] section { background-color: #111827 !important; border: 1px dashed #38BDF8 !important; }
     
-    /* Existing Typography and Cards */
+    /* Typography and Operational Interface Styling */
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
-    label, .stWidgetLabel p { color: #94A3B8 !important; font-weight: 600 !important; }
+    label, .stWidgetLabel p { color: #FFFFFF !important; font-weight: 600 !important; }
     .premium-header { border-bottom: 1px solid #1E293B; padding-bottom: 1.5rem; margin-bottom: 2rem; margin-top: 1rem; }
     .sabin-logo { font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #F8FAFC !important; margin: 0; line-height: 1.2; }
     .sabin-logo span { color: #0EA5E9 !important; }
@@ -118,6 +122,9 @@ if is_admin:
             try:
                 df_init = pd.read_excel(init_file) if init_file.name.endswith("xlsx") else pd.read_csv(init_file)
                 
+                # Strip blank padding from uploaded keys to guarantee schema alignment
+                df_init.columns = [str(c).strip() for c in df_init.columns]
+                
                 # Check for standard column footprints
                 req = ["Item_Code", "Item_Name", "Stock_Sharjah", "Stock_Al_Quoz"]
                 if all(c in df_init.columns for c in req):
@@ -130,11 +137,14 @@ if is_admin:
                         if col not in df_init.columns:
                             df_init[col] = "" 
                     
+                    # 🔥 FIXED: Run fillna("") BEFORE string casting to protect JSON compilation from NaN/Float errors
                     df_to_upload = df_init[TARGET_COLUMNS].fillna("")
-                    ws_to_init.clear()
-                    ws_to_init.append_rows([df_to_upload.columns.tolist()] + df_to_upload.astype(str).values.tolist())
+                    clean_rows = df_to_upload.astype(str).values.tolist()
                     
-                    st.success("🎉 Master database structure initialized successfully!")
+                    ws_to_init.clear()
+                    ws_to_init.append_rows([df_to_upload.columns.tolist()] + clean_rows)
+                    
+                    st.success("🎉 Master database structure initialized successfully with zero empty-cell errors!")
                     st.cache_data.clear()
                     st.rerun()
                 else:
@@ -248,7 +258,7 @@ else:
             df_stock[k] = 0
             
     st.subheader("📊 Dynamic Global Stock Allocation Matrix")
-    # Matrix display prioritizing the new warehouse breakdown
+    # Matrix display prioritizing the warehouse breakdown
     display_matrix = df_stock[["Item_Code", "Item_Name", "Current_Stock", 
                                "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]]
     st.dataframe(display_matrix, use_container_width=True, hide_index=True)
