@@ -122,32 +122,25 @@ if is_admin:
         if init_file is not None and st.button("🚀 BULK OVERWRITE STOCK BASELINE"):
             try:
                 df_init = pd.read_excel(init_file) if init_file.name.endswith("xlsx") else pd.read_csv(init_file)
-                
-                # Strip blank padding from uploaded keys to guarantee schema alignment
                 df_init.columns = [str(c).strip() for c in df_init.columns]
                 
-                # Check for standard column footprints
                 req = ["Item_Code", "Item_Name", "Stock_Sharjah", "Stock_Al_Quoz"]
                 if all(c in df_init.columns for c in req):
                     gc = get_google_client()
                     sh = gc.open_by_url(st.secrets["GSHEET_URL"])
                     ws_to_init = sh.get_worksheet(3)
                     
-                    # Fill missing hybrid columns if they aren't in the upload
                     for col in TARGET_COLUMNS:
                         if col not in df_init.columns:
                             df_init[col] = "" 
                     
-                    # Target selection
                     df_to_upload = df_init[TARGET_COLUMNS].copy()
                     
-                    # 🔥 ULTRA-HARDENED SANITIZER FUNCTION: Converts nan/inf/NaT data types explicitly into valid JSON strings
                     def serialize_cell(val):
                         if pd.isna(val) or val is None or str(val).strip().lower() in ['nan', 'nat', 'inf', '-inf']:
                             return ""
                         return str(val).strip()
                     
-                    # Apply cell-by-cell sanitation structure mapping across the dataframe
                     clean_rows = df_to_upload.map(serialize_cell).values.tolist()
                     
                     ws_to_init.clear()
@@ -189,11 +182,10 @@ else:
                     gc = get_google_client()
                     sh = gc.open_by_url(st.secrets["GSHEET_URL"])
                     ws_stock = sh.get_worksheet(3)
-                    ws_log = sh.get_worksheet(4) # Tab Index 4: Logs
+                    ws_log = sh.get_worksheet(4)
                     
                     current_stock_df = pd.DataFrame(ws_stock.get_all_records())
                     
-                    # Ensure hybrid columns exist to prevent KeyError
                     for col in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi"]:
                         if col not in current_stock_df.columns:
                             current_stock_df[col] = 0
@@ -221,7 +213,6 @@ else:
                             received_qty = float(row["Received Quantity"])
                             
                             if item_sku in current_stock_df["Item_Code"].values:
-                                # Update specific warehouse columns ONLY. Current_Stock is perfectly preserved.
                                 if issued_qty > 0: 
                                     current_stock_df.loc[current_stock_df["Item_Code"] == item_sku, matched_wh_column] -= issued_qty
                                     ws_log.append_row([str(row["Date"]), voucher_no, f"Transfer Out ({wh_raw})", -issued_qty, item_sku, "SYSTEM_AUTO_HUB"])
@@ -231,7 +222,6 @@ else:
                                 processed_transfers += 1
                     
                     if processed_transfers > 0:
-                        # Upload clean processed balances back to Google Sheets, maintaining hybrid structure
                         ws_stock.clear()
                         ws_stock.append_rows([current_stock_df.columns.tolist()] + current_stock_df.fillna("").astype(str).values.tolist())
                         st.success(f"🎉 Successfully automated {processed_transfers} double-entry transfer changes across cloud warehouse ledgers!")
@@ -265,10 +255,21 @@ else:
     for k in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]:
         if k not in df_stock.columns:
             df_stock[k] = 0
+
+    # 🔍 GLOBAL SEARCH ROUTINE (Visible to all users)
+    search_query = st.text_input("🔍 Search Matrix or Routes by SKU / Item Name:", value="", placeholder="Type SKU code or description (e.g. AN000648)...").strip()
+    
+    # Filter matrix dataframe dynamically based on search query
+    if search_query:
+        df_display_filtered = df_stock[
+            df_stock["Item_Code"].astype(str).str.contains(search_query, case=False, na=False) |
+            df_stock["Item_Name"].astype(str).str.contains(search_query, case=False, na=False)
+        ]
+    else:
+        df_display_filtered = df_stock
             
     st.subheader("📊 Dynamic Global Stock Allocation Matrix")
-    # Matrix display prioritizing the warehouse breakdown
-    display_matrix = df_stock[["Item_Code", "Item_Name", "Current_Stock", 
+    display_matrix = df_display_filtered[["Item_Code", "Item_Name", "Current_Stock", 
                                "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]]
     st.dataframe(display_matrix, use_container_width=True, hide_index=True)
     
@@ -277,7 +278,8 @@ else:
     advisor_routes_found = False
     priority_destinations = ["Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi"]
     
-    for idx, row in df_stock.iterrows():
+    # Generate recommendations using the filtered dataset to narrow down results when searching
+    for idx, row in df_display_filtered.iterrows():
         sku = row["Item_Code"]
         name = row["Item_Name"]
         global_velocity = clean_float(row["Avg_Daily_Sales"])
@@ -315,4 +317,7 @@ else:
                             break 
                             
     if not advisor_routes_found:
-        st.success("✅ Multi-warehouse supply lines are evenly distributed. No critical stock deficits detected across active regions.")
+        if search_query:
+            st.info(f"ℹ️ No transfer rules generated matching your search criteria: '{search_query}'.")
+        else:
+            st.success("✅ Multi-warehouse supply lines are evenly distributed. No critical stock deficits detected across active regions.")
