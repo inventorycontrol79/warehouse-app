@@ -168,13 +168,42 @@ else:
     if uploaded_ledger is not None:
         if st.button("⚡ EXECUTE DOUBLE-ENTRY TRANSFER AUTOMATION", use_container_width=True):
             try:
+                # 1. Read the file without skipping rows initially to find the correct headers dynamically
                 if uploaded_ledger.name.endswith(".csv"):
-                    raw_ledger = pd.read_csv(uploaded_ledger, skiprows=4)
+                    df_raw_check = pd.read_csv(uploaded_ledger, header=None)
                 else:
-                    raw_ledger = pd.read_excel(uploaded_ledger, skiprows=4)
+                    df_raw_check = pd.read_excel(uploaded_ledger, header=None)
                 
+                # Find the row index that contains our required ERP tracking keys
+                header_row_idx = 0
+                for idx, row_data in df_raw_check.iterrows():
+                    row_strs = [str(cell).strip().lower() for cell in row_data.values]
+                    if any("voucher" in s for s in row_strs) and any("code" in s for s in row_strs):
+                        header_row_idx = idx
+                        break
+                
+                # 2. Reload the data using the dynamically discovered header position
+                if uploaded_ledger.name.endswith(".csv"):
+                    raw_ledger = pd.read_csv(uploaded_ledger, skiprows=header_row_idx)
+                else:
+                    raw_ledger = pd.read_excel(uploaded_ledger, skiprows=header_row_idx)
+                
+                # Standardize column naming rules
                 raw_ledger.columns = [str(c).strip() for c in raw_ledger.columns]
-                srts_data = raw_ledger[raw_ledger["Voucher"].astype(str).str.startswith("SRTS")].copy()
+                
+                # Flexible match: Look for 'Voucher' or any header starting with 'Voucher'
+                voucher_col = None
+                for col in raw_ledger.columns:
+                    if col.lower().startswith("voucher"):
+                        voucher_col = col
+                        break
+                
+                if not voucher_col:
+                    st.error("❌ Critical Structure Failure: Could not find a 'Voucher' column anywhere in the file rows.")
+                    st.stop()
+                
+                # Process the data using the discovered column
+                srts_data = raw_ledger[raw_ledger[voucher_col].astype(str).str.startswith("SRTS")].copy()
                 
                 if srts_data.empty:
                     st.warning("ℹ️ No active SRTS internal transfer vouchers recorded inside the uploaded ledger.")
@@ -182,10 +211,11 @@ else:
                     gc = get_google_client()
                     sh = gc.open_by_url(st.secrets["GSHEET_URL"])
                     ws_stock = sh.get_worksheet(3)
-                    ws_log = sh.get_worksheet(4)
+                    ws_log = sh.get_worksheet(4) # Tab Index 4: Logs
                     
                     current_stock_df = pd.DataFrame(ws_stock.get_all_records())
                     
+                    # Ensure hybrid columns exist to prevent KeyError
                     for col in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi"]:
                         if col not in current_stock_df.columns:
                             current_stock_df[col] = 0
@@ -195,7 +225,7 @@ else:
                     
                     processed_transfers = 0
                     
-                    for voucher_no, group in srts_data.groupby("Voucher"):
+                    for voucher_no, group in srts_data.groupby(voucher_col):
                         for _, row in group.iterrows():
                             item_sku = str(row["Code"]).strip()
                             wh_raw = str(row["Warehouse Name"]).strip()
@@ -215,10 +245,10 @@ else:
                             if item_sku in current_stock_df["Item_Code"].values:
                                 if issued_qty > 0: 
                                     current_stock_df.loc[current_stock_df["Item_Code"] == item_sku, matched_wh_column] -= issued_qty
-                                    ws_log.append_row([str(row["Date"]), voucher_no, f"Transfer Out ({wh_raw})", -issued_qty, item_sku, "SYSTEM_AUTO_HUB"])
+                                    ws_log.append_row([str(row["Date"]), str(voucher_no), f"Transfer Out ({wh_raw})", -issued_qty, item_sku, "SYSTEM_AUTO_HUB"])
                                 if received_qty > 0: 
                                     current_stock_df.loc[current_stock_df["Item_Code"] == item_sku, matched_wh_column] += received_qty
-                                    ws_log.append_row([str(row["Date"]), voucher_no, f"Transfer In ({wh_raw})", received_qty, item_sku, "SYSTEM_AUTO_HUB"])
+                                    ws_log.append_row([str(row["Date"]), str(voucher_no), f"Transfer In ({wh_raw})", received_qty, item_sku, "SYSTEM_AUTO_HUB"])
                                 processed_transfers += 1
                     
                     if processed_transfers > 0:
@@ -231,8 +261,6 @@ else:
                         st.info("No matching warehouse location parameters were found to match.")
             except Exception as e:
                 st.error(f"🚨 Critical Failure Parsing Ledger File: {e}")
-
-st.markdown("---")
 
 # =====================================================
 # 5. WORKSPACE PORTAL C: THE FORESIGHT DEMAND ADVISOR
