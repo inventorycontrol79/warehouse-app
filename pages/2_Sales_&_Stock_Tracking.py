@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import gspread
-import io  # Added for seamless memory-buffered file creation
+import io  
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 
@@ -34,7 +34,6 @@ st.markdown("""
     .upload-box { background-color: #111827; border: 1px dashed #1E293B; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     .admin-box { background-color: #1E1B4B; border: 1px solid #4338CA; border-radius: 8px; padding: 20px; margin-top: 20px; }
     
-    /* Segment Control Styling */
     div[data-testid="stRadio"] > label { display: none; }
     div[data-testid="stRadio"] div[role="radiogroup"] { gap: 10px; }
     div[data-testid="stRadio"] label[data-baseweb="radio"] {
@@ -60,7 +59,6 @@ st.markdown("""
 
 st.markdown("<div class='premium-header'><div class='sabin-logo'>SABIN <span>PLASTIC</span></div><div class='sabin-sub'>Enterprise Warehouse Tracking System</div></div>", unsafe_allow_html=True)
 
-# --- GOOGLE SHEETS CONNECTION INTERFACE WITH TTL CACHING ---
 def get_google_client():
     try:
         raw_json = st.secrets["GCP_JSON"]
@@ -94,7 +92,6 @@ def load_data_from_sheet(ws_index, fallback_cols):
     except Exception:
         return pd.DataFrame(columns=fallback_cols)
 
-# --- AUTOMATED DATA ARCHIVING ENGINE ---
 def run_automatic_archiver(ws_log, ws_archive, df_log_current):
     if df_log_current.empty: return
     df_log_current["Timestamp_Parsed"] = pd.to_datetime(df_log_current["Timestamp"], errors='coerce')
@@ -111,20 +108,29 @@ def run_automatic_archiver(ws_log, ws_archive, df_log_current):
         ws_log.append_rows([df_to_keep.columns.tolist()] + df_to_keep.fillna("").astype(str).values.tolist())
         st.toast(f"📦 Performance Boost: Moved {len(df_to_archive)} historical logs to data archive tab.", icon="♻️")
 
-# --- INGEST SHEETS ---
 ws_stock, ws_log, ws_batches, ws_archive = get_worksheets()
 
-df_stock = load_data_from_sheet(3, ["Item_Code", "Item_Name", "Product_Category", "Current_Stock", "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date"])
-df_log = load_data_from_sheet(4, ["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp"])
+# Explicit schema definitions including background velocity parameters
+TARGET_STOCK_COLS = [
+    "Item_Code", "Item_Name", "Product_Category", "Current_Stock",
+    "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi",
+    "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date", "Days_of_Coverage",
+    "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
+]
+
+df_stock = load_data_from_sheet(3, TARGET_STOCK_COLS)
+df_log = load_data_from_sheet(4, ["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
 df_batches = load_data_from_sheet(5, ["Batch_ID", "Upload_Type", "Timestamp"])
+
+# Dynamically patch structural columns if missing
+for col in TARGET_STOCK_COLS:
+    if col not in df_stock.columns:
+        df_stock[col] = 0.0 if "Velocity" in col or "Stock" in col or col == "Avg_Daily_Sales" else ""
 
 for d in [df_stock, df_log, df_batches]:
     if not d.empty:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
-
-if "Last_Sold_Date" not in df_stock.columns:
-    df_stock["Last_Sold_Date"] = ""
 
 # --- SIDEBAR INTERACTIVE FILTERS ---
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
@@ -134,35 +140,41 @@ if not df_stock.empty:
 else:
     cat_options = ["All Categories"]
 selected_category_filter = st.sidebar.selectbox("Filter by Material Group", cat_options)
-# --- NEW: SEARCH ELEMENT FOR MATERIAL SIZES / CODES ---
 item_search = st.sidebar.text_input("🔍 Search Item Code / Description")
 
-# Apply sidebar category filters first
 filt_stock = df_stock.copy()
 if not filt_stock.empty and selected_category_filter != "All Categories":
     filt_stock = filt_stock[filt_stock["Product_Category"] == selected_category_filter]
 
-# Apply the text search filter dynamically across multiple columns
 if item_search:
     filt_stock = filt_stock[
         filt_stock["Item_Code"].str.contains(item_search, case=False, na=False) | 
         filt_stock["Item_Name"].str.contains(item_search, case=False, na=False)
     ]
-# --- RECALCULATE ABC CATEGORIES & RUNNING STATS ---
+
+# --- UPGRADED BACKGROUND MULTI-LOCATION VELOCITY ENGINE ---
 def recalculate_abc_and_velocity(stock_df, log_df):
     if log_df.empty or stock_df.empty: return stock_df
     stock_df["Current_Stock"] = pd.to_numeric(stock_df["Current_Stock"], errors='coerce').fillna(0)
     log_df["Qty_Delta"] = pd.to_numeric(log_df["Qty_Delta"], errors='coerce').fillna(0)
     log_df["Timestamp"] = pd.to_datetime(log_df["Timestamp"], errors='coerce')
     
+    if "Branch" not in log_df.columns:
+        log_df["Branch"] = ""
+
     thirty_days_ago = datetime.now() - timedelta(days=30)
     sales_30 = log_df[(log_df["Transaction_Type"] == "Sales") & (log_df["Timestamp"] >= thirty_days_ago)]
     
+    # Initialize background metrics safely
+    for b_col in ["Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
+        stock_df[b_col] = 0.0
+
     if sales_30.empty:
         stock_df["ABC_Category"] = "C"
         stock_df["Avg_Daily_Sales"] = 0.0
         return stock_df
         
+    # 1. Company Global Velocity Calculation Layer
     item_sales = sales_30.groupby("Item_Code")["Qty_Delta"].sum().reset_index()
     item_sales["Qty_Delta"] = item_sales["Qty_Delta"].abs()
     item_sales = item_sales.sort_values(by="Qty_Delta", ascending=False)
@@ -182,6 +194,26 @@ def recalculate_abc_and_velocity(stock_df, log_df):
     item_sales.set_index("Item_Code", inplace=True)
     stock_df.update(item_sales[["ABC_Category", "Avg_Daily_Sales"]])
     stock_df.reset_index(inplace=True)
+
+    # 2. Under-the-Hood Location Segment Mapping Loop
+    branch_mappings = {
+        "Dubai": "Velocity_Al_Quoz",
+        "Sharjah": "Velocity_Sharjah",
+        "DIP": "Velocity_DIP",
+        "Abu Dhabi": "Velocity_Abu_Dhabi"
+    }
+
+    for branch_keyword, v_column in branch_mappings.items():
+        sub_sales = sales_30[sales_30["Branch"].str.contains(branch_keyword, case=False, na=False)]
+        if not sub_sales.empty:
+            b_sales = sub_sales.groupby("Item_Code")["Qty_Delta"].sum().abs().reset_index()
+            b_sales[v_column] = round(b_sales["Qty_Delta"] / 30, 2)
+            
+            stock_df.set_index("Item_Code", inplace=True)
+            b_sales.set_index("Item_Code", inplace=True)
+            stock_df.update(b_sales[[v_column]])
+            stock_df.reset_index(inplace=True)
+
     stock_df["ABC_Category"] = stock_df["ABC_Category"].fillna("C")
     stock_df["Avg_Daily_Sales"] = pd.to_numeric(stock_df["Avg_Daily_Sales"], errors='coerce').fillna(0.0)
     return stock_df
@@ -221,7 +253,6 @@ segment_view = st.radio(
     horizontal=True
 )
 
-# 1. First, let the Radio Segment Button cut down the data frame
 if segment_view == "🟩 Fast Moving Only (Class A)":
     filt_stock = filt_stock[filt_stock["ABC_Category"] == "A"]
 elif segment_view == "🚨 High Risk Only (<7 Days Coverage)":
@@ -229,7 +260,6 @@ elif segment_view == "🚨 High Risk Only (<7 Days Coverage)":
 elif segment_view == "📉 Dead Stock Only (>90 Days Inactive)":
     filt_stock = filt_stock[(filt_stock["Last_Sold_Date"] < ninety_days_ago_str) | (filt_stock["Last_Sold_Date"] == "") | (filt_stock["Last_Sold_Date"].isna())]
 
-# 2. CRITICAL FIX: Apply the text search LAST so it filters whatever is left on screen!
 if item_search:
     filt_stock = filt_stock[
         filt_stock["Item_Code"].astype(str).str.contains(item_search, case=False, na=False) | 
@@ -264,7 +294,7 @@ else:
                             icode = str(row["Item.Code"]).strip()
                             iname = str(row["Item.Name"]).strip()
                             qty = float(row["Quantity"])
-                            new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str])
+                            new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str, "Central Log"])
                             new_stock_map[icode] = {"Item_Name": iname, "Qty": qty}
                         
                         updated_stock = df_stock.copy()
@@ -272,15 +302,18 @@ else:
                             if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                                 updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] += info["Qty"]
                             else:
-                                new_row = pd.DataFrame([{"Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": "Uncategorized", "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": ""}])
-                                updated_stock = pd.concat([updated_stock, new_row], ignore_index=True)
+                                new_rows_data = {
+                                    "Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": "Uncategorized", 
+                                    "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": ""
+                                }
+                                for b_col in ["Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
+                                    new_rows_data[b_col] = 0.0
+                                updated_stock = pd.concat([updated_stock, pd.DataFrame([new_rows_data])], ignore_index=True)
                                 
                         ws_stock.clear()
-                        ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
+                        ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
                         ws_log.append_rows(new_logs)
                         ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
-                        full_current_logs = pd.concat([df_log, pd.DataFrame(new_logs, columns=df_log.columns)], ignore_index=True)
-                        run_automatic_archiver(ws_log, ws_archive, full_current_logs)
                         st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
                         st.rerun()
             else:
@@ -305,6 +338,8 @@ else:
             match_code = st.selectbox("Match Sales [Item Code]:", cols, index=cols.index(find_col(["item.code", "item_code", "code"])))
             match_name = st.selectbox("Match Sales [Item Name]:", cols, index=cols.index(find_col(["item.name", "item_name", "description"])))
             match_qty = st.selectbox("Match Sales [Quantity]:", cols, index=cols.index(find_col(["quantity", "qty", "sold"])))
+            # 🌟 NEW UPGRADE: Interactive Column selector for the Branch parameter layout
+            match_branch = st.selectbox("Match Sales [Branch]:", cols, index=cols.index(find_col(["branch", "location", "warehouse"])))
             
             sales_batch_id = str(df_sales_raw[match_vouch].iloc[0]).strip() + "_SALES"
             if not df_batches.empty and sales_batch_id in df_batches["Batch_ID"].values:
@@ -320,7 +355,9 @@ else:
                         icode = str(row[match_code]).strip()
                         iname = str(row[match_name]).strip()
                         qty = float(row[match_qty])
-                        new_sales_logs.append([str(row[match_date]), icode, iname, "Sales", -qty, str(row[match_vouch]).strip(), timestamp_str])
+                        branch_val = str(row[match_branch]).strip()
+                        
+                        new_sales_logs.append([str(row[match_date]), icode, iname, "Sales", -qty, str(row[match_vouch]).strip(), timestamp_str, branch_val])
                         sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + qty
                         
                     updated_stock = df_stock.copy()
@@ -344,12 +381,13 @@ else:
                     if filtered_sales_logs:
                         temp_log_df = pd.concat([df_log, pd.DataFrame(filtered_sales_logs, columns=df_log.columns)], ignore_index=True)
                         updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
+                        
                         ws_stock.clear()
-                        ws_stock.append_rows([updated_stock.columns.tolist()] + updated_stock.fillna("").astype(str).values.tolist())
+                        ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
                         ws_log.append_rows(filtered_sales_logs)
                         ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
-                        run_automatic_archiver(ws_log, ws_archive, temp_log_df)
-                        st.success("Sales data successfully deducted and metrics optimized!")
+                        
+                        st.success("Sales data successfully deducted and branch trends learned!")
                         st.rerun()
                     else:
                         st.error("❌ No items from this sales upload matched your Master Stock list. Zero adjustments recorded.")
@@ -361,17 +399,18 @@ grid_header_col, download_btn_col = st.columns([3, 1])
 with grid_header_col:
     st.markdown("### 📜 Material Segment Tracking Ledger")
 
-# --- PREMIUM EXCEL GENERATION ENGINE ---
 def generate_professional_excel(dataframe, segment_name):
     output = io.BytesIO()
-    
-    # Clean and rename dataframe for customer/executive facing sheets
     clean_df = dataframe.copy()
     abc_map = {"A": "🟩 Class A (Fast)", "B": "🟨 Class B (Medium)", "C": "🟥 Class C (Slow)"}
     clean_df["ABC_Category"] = clean_df["ABC_Category"].map(abc_map).fillna("Unclassified")
     clean_df["Last_Sold_Date"] = clean_df["Last_Sold_Date"].replace("", "Never Tracked").fillna("Never Tracked")
     
-    clean_df = clean_df.rename(columns={
+    # Filter down to display columns only to keep executive export clean
+    clean_df = clean_df[[
+        "Item_Code", "Item_Name", "Product_Category", "Current_Stock", 
+        "ABC_Category", "Avg_Daily_Sales", "Days_of_Coverage", "Last_Sold_Date"
+    ]].rename(columns={
         "Item_Code": "Item Code",
         "Item_Name": "Product Specification / Description",
         "Product_Category": "Material Group",
@@ -382,22 +421,17 @@ def generate_professional_excel(dataframe, segment_name):
         "Last_Sold_Date": "Last Active Dispatch Date"
     })
     
-    # Sort logically by stock levels
     clean_df = clean_df.sort_values(by="Current Balance", ascending=True)
 
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         clean_df.to_excel(writer, sheet_name="Inventory Report", index=False, startrow=4)
-        
         workbook = writer.book
         worksheet = writer.sheets["Inventory Report"]
-        worksheet.views.sheetView[0].showGridLines = True # Ensure gridlines stay active
+        worksheet.views.sheetView[0].showGridLines = True
         
-        # Color Palette Definition (Classic Executive Deep Navy)
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        
         font_family = "Segoe UI"
         navy_header_fill = PatternFill(start_color="1B2A4A", end_color="1B2A4A", fill_type="solid")
-        meta_fill = PatternFill(start_color="F4F6F9", end_color="F4F6F9", fill_type="solid")
         
         font_title = Font(name=font_family, size=16, bold=True, color="1B2A4A")
         font_subtitle = Font(name=font_family, size=10, italic=True, color="555555")
@@ -407,13 +441,11 @@ def generate_professional_excel(dataframe, segment_name):
         thin_side = Side(border_style="thin", color="D1D5DB")
         data_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
         
-        # Write Report Metadata Titles
         worksheet["A1"] = "SABIN PLASTIC // ENTERPRISE WAREHOUSE LEDGER"
         worksheet["A1"].font = font_title
         worksheet["A2"] = f"Material Segment Slice: {segment_name} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         worksheet["A2"].font = font_subtitle
         
-        # Style Header Row
         header_row = 5
         worksheet.row_dimensions[header_row].height = 26
         for col_idx in range(1, len(clean_df.columns) + 1):
@@ -423,7 +455,6 @@ def generate_professional_excel(dataframe, segment_name):
             cell.alignment = Alignment(horizontal="center" if col_idx != 2 else "left", vertical="center")
             cell.border = data_border
             
-        # Style Data Rows
         for row_idx in range(6, len(clean_df) + 6):
             worksheet.row_dimensions[row_idx].height = 20
             for col_idx in range(1, len(clean_df.columns) + 1):
@@ -431,18 +462,16 @@ def generate_professional_excel(dataframe, segment_name):
                 cell.font = font_data
                 cell.border = data_border
                 
-                # Check for standard data type column alignments
-                if col_idx in [4, 6, 7]:  # Numbers columns
+                if col_idx in [4, 6, 7]:
                     cell.alignment = Alignment(horizontal="right", vertical="center")
                     if col_idx == 4: cell.number_format = '#,##0'
                     if col_idx == 6: cell.number_format = '#,##0.00'
                     if col_idx == 7: cell.number_format = '#,##0'
-                elif col_idx in [1, 3, 5, 8]:  # Codes and category tags
+                elif col_idx in [1, 3, 5, 8]:
                     cell.alignment = Alignment(horizontal="center", vertical="center")
                 else:
                     cell.alignment = Alignment(horizontal="left", vertical="center")
 
-        # Auto-adjust column layouts to avoid clip truncation strings
         for col in worksheet.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
             col_letter = col[0].column_letter
@@ -463,6 +492,7 @@ with download_btn_col:
 
 if filt_stock.empty:
     st.info("📌 No items found matching the selected segment filter criteria.")
+    col_config_view = {}
 else:
     def color_abc(val):
         if val == "A": return "🟩 Fast (A)"
@@ -473,8 +503,14 @@ else:
     df_stock_display["ABC_Category"] = df_stock_display["ABC_Category"].apply(color_abc)
     df_stock_display["Last_Sold_Date"] = df_stock_display["Last_Sold_Date"].replace("", "Never Tracked").fillna("Never Tracked")
     
+    # Clean display views to keep out background math tracks from matrix grid view
+    display_columns = [
+        "Item_Code", "Item_Name", "Product_Category", "Current_Stock", 
+        "ABC_Category", "Avg_Daily_Sales", "Days_of_Coverage", "Last_Sold_Date"
+    ]
+    
     st.dataframe(
-        df_stock_display.sort_values(by="Current_Stock", ascending=True),
+        df_stock_display[display_columns].sort_values(by="Current_Stock", ascending=True),
         use_container_width=True,
         hide_index=True,
         column_config={
@@ -489,7 +525,6 @@ else:
         }
     )
 
-# --- ADMIN SELF-LEARNING CATEGORY CONFIGURATOR ---
 if is_admin and not df_stock.empty:
     uncat_items = df_stock[df_stock["Product_Category"] == "Uncategorized"]
     if not uncat_items.empty:
@@ -515,7 +550,7 @@ if is_admin and not df_stock.empty:
             else:
                 df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
                 ws_stock.clear()
-                ws_stock.append_rows([df_stock.columns.tolist()] + df_stock.fillna("").astype(str).values.tolist())
+                ws_stock.append_rows([TARGET_STOCK_COLS] + df_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
                 st.success(f"Item `{target_row['Item_Code']}` mapped to `{final_cat_selection}`! Re-indexing terminal framework...")
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
