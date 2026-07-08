@@ -153,79 +153,82 @@ else:
     if uploaded_snap is not None:
         if st.button("⚡ EXECUTE SELECTIVE DASHBOARD OVERWRITE", use_container_width=True):
             try:
-                # 1. Dynamic header tracking index scan
+                # 1. Broadly read rows completely as strings to scan for headers flexibly
                 if uploaded_snap.name.endswith(".csv"):
-                    df_raw_check = pd.read_csv(uploaded_snap, header=None)
+                    df_raw_check = pd.read_csv(uploaded_snap, header=None).fillna("")
                 else:
-                    df_raw_check = pd.read_excel(uploaded_snap, header=None)
+                    df_raw_check = pd.read_excel(uploaded_snap, header=None).fillna("")
                 
-                header_row_idx = 0
+                header_row_idx = None
+                
+                # Dynamic scanner checking for both code references and prominent location identifiers
                 for idx, row_data in df_raw_check.iterrows():
                     row_strs = [str(cell).strip().lower() for cell in row_data.values]
-                    # Identify by the key descriptive indicators found in your export image
-                    if any("code" in s or "sku" in s for s in row_strs) and any("sharjah" in s or "quoz" in s for s in row_strs):
+                    
+                    # Loosened match criteria to avoid strict failures if columns shift or vary slightly
+                    has_sku_header = any("code" in s or "sku" in s or "item" in s for s in row_strs)
+                    has_wh_header = any("sharjah" in s or "quoz" in s or "dip" in s or "abu dhabi" in s for s in row_strs)
+                    
+                    if has_sku_header and has_wh_header:
                         header_row_idx = idx
                         break
+                
+                # Fallback to row index 0 if scanner can't find clear target tags
+                if header_row_idx is None:
+                    header_row_idx = 0
                 
                 if uploaded_snap.name.endswith(".csv"):
                     df_snap = pd.read_csv(uploaded_snap, skiprows=header_row_idx)
                 else:
                     df_snap = pd.read_excel(uploaded_snap, skiprows=header_row_idx)
                 
-                # Standardize column strings
                 df_snap.columns = [str(c).strip() for c in df_snap.columns]
                 
-                # Identify the main SKU column tracking field
-                sku_col = next((c for c in df_snap.columns if "code" in c.lower() or "sku" in c.lower() or "item" in c.lower()), None)
-                if not sku_col:
-                    st.error("❌ Could not identify an 'Item Code' column in the uploaded snapshot layout.")
-                    st.stop()
+                # Flexible tracking matcher for primary SKU identifier column 
+                sku_col = next((c for c in df_snap.columns if "code" in c.lower() or "sku" in c.lower() or "item" in c.lower()), df_snap.columns[0])
                 
-                # Map available columns inside your explicit Excel image file layout
+                # Highly accurate keyword mapping rules for your specific layout columns
                 col_al_quoz = next((c for c in df_snap.columns if "al quoz" in c.lower() and "online" not in c.lower()), None)
                 col_sharjah = next((c for c in df_snap.columns if "sharjah" in c.lower() and "online" not in c.lower()), None)
                 col_dip = next((c for c in df_snap.columns if "dip" in c.lower()), None)
-                col_abu_dhabi = next((c for c in df_snap.columns if "abu dhabi" in c.lower() or "ad" in c.lower()), None)
+                col_abu_dhabi = next((c for c in df_snap.columns if "abu dhabi" in c.lower() or "ad" in c.lower() or "depot" in c.lower()), None)
                 
-                # Online Columns (Read for calculations, hidden from visual data blocks)
+                # Online sub-columns mapping rules
                 col_online_quoz = next((c for c in df_snap.columns if "al quoz" in c.lower() and "online" in c.lower()), None)
                 col_online_shj = next((c for c in df_snap.columns if "sharjah" in c.lower() and "online" in c.lower()), None)
                 
                 updated_master_df = df_stock.copy()
                 
-                # Convert active Master entries into indexed dictionaries for efficient parsing loops
+                # Build efficient fast lookup table dictionary indexed on SKU
                 snap_dict = {}
                 for _, row in df_snap.iterrows():
                     s_code = str(row[sku_col]).strip()
-                    if s_code:
+                    if s_code and s_code.lower() not in ["", "nan", "total"]:
                         snap_dict[s_code] = row
 
                 matched_count = 0
                 
-                # Update loop mapped against only what currently exists inside your Master sheet
+                # Match data using only your master active catalog items list
                 for idx, m_row in updated_master_df.iterrows():
                     m_sku = str(m_row["Item_Code"]).strip()
                     
                     if m_sku in snap_dict:
                         erp_row = snap_dict[m_sku]
                         
-                        # Direct assignment with fallback values
                         q_shj = pd.to_numeric(erp_row[col_sharjah], errors="coerce") if col_sharjah else 0.0
                         q_aq = pd.to_numeric(erp_row[col_al_quoz], errors="coerce") if col_al_quoz else 0.0
                         q_dip = pd.to_numeric(erp_row[col_dip], errors="coerce") if col_dip else 0.0
                         q_ad = pd.to_numeric(erp_row[col_abu_dhabi], errors="coerce") if col_abu_dhabi else 0.0
                         
-                        # Online components read strictly for global total mapping
                         q_on_aq = pd.to_numeric(erp_row[col_online_quoz], errors="coerce") if col_online_quoz else 0.0
                         q_on_shj = pd.to_numeric(erp_row[col_online_shj], errors="coerce") if col_online_shj else 0.0
                         
-                        # Write physical metrics back down to your working dataframe
                         updated_master_df.at[idx, "Stock_Sharjah"] = float(np.nan_to_num(q_shj))
                         updated_master_df.at[idx, "Stock_Al_Quoz"] = float(np.nan_to_num(q_aq))
                         updated_master_df.at[idx, "Stock_DIP"] = float(np.nan_to_num(q_dip))
                         updated_master_df.at[idx, "Stock_Abu_Dhabi"] = float(np.nan_to_num(q_ad))
                         
-                        # Comprehensive Total includes physical warehouses + hidden online buckets!
+                        # Calculate Global Total (Physical locations + Hidden Online balances)
                         updated_master_df.at[idx, "Current_Stock"] = float(
                             np.nan_to_num(q_shj) + np.nan_to_num(q_aq) + 
                             np.nan_to_num(q_dip) + np.nan_to_num(q_ad) + 
@@ -252,7 +255,7 @@ else:
                     st.cache_data.clear()
                     st.rerun()
                 else:
-                    st.warning("⚠️ High volume file did not contain any matching SKU codes.")
+                    st.error("❌ Parsing Error: Could not locate row matching your active inventory metrics. Ensure headers are clean.")
             except Exception as e:
                 st.error(f"🚨 Operational Snapshot Failure: {e}")
 
@@ -289,7 +292,6 @@ else:
     df_filtered = df_filtered[df_filtered["Avg_Daily_Sales"].apply(clean_float) >= min_velocity]
             
     st.subheader("📊 Dynamic Global Stock Allocation Matrix")
-    # Displays physical locations only. Hidden online volumes are safely accounted for in "Current_Stock"
     st.dataframe(df_filtered[["Item_Code", "Item_Name", "Current_Stock", 
                                "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]], 
                  use_container_width=True, hide_index=True)
@@ -337,7 +339,8 @@ else:
                                     final_qty = st.number_input(f"Adjust Qty ({sku})", min_value=1, max_value=int(src_qty), value=int(optimal_transfer), key=f"adj_{sku}_{clean_dest}")
                                 with c3:
                                     erp_string = f"SRTS: Move {final_qty} pcs of SKU {sku} from {clean_src} to {clean_dest}"
-                                    st.text_input("📋 Focus ERP Ready Command String:", value=erp_string, readonly=True, key=f"cmd_{sku}_{clean_dest}")
+                                    # 🛠️ FIXED: Changed deprecated readonly=True to modern disabled=True
+                                    st.text_input("📋 Focus ERP Ready Command String:", value=erp_string, disabled=True, key=f"cmd_{sku}_{clean_dest}")
                                 st.markdown("<div style='border-bottom: 1px dashed #1E293B; margin: 15px 0;'></div>", unsafe_allow_html=True)
                             break 
                             
