@@ -37,7 +37,7 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #0F172A !important; border-right: 1px solid #1E293B !important; }
     
     [data-testid="stExpander"] { background-color: #111827 !important; border: 1px solid #1E293B !important; border-radius: 8px; }
-    [data-testid="stExpander"] summary { color: #F8FAFC !important; }
+    [data-testid="stExpander"] summary { color: #FFFFFF !important; }
     [data-testid="stFileUploader"] section { background-color: #111827 !important; border: 1px dashed #38BDF8 !important; }
     
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
@@ -160,14 +160,12 @@ else:
                 
                 df_snap.columns = [str(c).strip() for c in df_snap.columns]
                 
-                # Check for your specific manual headers
                 if "Item_Code" not in df_snap.columns:
                     st.error("❌ Column Header Verification Failed: Ensure your first rows contain an exact label named 'Item_Code'.")
                     st.stop()
                 
                 updated_master_df = df_stock.copy()
                 
-                # Create a lookup dictionary from the uploaded file
                 snap_dict = {}
                 for _, row in df_snap.iterrows():
                     s_code = str(row["Item_Code"]).strip()
@@ -176,30 +174,33 @@ else:
 
                 matched_count = 0
                 
-                # Update only the matching active records in your master tracking loop
+                # 🔥 NEW HELPER: Hardened converter to absolutely guarantee 0.0 instead of NaN strings
+                def safe_float(val):
+                    res = pd.to_numeric(val, errors="coerce")
+                    return float(res) if pd.notna(res) else 0.0
+                
                 for idx, m_row in updated_master_df.iterrows():
                     m_sku = str(m_row["Item_Code"]).strip()
                     
                     if m_sku in snap_dict:
                         erp_row = snap_dict[m_sku]
                         
-                        # Direct mapping from your manual headers
-                        q_aq = pd.to_numeric(erp_row.get("Al Quoz Trading SP", 0), errors="coerce") or 0.0
-                        q_shj = pd.to_numeric(erp_row.get("Sharjah Trading SP", 0), errors="coerce") or 0.0
-                        q_ad = pd.to_numeric(erp_row.get("Abu Dhabi Trading SP", 0), errors="coerce") or 0.0
-                        q_dip = pd.to_numeric(erp_row.get("DIP Trading", 0), errors="coerce") or 0.0
+                        # Process using the safe float calculation engine
+                        q_aq = safe_float(erp_row.get("Al Quoz Trading SP", 0))
+                        q_shj = safe_float(erp_row.get("Sharjah Trading SP", 0))
+                        q_ad = safe_float(erp_row.get("Abu Dhabi Trading SP", 0))
+                        q_dip = safe_float(erp_row.get("DIP Trading", 0))
                         
-                        # Online segments read for absolute summation math
-                        q_o_ad = pd.to_numeric(erp_row.get("Online Abu Dhabi Trading SP", 0), errors="coerce") or 0.0
-                        q_o_aq = pd.to_numeric(erp_row.get("Online Al Quoz Trading SP", 0), errors="coerce") or 0.0
+                        q_o_ad = safe_float(erp_row.get("Online Abu Dhabi Trading SP", 0))
+                        q_o_aq = safe_float(erp_row.get("Online Al Quoz Trading SP", 0))
                         
-                        # Assign values to physical display slots
-                        updated_master_df.at[idx, "Stock_Sharjah"] = float(q_shj)
-                        updated_master_df.at[idx, "Stock_Al_Quoz"] = float(q_aq)
-                        updated_master_df.at[idx, "Stock_DIP"] = float(q_dip)
-                        updated_master_df.at[idx, "Stock_Abu_Dhabi"] = float(q_ad)
+                        # Save out physical representations
+                        updated_master_df.at[idx, "Stock_Sharjah"] = q_shj
+                        updated_master_df.at[idx, "Stock_Al_Quoz"] = q_aq
+                        updated_master_df.at[idx, "Stock_DIP"] = q_dip
+                        updated_master_df.at[idx, "Stock_Abu_Dhabi"] = q_ad
                         
-                        # Calculate Global Current_Stock (Physical + Hidden Online)
+                        # Perfect arithmetic execution loop without NaN contamination
                         updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_ad + q_dip + q_o_ad + q_o_aq)
                         matched_count += 1
                 
@@ -218,7 +219,7 @@ else:
                     ws_stock_write.clear()
                     ws_stock_write.append_rows([TARGET_COLUMNS] + clean_rows)
                     
-                    st.success(f"🎉 Stock overwritten successfully! Updated metrics for {matched_count} tracked items.")
+                    st.success(f"🎉 Stock overwritten successfully! Total stock columns resolved for {matched_count} tracked items.")
                     st.cache_data.clear()
                     st.rerun()
                 else:
@@ -234,7 +235,7 @@ st.markdown("---")
 st.header("🧠 Intelligent Supply Redistribution Advisor")
 
 if df_stock.empty:
-    st.info("ℹ]. Master warehouse balance tables are currently loading.")
+    st.info("ℹ️ Master warehouse balance tables are currently loading.")
 else:
     def clean_float(value):
         try: return float(value) if str(value).strip() != "" else 0.0
@@ -306,7 +307,6 @@ else:
                                     final_qty = st.number_input(f"Adjust Qty ({sku})", min_value=1, max_value=int(src_qty), value=int(optimal_transfer), key=f"adj_{sku}_{clean_dest}")
                                 with c3:
                                     erp_string = f"SRTS: Move {final_qty} pcs of SKU {sku} from {clean_src} to {clean_dest}"
-                                    # Fixed: Changed deprecated parameter to disabled=True
                                     st.text_input("📋 Focus ERP Ready Command String:", value=erp_string, disabled=True, key=f"cmd_{sku}_{clean_dest}")
                                 st.markdown("<div style='border-bottom: 1px dashed #1E293B; margin: 15px 0;'></div>", unsafe_allow_html=True)
                             break 
