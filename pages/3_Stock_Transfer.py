@@ -37,7 +37,7 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #0F172A !important; border-right: 1px solid #1E293B !important; }
     
     [data-testid="stExpander"] { background-color: #111827 !important; border: 1px solid #1E293B !important; border-radius: 8px; }
-    [data-testid="stExpander"] summary { color: #FFFFFF !important; }
+    [data-testid="stExpander"] summary { color: #F8FAFC !important; }
     [data-testid="stFileUploader"] section { background-color: #111827 !important; border: 1px dashed #38BDF8 !important; }
     
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
@@ -138,102 +138,69 @@ if is_admin:
                 st.error(f"Initialization Failed: {e}")
 
 # =====================================================
-# 4. WORKSPACE PORTAL B: COLUMN-WISE SNAPSHOT INGESTION
+# 4. WORKSPACE PORTAL B: EXPLICIT SNAPSHOT OVERWRITE
 # =====================================================
 st.header("📥 Sync Daily Warehouse-Wise Stock Snapshot")
-st.markdown("Upload your raw Focus multi-column inventory sheet. The dashboard will automatically update active tracking codes and match column metrics instantly.")
+st.markdown("Upload your cleaned Focus inventory matrix file. The dashboard will automatically update active tracking codes and overwrite warehouse columns.")
 
 if df_stock.empty:
     st.info("ℹ️ Load Master Stock Sheets first before handling bulk files.")
 elif not is_admin:
     st.warning("🔒 Device write lock is active. Please use your authenticated dashboard link to process files.")
 else:
-    uploaded_snap = st.file_uploader("Select Columnar ERP Warehouse Report (Excel/CSV)", type=["xlsx", "csv"])
+    uploaded_snap = st.file_uploader("Select Cleaned Warehouse Matrix Report (Excel/CSV)", type=["xlsx", "csv"])
     
     if uploaded_snap is not None:
         if st.button("⚡ EXECUTE SELECTIVE DASHBOARD OVERWRITE", use_container_width=True):
             try:
-                # 1. Broadly read rows completely as strings to scan for headers flexibly
                 if uploaded_snap.name.endswith(".csv"):
-                    df_raw_check = pd.read_csv(uploaded_snap, header=None).fillna("")
+                    df_snap = pd.read_csv(uploaded_snap)
                 else:
-                    df_raw_check = pd.read_excel(uploaded_snap, header=None).fillna("")
-                
-                header_row_idx = None
-                
-                # Dynamic scanner checking for both code references and prominent location identifiers
-                for idx, row_data in df_raw_check.iterrows():
-                    row_strs = [str(cell).strip().lower() for cell in row_data.values]
-                    
-                    # Loosened match criteria to avoid strict failures if columns shift or vary slightly
-                    has_sku_header = any("code" in s or "sku" in s or "item" in s for s in row_strs)
-                    has_wh_header = any("sharjah" in s or "quoz" in s or "dip" in s or "abu dhabi" in s for s in row_strs)
-                    
-                    if has_sku_header and has_wh_header:
-                        header_row_idx = idx
-                        break
-                
-                # Fallback to row index 0 if scanner can't find clear target tags
-                if header_row_idx is None:
-                    header_row_idx = 0
-                
-                if uploaded_snap.name.endswith(".csv"):
-                    df_snap = pd.read_csv(uploaded_snap, skiprows=header_row_idx)
-                else:
-                    df_snap = pd.read_excel(uploaded_snap, skiprows=header_row_idx)
+                    df_snap = pd.read_excel(uploaded_snap)
                 
                 df_snap.columns = [str(c).strip() for c in df_snap.columns]
                 
-                # Flexible tracking matcher for primary SKU identifier column 
-                sku_col = next((c for c in df_snap.columns if "code" in c.lower() or "sku" in c.lower() or "item" in c.lower()), df_snap.columns[0])
-                
-                # Highly accurate keyword mapping rules for your specific layout columns
-                col_al_quoz = next((c for c in df_snap.columns if "al quoz" in c.lower() and "online" not in c.lower()), None)
-                col_sharjah = next((c for c in df_snap.columns if "sharjah" in c.lower() and "online" not in c.lower()), None)
-                col_dip = next((c for c in df_snap.columns if "dip" in c.lower()), None)
-                col_abu_dhabi = next((c for c in df_snap.columns if "abu dhabi" in c.lower() or "ad" in c.lower() or "depot" in c.lower()), None)
-                
-                # Online sub-columns mapping rules
-                col_online_quoz = next((c for c in df_snap.columns if "al quoz" in c.lower() and "online" in c.lower()), None)
-                col_online_shj = next((c for c in df_snap.columns if "sharjah" in c.lower() and "online" in c.lower()), None)
+                # Check for your specific manual headers
+                if "Item_Code" not in df_snap.columns:
+                    st.error("❌ Column Header Verification Failed: Ensure your first rows contain an exact label named 'Item_Code'.")
+                    st.stop()
                 
                 updated_master_df = df_stock.copy()
                 
-                # Build efficient fast lookup table dictionary indexed on SKU
+                # Create a lookup dictionary from the uploaded file
                 snap_dict = {}
                 for _, row in df_snap.iterrows():
-                    s_code = str(row[sku_col]).strip()
-                    if s_code and s_code.lower() not in ["", "nan", "total"]:
+                    s_code = str(row["Item_Code"]).strip()
+                    if s_code and s_code.lower() not in ["", "nan", "total", "grand total"]:
                         snap_dict[s_code] = row
 
                 matched_count = 0
                 
-                # Match data using only your master active catalog items list
+                # Update only the matching active records in your master tracking loop
                 for idx, m_row in updated_master_df.iterrows():
                     m_sku = str(m_row["Item_Code"]).strip()
                     
                     if m_sku in snap_dict:
                         erp_row = snap_dict[m_sku]
                         
-                        q_shj = pd.to_numeric(erp_row[col_sharjah], errors="coerce") if col_sharjah else 0.0
-                        q_aq = pd.to_numeric(erp_row[col_al_quoz], errors="coerce") if col_al_quoz else 0.0
-                        q_dip = pd.to_numeric(erp_row[col_dip], errors="coerce") if col_dip else 0.0
-                        q_ad = pd.to_numeric(erp_row[col_abu_dhabi], errors="coerce") if col_abu_dhabi else 0.0
+                        # Direct mapping from your manual headers
+                        q_aq = pd.to_numeric(erp_row.get("Al Quoz Trading SP", 0), errors="coerce") or 0.0
+                        q_shj = pd.to_numeric(erp_row.get("Sharjah Trading SP", 0), errors="coerce") or 0.0
+                        q_ad = pd.to_numeric(erp_row.get("Abu Dhabi Trading SP", 0), errors="coerce") or 0.0
+                        q_dip = pd.to_numeric(erp_row.get("DIP Trading", 0), errors="coerce") or 0.0
                         
-                        q_on_aq = pd.to_numeric(erp_row[col_online_quoz], errors="coerce") if col_online_quoz else 0.0
-                        q_on_shj = pd.to_numeric(erp_row[col_online_shj], errors="coerce") if col_online_shj else 0.0
+                        # Online segments read for absolute summation math
+                        q_o_ad = pd.to_numeric(erp_row.get("Online Abu Dhabi Trading SP", 0), errors="coerce") or 0.0
+                        q_o_aq = pd.to_numeric(erp_row.get("Online Al Quoz Trading SP", 0), errors="coerce") or 0.0
                         
-                        updated_master_df.at[idx, "Stock_Sharjah"] = float(np.nan_to_num(q_shj))
-                        updated_master_df.at[idx, "Stock_Al_Quoz"] = float(np.nan_to_num(q_aq))
-                        updated_master_df.at[idx, "Stock_DIP"] = float(np.nan_to_num(q_dip))
-                        updated_master_df.at[idx, "Stock_Abu_Dhabi"] = float(np.nan_to_num(q_ad))
+                        # Assign values to physical display slots
+                        updated_master_df.at[idx, "Stock_Sharjah"] = float(q_shj)
+                        updated_master_df.at[idx, "Stock_Al_Quoz"] = float(q_aq)
+                        updated_master_df.at[idx, "Stock_DIP"] = float(q_dip)
+                        updated_master_df.at[idx, "Stock_Abu_Dhabi"] = float(q_ad)
                         
-                        # Calculate Global Total (Physical locations + Hidden Online balances)
-                        updated_master_df.at[idx, "Current_Stock"] = float(
-                            np.nan_to_num(q_shj) + np.nan_to_num(q_aq) + 
-                            np.nan_to_num(q_dip) + np.nan_to_num(q_ad) + 
-                            np.nan_to_num(q_on_aq) + np.nan_to_num(q_on_shj)
-                        )
+                        # Calculate Global Current_Stock (Physical + Hidden Online)
+                        updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_ad + q_dip + q_o_ad + q_o_aq)
                         matched_count += 1
                 
                 if matched_count > 0:
@@ -251,23 +218,23 @@ else:
                     ws_stock_write.clear()
                     ws_stock_write.append_rows([TARGET_COLUMNS] + clean_rows)
                     
-                    st.success(f"🎉 Columns matched cleanly! Synchronized totals for {matched_count} tracked inventory profiles.")
+                    st.success(f"🎉 Stock overwritten successfully! Updated metrics for {matched_count} tracked items.")
                     st.cache_data.clear()
                     st.rerun()
                 else:
-                    st.error("❌ Parsing Error: Could not locate row matching your active inventory metrics. Ensure headers are clean.")
+                    st.error("❌ Verification Error: No matching SKU intersections found between your file and the dashboard master catalog.")
             except Exception as e:
                 st.error(f"🚨 Operational Snapshot Failure: {e}")
 
 st.markdown("---")
 
 # =====================================================
-# 5. WORKSPACE PORTAL C: FORESIGHT ADVISOR WITH OVERRIDES
+# 5. WORKSPACE PORTAL C: THE FORESIGHT DEMAND ADVISOR
 # =====================================================
 st.header("🧠 Intelligent Supply Redistribution Advisor")
 
 if df_stock.empty:
-    st.info("ℹ️ Master allocation workspace balances are loading.")
+    st.info("ℹ]. Master warehouse balance tables are currently loading.")
 else:
     def clean_float(value):
         try: return float(value) if str(value).strip() != "" else 0.0
@@ -275,7 +242,7 @@ else:
 
     for k in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]:
         if k not in df_stock.columns: df_stock[k] = 0
-
+            
     col_search, col_vel_filter = st.columns([2, 1])
     with col_search:
         search_query = st.text_input("🔍 Search Matrix or Advisor by SKU / Item Name:", value="", placeholder="Type SKU code...").strip()
@@ -290,7 +257,7 @@ else:
         ]
     
     df_filtered = df_filtered[df_filtered["Avg_Daily_Sales"].apply(clean_float) >= min_velocity]
-            
+
     st.subheader("📊 Dynamic Global Stock Allocation Matrix")
     st.dataframe(df_filtered[["Item_Code", "Item_Name", "Current_Stock", 
                                "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]], 
@@ -332,17 +299,17 @@ else:
                                 c1, c2, c3 = st.columns([2, 1, 1])
                                 with c1:
                                     st.markdown(f"""
-                                        ⚠️ <span class="critical-badge">{clean_dest}</span> holds critical low stock ({int(dest_qty)} pcs | ~{days_of_coverage:.1f} days left).<br/>
-                                        📦 <span class="surplus-badge">{clean_src}</span> has safe excess volume available ({int(src_qty)} pcs).
+                                        ⚠️ <span class="critical-badge">{clean_dest}</span> holds critical deficit values ({int(dest_qty)} pcs | ~{days_of_coverage:.1f} days left).<br/>
+                                        📦 <span class="surplus-badge">{clean_src}</span> has excess operational volume ({int(src_qty)} pcs).
                                     """, unsafe_allow_html=True)
                                 with c2:
                                     final_qty = st.number_input(f"Adjust Qty ({sku})", min_value=1, max_value=int(src_qty), value=int(optimal_transfer), key=f"adj_{sku}_{clean_dest}")
                                 with c3:
                                     erp_string = f"SRTS: Move {final_qty} pcs of SKU {sku} from {clean_src} to {clean_dest}"
-                                    # 🛠️ FIXED: Changed deprecated readonly=True to modern disabled=True
+                                    # Fixed: Changed deprecated parameter to disabled=True
                                     st.text_input("📋 Focus ERP Ready Command String:", value=erp_string, disabled=True, key=f"cmd_{sku}_{clean_dest}")
                                 st.markdown("<div style='border-bottom: 1px dashed #1E293B; margin: 15px 0;'></div>", unsafe_allow_html=True)
                             break 
                             
     if not advisor_routes_found:
-        st.success("✅ No inventory redistribution triggers match current filter limits.")
+        st.success("✅ Multi-warehouse supply lines are evenly distributed.")
