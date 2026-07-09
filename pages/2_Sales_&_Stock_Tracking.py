@@ -379,7 +379,9 @@ else:
                         st.warning(f"⚠️ Ignored {ignored_items_count} item(s) from the sales file because they do not exist in your Master Stock list.")
                         
                     if filtered_sales_logs:
-                        temp_log_df = pd.concat([df_log, pd.DataFrame(filtered_sales_logs, columns=df_log.columns)], ignore_index=True)
+                        # 🩹 REVISION APPLIED HERE: Force structural schema alignment row-by-row on the input matrix to prevent dynamic shape errors
+                        new_sales_df = pd.DataFrame(filtered_sales_logs, columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
+                        temp_log_df = pd.concat([df_log, new_sales_df], ignore_index=True)
                         updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
                         
                         ws_stock.clear()
