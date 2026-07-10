@@ -1346,7 +1346,7 @@ SP-26-15174,5174,Return,04/07/2026,Al Quoz,[Full] Awaiting Warehouse File Upload
 SP-26-15175,5175,Dispatched,04/07/2026,Al Quoz,,Melvin,2026-07-07 12:37:43
 SP-26-15176,5176,Dispatched,04/07/2026,Al Quoz,,jay,2026-07-07 05:07:22
 SP-26-15178,5178,Dispatched,04/07/2026,Al Quoz,,Rajendran,2026-07-07 05:07:22
-SP-26-15179,5179,Pending,04/07/2026,Al Quoz,,jay,2026-07-09 10:22:46
+SP-26-15179,5179,Dispatched,04/07/2026,Al Quoz,,jay,2026-07-10 07:15:38
 SP-26-15184,5184,Dispatched,04/07/2026,Al Quoz,,jay,2026-07-07 05:07:22
 SP-26-15185,5185,Dispatched,04/07/2026,Al Quoz,,jay,2026-07-07 05:07:22
 SP-26-15186,5186,Dispatched,04/07/2026,Al Quoz,,jay,2026-07-07 05:07:22
@@ -1696,3 +1696,25 @@ SP-26-15636,5636,Dispatched,09/07/2026,Abu Dhabi,,Anand,2026-07-10 07:03:28
 SP-26-15637,5637,Dispatched,09/07/2026,Abu Dhabi,,Anand,2026-07-10 07:03:28
 SP-26-15642,5642,Dispatched,09/07/2026,Abu Dhabi,,Anand,2026-07-10 07:03:28
 SP-26-15643,5643,Pending,09/07/2026,Abu Dhabi,,Anand,2026-07-10 07:03:28
+SP-26-15578,5578,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15587,5587,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15588,5588,Return,09/07/2026,Sharjah,[Full] Awaiting Warehouse File Upload (Retro-Reconciled),Melvin,2026-07-10 10:43:23
+SP-26-15589,5589,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15598,5598,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15602,5602,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15605,5605,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15608,5608,Pending,09/07/2026,Sharjah,,Anand,2026-07-10 10:43:23
+SP-26-15612,5612,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15617,5617,Return,09/07/2026,Sharjah,[Full] Awaiting Warehouse File Upload (Retro-Reconciled),Melvin,2026-07-10 10:43:23
+SP-26-15618,5618,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15620,5620,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15626,5626,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15630,5630,Dispatched,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15639,5639,Dispatched,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15640,5640,Pending,09/07/2026,Sharjah,,jay,2026-07-10 10:43:23
+SP-26-15646,5646,Dispatched,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15648,5648,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15650,5650,Dispatched,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15655,5655,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15659,5659,Pending,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
+SP-26-15660,5660,Dispatched,09/07/2026,Sharjah,,Melvin,2026-07-10 10:43:23
