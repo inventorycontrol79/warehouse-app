@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 
 st.set_page_config(page_title="SABIN PLASTIC // Inventory Intelligence", layout="wide")
 
-# --- MULTI-PAGE ADMIN PERSISTENCE GATEWAY ---
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
@@ -18,7 +17,6 @@ if url_params.get("key", "") == "sabin_inventory":
 
 is_admin = st.session_state.is_admin
 
-# --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
@@ -92,25 +90,8 @@ def load_data_from_sheet(ws_index, fallback_cols):
     except Exception:
         return pd.DataFrame(columns=fallback_cols)
 
-def run_automatic_archiver(ws_log, ws_archive, df_log_current):
-    if df_log_current.empty: return
-    df_log_current["Timestamp_Parsed"] = pd.to_datetime(df_log_current["Timestamp"], errors='coerce')
-    cutoff_date = datetime.now() - timedelta(days=45)
-    
-    df_to_keep = df_log_current[df_log_current["Timestamp_Parsed"] >= cutoff_date]
-    df_to_archive = df_log_current[df_log_current["Timestamp_Parsed"] < cutoff_date]
-    
-    if not df_to_archive.empty:
-        df_to_keep = df_to_keep.drop(columns=["Timestamp_Parsed"])
-        df_to_archive = df_to_archive.drop(columns=["Timestamp_Parsed"])
-        ws_archive.append_rows(df_to_archive.fillna("").astype(str).values.tolist())
-        ws_log.clear()
-        ws_log.append_rows([df_to_keep.columns.tolist()] + df_to_keep.fillna("").astype(str).values.tolist())
-        st.toast(f"📦 Performance Boost: Moved {len(df_to_archive)} historical logs to data archive tab.", icon="♻️")
-
 ws_stock, ws_log, ws_batches, ws_archive = get_worksheets()
 
-# Explicit schema definitions including background velocity parameters
 TARGET_STOCK_COLS = [
     "Item_Code", "Item_Name", "Product_Category", "Current_Stock",
     "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi",
@@ -122,7 +103,6 @@ df_stock = load_data_from_sheet(3, TARGET_STOCK_COLS)
 df_log = load_data_from_sheet(4, ["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
 df_batches = load_data_from_sheet(5, ["Batch_ID", "Upload_Type", "Timestamp"])
 
-# Dynamically patch structural columns if missing
 for col in TARGET_STOCK_COLS:
     if col not in df_stock.columns:
         df_stock[col] = 0.0 if "Velocity" in col or "Stock" in col or col == "Avg_Daily_Sales" else ""
@@ -132,7 +112,6 @@ for d in [df_stock, df_log, df_batches]:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
 
-# --- SIDEBAR INTERACTIVE FILTERS ---
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
 if not df_stock.empty:
     df_stock["Product_Category"] = df_stock["Product_Category"].replace("", "Uncategorized").fillna("Uncategorized")
@@ -152,7 +131,6 @@ if item_search:
         filt_stock["Item_Name"].str.contains(item_search, case=False, na=False)
     ]
 
-# --- UPGRADED BACKGROUND MULTI-LOCATION VELOCITY ENGINE ---
 def recalculate_abc_and_velocity(stock_df, log_df):
     if log_df.empty or stock_df.empty: return stock_df
     stock_df["Current_Stock"] = pd.to_numeric(stock_df["Current_Stock"], errors='coerce').fillna(0)
@@ -165,7 +143,6 @@ def recalculate_abc_and_velocity(stock_df, log_df):
     thirty_days_ago = datetime.now() - timedelta(days=30)
     sales_30 = log_df[(log_df["Transaction_Type"] == "Sales") & (log_df["Timestamp"] >= thirty_days_ago)]
     
-    # Initialize background metrics safely
     for b_col in ["Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
         stock_df[b_col] = 0.0
 
@@ -174,7 +151,6 @@ def recalculate_abc_and_velocity(stock_df, log_df):
         stock_df["Avg_Daily_Sales"] = 0.0
         return stock_df
         
-    # 1. Company Global Velocity Calculation Layer
     item_sales = sales_30.groupby("Item_Code")["Qty_Delta"].sum().reset_index()
     item_sales["Qty_Delta"] = item_sales["Qty_Delta"].abs()
     item_sales = item_sales.sort_values(by="Qty_Delta", ascending=False)
@@ -195,7 +171,6 @@ def recalculate_abc_and_velocity(stock_df, log_df):
     stock_df.update(item_sales[["ABC_Category", "Avg_Daily_Sales"]])
     stock_df.reset_index(inplace=True)
 
-    # 2. Under-the-Hood Location Segment Mapping Loop
     branch_mappings = {
         "Dubai": "Velocity_Al_Quoz",
         "Sharjah": "Velocity_Sharjah",
@@ -227,7 +202,6 @@ filt_stock = df_stock.copy()
 if not filt_stock.empty and selected_category_filter != "All Categories":
     filt_stock = filt_stock[filt_stock["Product_Category"] == selected_category_filter]
 
-# --- SNAPSHOT KPIS SUMMARY ---
 st.markdown(f"### 📊 Inventory Summary: {selected_category_filter}")
 ninety_days_ago_str = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
 
@@ -268,7 +242,6 @@ if item_search:
 
 st.markdown("---")
 
-# --- FILE INGESTION CONTROLS (GATED) ---
 if not is_admin:
     st.info("🔒 Stock adjustments and data ingestion engines locked. Displaying running terminal logs in read-only mode.")
 else:
@@ -286,7 +259,7 @@ else:
                 if not df_batches.empty and unique_batch in df_batches["Batch_ID"].values:
                     st.error(f"🛑 Double-Upload Blocked! Document Batch `{unique_batch}` has already been processed.")
                 else:
-                    if st.button("⚡ INTEGRATE INBOUND LOG INTO STOCK", use_container_width=True):
+                    if st.button("⚡ INTEGRATE INBOUND LOG INTO STOCK"):
                         st.cache_data.clear()
                         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         new_logs, new_stock_map = [], {}
@@ -338,14 +311,13 @@ else:
             match_code = st.selectbox("Match Sales [Item Code]:", cols, index=cols.index(find_col(["item.code", "item_code", "code"])))
             match_name = st.selectbox("Match Sales [Item Name]:", cols, index=cols.index(find_col(["item.name", "item_name", "description"])))
             match_qty = st.selectbox("Match Sales [Quantity]:", cols, index=cols.index(find_col(["quantity", "qty", "sold"])))
-            # 🌟 NEW UPGRADE: Interactive Column selector for the Branch parameter layout
             match_branch = st.selectbox("Match Sales [Branch]:", cols, index=cols.index(find_col(["branch", "location", "warehouse"])))
             
             sales_batch_id = str(df_sales_raw[match_vouch].iloc[0]).strip() + "_SALES"
             if not df_batches.empty and sales_batch_id in df_batches["Batch_ID"].values:
                 st.error("🛑 Double-Upload Blocked! This daily sales spreadsheet has already been deducted from inventory.")
             else:
-                if st.button("⚡ EXECUTE QUANTITY DEDUCTION & ABC ANALYSIS", use_container_width=True):
+                if st.button("⚡ EXECUTE QUANTITY DEDUCTION & ABC ANALYSIS"):
                     st.cache_data.clear()
                     today_stamp = datetime.now().strftime("%Y-%m-%d")
                     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -379,7 +351,6 @@ else:
                         st.warning(f"⚠️ Ignored {ignored_items_count} item(s) from the sales file because they do not exist in your Master Stock list.")
                         
                     if filtered_sales_logs:
-                        # 🩹 REVISION APPLIED HERE: Force structural schema alignment row-by-row on the input matrix to prevent dynamic shape errors
                         new_sales_df = pd.DataFrame(filtered_sales_logs, columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
                         temp_log_df = pd.concat([df_log, new_sales_df], ignore_index=True)
                         updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
@@ -395,7 +366,6 @@ else:
                         st.error("❌ No items from this sales upload matched your Master Stock list. Zero adjustments recorded.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# --- MASTER INVENTORY DISPATCH REPORT GRID ---
 grid_header_col, download_btn_col = st.columns([3, 1])
 
 with grid_header_col:
@@ -408,7 +378,6 @@ def generate_professional_excel(dataframe, segment_name):
     clean_df["ABC_Category"] = clean_df["ABC_Category"].map(abc_map).fillna("Unclassified")
     clean_df["Last_Sold_Date"] = clean_df["Last_Sold_Date"].replace("", "Never Tracked").fillna("Never Tracked")
     
-    # Filter down to display columns only to keep executive export clean
     clean_df = clean_df[[
         "Item_Code", "Item_Name", "Product_Category", "Current_Stock", 
         "ABC_Category", "Avg_Daily_Sales", "Days_of_Coverage", "Last_Sold_Date"
@@ -488,13 +457,11 @@ with download_btn_col:
             label="📥 Download Excel Ledger",
             data=excel_data,
             file_name=f"Sabin_Inventory_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
 if filt_stock.empty:
     st.info("📌 No items found matching the selected segment filter criteria.")
-    col_config_view = {}
 else:
     def color_abc(val):
         if val == "A": return "🟩 Fast (A)"
@@ -505,7 +472,6 @@ else:
     df_stock_display["ABC_Category"] = df_stock_display["ABC_Category"].apply(color_abc)
     df_stock_display["Last_Sold_Date"] = df_stock_display["Last_Sold_Date"].replace("", "Never Tracked").fillna("Never Tracked")
     
-    # Clean display views to keep out background math tracks from matrix grid view
     display_columns = [
         "Item_Code", "Item_Name", "Product_Category", "Current_Stock", 
         "ABC_Category", "Avg_Daily_Sales", "Days_of_Coverage", "Last_Sold_Date"
@@ -513,7 +479,6 @@ else:
     
     st.dataframe(
         df_stock_display[display_columns].sort_values(by="Current_Stock", ascending=True),
-        use_container_width=True,
         hide_index=True,
         column_config={
             "Item_Code": st.column_config.TextColumn("Item Code"),
@@ -543,7 +508,7 @@ if is_admin and not df_stock.empty:
         with assign_col2:
             custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Rods, Adhesives, Mirror Sheet):")
             
-        if st.button("💾 SAVE CATEGORIZATION ASSIGNMENT", use_container_width=True):
+        if st.button("💾 SAVE CATEGORIZATION ASSIGNMENT"):
             st.cache_data.clear()
             final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
             

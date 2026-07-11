@@ -7,19 +7,15 @@ from datetime import datetime, timedelta
 
 st.set_page_config(page_title="SABIN PLASTIC // Returns Engine", layout="wide")
 
-# --- MULTI-PAGE ADMIN PERSISTENCE GATEWAY ---
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
-# Evaluate URL query strings in case they refresh directly on this engine page
 url_params = st.query_params
 if url_params.get("key", "") == "sabin_inventory":
     st.session_state.is_admin = True
 
-# Read authority privileges from persistent memory
 is_admin = st.session_state.is_admin
 
-# High-Contrast Premium Dark Theme Style Overrides
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
@@ -99,13 +95,11 @@ def log_returns_to_archive_sheet(return_rows):
         st.error(f"🚨 Failed logging returns to cloud archive: {e}")
         return False
 
-# Load Datasets
 df_master = load_inventory_from_sheets()
 if not df_master.empty:
     df_master["DO_Number"] = df_master["DO_Number"].astype(str).str.strip()
 df_returns_history = load_historical_returns_log()
 
-# Live Metrics Snapshot Computation
 st.markdown("### 📊 Return Operations Snapshot")
 yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y")
 total_historic = len(df_returns_history) if not df_returns_history.empty else 0
@@ -128,7 +122,6 @@ with m4: st.metric("All-Time Logged Archive", f"{total_historic} Total Records")
 st.markdown("---")
 st.markdown("## 📥 Sales Return Intake Engine")
 
-# Gated Verification for Sheet Uploader Widget
 if not is_admin:
     st.info("🔒 Return submission engine locked. Please use authorized terminal paths to commit database write variations.")
 else:
@@ -149,7 +142,7 @@ else:
         sel_date = st.selectbox("Confirm Return [Date] Column:", ret_cols, index=ret_cols.index(match_ret(["date", "posting"], ret_cols)))
         sel_user = st.selectbox("Confirm Return [Operator] Column:", ret_cols, index=ret_cols.index(match_ret(["created by", "user"], ret_cols)))
         
-        if st.button("🔍 RUN RECONCILIATION SCAN", use_container_width=True):
+        if st.button("🔍 RUN RECONCILIATION SCAN"):
             clean_dos = ret_df[sel_do].astype(str).str.replace("DLNS:", "", case=False, regex=False).str.strip()
             cleaned_returns = pd.DataFrame({
                 "DO_Number": clean_dos,
@@ -176,7 +169,6 @@ else:
             st.session_state["detected_standards"] = standards
             st.success(f"Scan Finished! Found {len(conflicts)} Live Queue Conflicts and {len(standards)} Standard System Returns.")
 
-    # Interactive Resolution Terminal Layout
     if "detected_conflicts" in st.session_state and st.session_state["detected_conflicts"]:
         st.markdown("---### ⚠️ ACTION REQUIRED: Active Ledger Conflicts Detected")
         updated_conflicts, all_valid = [], True
@@ -205,7 +197,7 @@ else:
         if not all_valid:
             st.error("🔒 Submission Locked: Provide a mandatory remark description for all Partial Returns to unlock database updates.")
         else:
-            if st.button("⚡ POST RECONCILED DISPATCH VALUES", type="primary", use_container_width=True):
+            if st.button("⚡ POST RECONCILED DISPATCH VALUES", type="primary"):
                 base_ledger = load_inventory_from_sheets()
                 archive_rows, timestamp_str = [], datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 if not base_ledger.empty:
@@ -222,12 +214,11 @@ else:
                     st.rerun()
 
     elif "detected_standards" in st.session_state and st.session_state["detected_standards"]:
-        if st.button("⚡ COMMIT STANDARD RETURN LOGS", use_container_width=True):
+        if st.button("⚡ COMMIT STANDARD RETURN LOGS"):
             if log_returns_to_archive_sheet(st.session_state["detected_standards"]):
                 del st.session_state["detected_standards"]
                 st.rerun()
 
-# Permanent Sales Returns Archive Ledger display (Always accessible to all viewers)
 st.markdown("---")
 st.markdown("### 📜 Permanent Sales Returns Archive Ledger")
 
@@ -241,7 +232,6 @@ else:
 
     st.dataframe(
         display_history,
-        use_container_width=True,
         hide_index=True,
         column_config={
             "DO_Number": st.column_config.TextColumn("DO Number"),

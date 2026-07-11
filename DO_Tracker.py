@@ -9,26 +9,20 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
-# --- CONFIGURATION & MULTI-PAGE ADMIN PERSISTENCE ---
 st.set_page_config(page_title="SABIN PLASTIC // Command Center", layout="wide")
 BOT_STATUS_FILE = "bot_status.txt"
 
-# Modern background polling interval (30 Seconds)
 st_autorefresh(interval=30000, key="auto_refresh")
 
-# Initialize persistent session state admin gate
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
-# Evaluate URL parameters and capture admin session status
 url_params = st.query_params
 if url_params.get("key", "") == "sabin_inventory":
     st.session_state.is_admin = True
 
-# Explicit routing parameter assignment
 is_admin = st.session_state.is_admin
 
-# --- PREMIUM HIGH-CONTRAST ERP STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
@@ -36,23 +30,19 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
     label, .stWidgetLabel p { color: #94A3B8 !important; font-weight: 600 !important; }
     
-    /* Branding Header Components */
     .premium-header { border-bottom: 1px solid #1E293B; padding-bottom: 1.5rem; margin-bottom: 2rem; margin-top: 1rem; }
     .sabin-logo { font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #F8FAFC !important; margin: 0; line-height: 1.2; }
     .sabin-logo span { color: #0EA5E9 !important; }
     .sabin-sub { font-size: 12px; font-weight: 600; letter-spacing: 3px; color: #94A3B8 !important; text-transform: uppercase; margin-top: 4px; }
     
-    /* Industrial Grade KPI Card Containers */
     div[data-testid="metric-container"] { background-color: #111827; border: 1px solid #1E293B; border-top: 3px solid #0EA5E9; border-radius: 6px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; }
     div[data-testid="metric-container"]:hover { border-color: #38BDF8; transform: translateY(-2px); }
     .stMetric-value { color: #F8FAFC !important; font-size: 32px !important; font-weight: 600 !important; }
     .stMetric-label { color: #94A3B8 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 1px; text-transform: uppercase; }
     
-    /* Sidebar Overrides */
     section[data-testid="stSidebar"] { background-color: #0F172A; border-right: 1px solid #1E293B; }
     section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4, section[data-testid="stSidebar"] label { color: #F8FAFC !important; }
     
-    /* Form Wrapper Module Cards */
     .action-card { background-color: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
@@ -64,7 +54,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- NATIVE AUTHENTICATION & SHEET CONNECTION ENGINE ---
 def get_google_sheet_connection():
     try:
         raw_json = st.secrets["GCP_JSON"]
@@ -117,7 +106,6 @@ def save_inventory_to_sheets(dataframe):
         st.error(f"🚨 Main Data backup failed: {e}")
         return False
 
-# --- STATE AND CACHE REFRESH CONTROL LAYER ---
 if "master_data" not in st.session_state:
     st.session_state.master_data = pd.DataFrame()
 if "last_fetch_time" not in st.session_state:
@@ -136,15 +124,12 @@ if not df.empty:
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
 
-# --- PARAMETER ROUTING SECURITY ---
 url_warehouse = url_params.get("warehouse", None)
 if url_warehouse: url_warehouse = url_warehouse.strip()
 is_supervisor_session = True if url_warehouse and not df.empty and url_warehouse in df["Warehouse_Name"].unique() else False
 
-# --- SIDEBAR CONTROL PANEL ---
 st.sidebar.markdown("### ⚙️ SYSTEM CONTROLS")
 
-# Secure Admin Gate for Raw ERP Excel Upload Logic
 if not is_admin:
     st.sidebar.info("🔒 Administrative pipeline locked. Ledger modifications are running in read-only terminal mode.")
 elif is_supervisor_session:
@@ -172,7 +157,7 @@ else:
         chosen_wh = st.sidebar.selectbox("Match [Warehouse]:", available_cols, index=available_cols.index(guess_wh) if guess_wh in available_cols else 0)
         chosen_user = st.sidebar.selectbox("Match [Created By]:", available_cols, index=available_cols.index(guess_user) if guess_user in available_cols else 0)
         
-        if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT", use_container_width=True):
+        if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT"):
             new_df = pd.DataFrame({
                 "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
                 "Date_Issued": pd.to_datetime(raw_erp[chosen_date], errors="coerce"),
@@ -239,7 +224,6 @@ if os.path.exists(BOT_STATUS_FILE):
     except: st.sidebar.warning("API Status: Unknown")
 else: st.sidebar.info("🤖 API: Standby Mode")
 
-# --- CENTRAL PIPELINE FILTER LOGIC ---
 filt = df.copy()
 if not filt.empty:
     if search: 
@@ -248,7 +232,6 @@ if not filt.empty:
     if status != "All": filt = filt[filt["Status"] == status]
     filt = filt[(filt["Date_Issued"].dt.date >= start_date) & (filt["Date_Issued"].dt.date <= end_date)]
 
-# --- EXECUTIVE SUMMARY METRICS ---
 total = len(filt) if not filt.empty else 0
 dispatched = len(filt[filt["Status"]=="Dispatched"]) if not filt.empty else 0
 pending = len(filt[filt["Status"]=="Pending"]) if not filt.empty else 0
@@ -264,7 +247,6 @@ m4.metric("RETURNS", returned)
 m5.metric("DISPATCH %", f"{dispatch_rate}%")
 m6.metric("AVG PENDING AGE", f"{avg_age} Days")
 
-# --- LOGISTICS ARCHIVE EXPANDER MODULE (ADMIN SECURED) ---
 if is_admin and not is_supervisor_session:
     st.markdown("###")
     with st.expander("💼 LOGISTICS DATA ARCHIVE MODULE", expanded=False):
@@ -276,7 +258,7 @@ if is_admin and not is_supervisor_session:
             st.markdown(f"<div style='padding-top:1.5rem;'>📦 Archive Target Records Found: <b>{len(to_archive)} rows</b></div>", unsafe_allow_html=True)
         
         if not to_archive.empty:
-            if st.button("⚡ EXECUTE SECURE MIGRATION TO COLD STORAGE", use_container_width=True):
+            if st.button("⚡ EXECUTE SECURE MIGRATION TO COLD STORAGE"):
                 sh = get_google_sheet_connection()
                 if sh:
                     try:
@@ -308,9 +290,8 @@ else:
     with right:
         st.markdown("##### Facility Workload Leaderboard")
         leaderboard_df = filt.groupby("Warehouse_Name").agg(Total=("DO_Number","count")).reset_index().sort_values("Total", ascending=False)
-        st.dataframe(leaderboard_df, use_container_width=True, hide_index=True, height=280)
+        st.dataframe(leaderboard_df, hide_index=True, height=280)
 
-    # --- PENDING ORDERS AGEING BREAKDOWN ---
     st.markdown("---")
     st.markdown("##### ⏳ Pending Orders Ageing Breakdown")
     
@@ -355,7 +336,6 @@ else:
         st.markdown(f"📋 Showing **{len(display_drill)}** outstanding order(s) matching selection:")
         st.dataframe(
             display_drill,
-            use_container_width=True,
             hide_index=True,
             column_config={
                 "DO_Number": st.column_config.TextColumn("DO Number"),
@@ -367,19 +347,16 @@ else:
             }
         )
 
-    # --- LIVE OPERATIONS INTERACTIVE LEDGER (GATED) ---
     st.markdown("---")
     st.markdown("##### Active Operations Ledger")
     
     display_filt = filt.copy()
     display_filt["Date_Issued"] = display_filt["Date_Issued"].dt.strftime('%d/%m/%Y')
     
-    # Grid input locking mechanism triggers if session lacks valid credentials or matches supervisor profile constraints
     grid_disabled = True if (is_supervisor_session or not is_admin) else ["DO_Number", "Last_4", "Date_Issued", "Warehouse_Name", "Created_By", "Last_Modified"]
     
     edited = st.data_editor(
         display_filt, 
-        use_container_width=True, 
         hide_index=True, 
         column_config={
             "DO_Number": st.column_config.TextColumn("DO Number"),
@@ -390,9 +367,8 @@ else:
         disabled=grid_disabled
     )
 
-    # Secure Gated Action Trigger Button
     if is_admin and not is_supervisor_session:
-        if st.button("💾 COMMIT RECORD TO DATABASE", type="primary", use_container_width=True):
+        if st.button("💾 COMMIT RECORD TO DATABASE", type="primary"):
             base = load_inventory_from_sheets()
             if not base.empty:
                 base["DO_Number"] = base["DO_Number"].astype(str).str.strip()
@@ -410,7 +386,6 @@ else:
                     st.success("Database overwritten successfully!")
                     st.rerun()
 
-    # --- SECURE DATA EXPORT ENGINE ---
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         pd.DataFrame({
@@ -423,4 +398,4 @@ else:
         excel_filt.to_excel(writer, sheet_name="Dispatch Records", index=False)
         
     st.markdown("###")
-    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx", use_container_width=True)
+    st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx")

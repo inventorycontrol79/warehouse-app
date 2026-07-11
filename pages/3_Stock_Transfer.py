@@ -6,9 +6,6 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 import numpy as np
 
-# =====================================================
-# 1. PAGE SETUP & SECURITY ASSIGNMENT
-# =====================================================
 st.set_page_config(page_title="SABIN PLASTIC // Stock Transfer Hub", layout="wide")
 
 if "is_admin" not in st.session_state:
@@ -20,7 +17,6 @@ if url_params.get("key", "") == "sabin_inventory":
 
 is_admin = st.session_state.is_admin
 
-# Premium High-Contrast Dark Theme CSS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
@@ -59,9 +55,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# =====================================================
-# 2. SECURE GOOGLE CLOUD STORAGE CONNECTION
-# =====================================================
 def get_google_client():
     try:
         raw_json = st.secrets["GCP_JSON"]
@@ -95,9 +88,6 @@ TARGET_COLUMNS = [
     "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date", "Days_of_Coverage"
 ]
 
-# =====================================================
-# 3. WORKSPACE PORTAL A: ONE-TIME INITIALIZATION (ADMIN)
-# =====================================================
 if is_admin:
     with st.sidebar.expander("🛠️ SYSTEM MASTER INITIALIZATION"):
         st.markdown("<small>Use this to upload a baseline if setting physical stock for the first time.</small>", unsafe_allow_html=True)
@@ -137,9 +127,6 @@ if is_admin:
             except Exception as e:
                 st.error(f"Initialization Failed: {e}")
 
-# =====================================================
-# 4. WORKSPACE PORTAL B: EXPLICIT SNAPSHOT OVERWRITE
-# =====================================================
 st.header("📥 Sync Daily Warehouse-Wise Stock Snapshot")
 st.markdown("Upload your cleaned Focus inventory matrix file. The dashboard will automatically update active tracking codes and overwrite warehouse columns.")
 
@@ -151,7 +138,7 @@ else:
     uploaded_snap = st.file_uploader("Select Cleaned Warehouse Matrix Report (Excel/CSV)", type=["xlsx", "csv"])
     
     if uploaded_snap is not None:
-        if st.button("⚡ EXECUTE SELECTIVE DASHBOARD OVERWRITE", use_container_width=True):
+        if st.button("⚡ EXECUTE SELECTIVE DASHBOARD OVERWRITE"):
             try:
                 if uploaded_snap.name.endswith(".csv"):
                     df_snap = pd.read_csv(uploaded_snap)
@@ -165,7 +152,6 @@ else:
                     st.stop()
                 
                 updated_master_df = df_stock.copy()
-                
                 snap_dict = {}
                 for _, row in df_snap.iterrows():
                     s_code = str(row["Item_Code"]).strip()
@@ -174,7 +160,6 @@ else:
 
                 matched_count = 0
                 
-                # 🔥 NEW HELPER: Hardened converter to absolutely guarantee 0.0 instead of NaN strings
                 def safe_float(val):
                     res = pd.to_numeric(val, errors="coerce")
                     return float(res) if pd.notna(res) else 0.0
@@ -185,7 +170,6 @@ else:
                     if m_sku in snap_dict:
                         erp_row = snap_dict[m_sku]
                         
-                        # Process using the safe float calculation engine
                         q_aq = safe_float(erp_row.get("Al Quoz Trading SP", 0))
                         q_shj = safe_float(erp_row.get("Sharjah Trading SP", 0))
                         q_ad = safe_float(erp_row.get("Abu Dhabi Trading SP", 0))
@@ -194,13 +178,11 @@ else:
                         q_o_ad = safe_float(erp_row.get("Online Abu Dhabi Trading SP", 0))
                         q_o_aq = safe_float(erp_row.get("Online Al Quoz Trading SP", 0))
                         
-                        # Save out physical representations
                         updated_master_df.at[idx, "Stock_Sharjah"] = q_shj
                         updated_master_df.at[idx, "Stock_Al_Quoz"] = q_aq
                         updated_master_df.at[idx, "Stock_DIP"] = q_dip
                         updated_master_df.at[idx, "Stock_Abu_Dhabi"] = q_ad
                         
-                        # Perfect arithmetic execution loop without NaN contamination
                         updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_ad + q_dip + q_o_ad + q_o_aq)
                         matched_count += 1
                 
@@ -228,10 +210,6 @@ else:
                 st.error(f"🚨 Operational Snapshot Failure: {e}")
 
 st.markdown("---")
-
-# =====================================================
-# 5. WORKSPACE PORTAL C: THE FORESIGHT DEMAND ADVISOR
-# =====================================================
 st.header("🧠 Intelligent Supply Redistribution Advisor")
 
 if df_stock.empty:
@@ -262,7 +240,7 @@ else:
     st.subheader("📊 Dynamic Global Stock Allocation Matrix")
     st.dataframe(df_filtered[["Item_Code", "Item_Name", "Current_Stock", 
                                "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]], 
-                 use_container_width=True, hide_index=True)
+                 hide_index=True)
     
     st.markdown("### 💡 Recommended Optimization Routes & Interactive Prep Console")
     
