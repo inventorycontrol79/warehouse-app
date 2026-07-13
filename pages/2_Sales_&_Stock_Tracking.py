@@ -112,6 +112,34 @@ for d in [df_stock, df_log, df_batches]:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
 
+# Smart Intelligence Module for Dynamic Categorization
+def auto_detect_category(item_name):
+    name_upper = str(item_name).upper()
+    
+    # Priority multi-word/specific checks first
+    if "ABS SHEET" in name_upper: return "ABS Sheet"
+    if "ACRYLIC ROD" in name_upper: return "Acrylic Rod"
+    if "ACRYLIC TUBE" in name_upper: return "Acrylic Tube"
+    if "ACRYLIC SHEET" in name_upper: return "Acrylic Sheet"
+    if "COLD LAMINATION" in name_upper: return "Cold Lamination"
+    if "FOAM BOARD" in name_upper: return "Foam Board"
+    if "FREE FOAM SHEET" in name_upper: return "Free Foam Sheet"
+    if "HDPE ROD" in name_upper: return "HDPE Rod"
+    
+    # Standard Polycarbonate checks
+    if "PC TWIN SHEET" in name_upper or "PC TWINSHEET" in name_upper: return "PC Twin Sheet"
+    if "PC ROLL" in name_upper: return "PC Roll"
+    if "PC SHEET" in name_upper: return "PC Sheet"
+    
+    # Standard PVC and Miscellaneous checks
+    if "PVC SHEET" in name_upper: return "PVC Sheet"
+    if "TEFFLON SHEET" in name_upper or "TEFLON SHEET" in name_upper: return "Tefflon Sheet"
+    if "ACP" in name_upper: return "ACP"
+    if "GLUE" in name_upper: return "Glue"
+    if "TAPE" in name_upper: return "Tape"
+    
+    return "Uncategorized"
+
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
 if not df_stock.empty:
     df_stock["Product_Category"] = df_stock["Product_Category"].replace("", "Uncategorized").fillna("Uncategorized")
@@ -275,8 +303,9 @@ else:
                             if not updated_stock.empty and code in updated_stock["Item_Code"].values:
                                 updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] += info["Qty"]
                             else:
+                                guessed_cat = auto_detect_category(info["Item_Name"])
                                 new_rows_data = {
-                                    "Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": "Uncategorized", 
+                                    "Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": guessed_cat, 
                                     "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": ""
                                 }
                                 for b_col in ["Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
@@ -287,7 +316,7 @@ else:
                         ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
                         ws_log.append_rows(new_logs)
                         ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
-                        st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
+                        st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully with active smart-categorization mapping!")
                         st.rerun()
             else:
                 st.error(f"Missing column fields. File must match format: {req_mrn}")
@@ -495,8 +524,8 @@ else:
 if is_admin and not df_stock.empty:
     uncat_items = df_stock[df_stock["Product_Category"] == "Uncategorized"]
     if not uncat_items.empty:
-        st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Assign Categories</b>", unsafe_allow_html=True)
-        st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads. Assign them below to map your workspace permanently.")
+        st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Global Smart Assignment</b>", unsafe_allow_html=True)
+        st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads. Assigning a category here will update **all related historical inventory items** matching its key description criteria automatically.")
         
         known_cats = sorted(list(set(df_stock["Product_Category"].unique()) - {"Uncategorized"}))
         target_row = uncat_items.iloc[0]
@@ -506,18 +535,45 @@ if is_admin and not df_stock.empty:
         with assign_col1:
             chosen_existing = st.selectbox("Assign to an Existing Material Group:", ["-- Create Completely New --"] + known_cats)
         with assign_col2:
-            custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Rods, Adhesives, Mirror Sheet):")
+            custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Mirror Sheet, Rods, Adhesives):")
             
-        if st.button("💾 SAVE CATEGORIZATION ASSIGNMENT"):
+        if st.button("💾 SAVE & RE-INDEX ALL RELATED ITEMS"):
             st.cache_data.clear()
             final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
             
             if final_cat_selection in ["-- Create Completely New --", ""]:
                 st.error("Please enter or choose a valid target category label before clicking update.")
             else:
-                df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
+                # Intelligent Multi-Item Extraction: Detect defining core keyword of the manually fixed item
+                target_description = str(target_row['Item_Name']).upper()
+                keywords_to_test = [
+                    "ABS SHEET", "ACRYLIC ROD", "ACRYLIC TUBE", "ACRYLIC SHEET", "COLD LAMINATION", 
+                    "FOAM BOARD", "FREE FOAM SHEET", "HDPE ROD", "PC TWIN SHEET", "PC TWINSHEET",
+                    "PC ROLL", "PC SHEET", "PVC SHEET", "TEFFLON SHEET", "TEFLON SHEET", "ACP", "GLUE", "TAPE"
+                ]
+                
+                matched_keyword = None
+                for kw in keywords_to_test:
+                    if kw in target_description:
+                        matched_keyword = kw
+                        break
+                
+                # If a keyword is identified, update ALL unassigned elements that contain it
+                if matched_keyword:
+                    # Map variations cleanly back to user standards if dealing with duplicates
+                    if matched_keyword == "TEFLON SHEET": matched_keyword = "TEFFLON SHEET"
+                    if matched_keyword == "PC TWINSHEET": matched_keyword = "PC TWIN SHEET"
+                    
+                    mask = (df_stock["Product_Category"] == "Uncategorized") & (df_stock["Item_Name"].str.upper().str.contains(matched_keyword, na=False))
+                    updated_count = len(df_stock[mask])
+                    df_stock.loc[mask, "Product_Category"] = final_cat_selection
+                    st.toast(f"🤖 Smart Engine matched and updated {updated_count} elements matching '{matched_keyword}'!")
+                else:
+                    # Fallback straight to individual targeted update if no system keyword found
+                    df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
+                
                 ws_stock.clear()
                 ws_stock.append_rows([TARGET_STOCK_COLS] + df_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                st.success(f"Item `{target_row['Item_Code']}` mapped to `{final_cat_selection}`! Re-indexing terminal framework...")
+                st.success(f"Successfully updated inventory sheets to '{final_cat_selection}'! Re-indexing engine layout...")
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
