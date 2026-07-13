@@ -56,12 +56,11 @@ def pull_master_database_payload():
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
         ws_stock = sh.get_worksheet(3) 
         
-        # Access temporary snapshot log sheet by explicit name
         try:
             ws_snapshot_log = sh.worksheet("Daily_Snapshot_Log")
             df_l = pd.DataFrame(ws_snapshot_log.get_all_records())
         except Exception:
-            df_l = pd.DataFrame() # Handle case if empty or not cleared properly
+            df_l = pd.DataFrame() 
             
         df_s = pd.DataFrame(ws_stock.get_all_records())
         return df_s, df_l, ws_stock, ws_snapshot_log if 'ws_snapshot_log' in locals() else None
@@ -84,32 +83,41 @@ if not df_stock.empty:
             df_stock[c] = 0.0 if "Velocity" in c or "Stock" in c or c == "Avg_Daily_Sales" else ""
 
 # ==========================================
-#  🧠 RUNNING MEMORY LEARNING ENGINE
+#  🧠 RUNNING MEMORY LEARNING ENGINE (WITH AUTOMATED SALES RETURNS NETTING)
 # ==========================================
 if not df_logs.empty and not df_stock.empty:
     df_logs.columns = [str(c).strip() for c in df_logs.columns]
     
-    if "Item_Code" in df_logs.columns and "Qty_Delta" in df_logs.columns:
+    # Accept either standard tracking label or direct Focus column name
+    type_col = "Transaction_Type" if "Transaction_Type" in df_logs.columns else ("Voucher abbreviation" if "Voucher abbreviation" in df_logs.columns else None)
+    
+    if "Item_Code" in df_logs.columns and "Qty_Delta" in df_logs.columns and type_col:
         df_logs["Qty_Delta"] = pd.to_numeric(df_logs["Qty_Delta"], errors="coerce").fillna(0.0).abs()
         
-        # Filter strictly for standard sales transactions
-        df_sales = df_logs[df_logs["Transaction_Type"].astype(str).str.strip().str.lower() == "sales"]
+        # Calculate true Net Quantities: SINVS/Sales add to velocity, SRTS subtracts from velocity
+        def calculate_net_sales_volume(row):
+            voucher_type = str(row[type_col]).strip().upper()
+            qty = float(row["Qty_Delta"])
+            if voucher_type == "SRTS":
+                return -qty
+            elif voucher_type in ["SINVS", "SALES"]:
+                return qty
+            return 0.0
+
+        df_logs["Net_Qty"] = df_logs.apply(calculate_net_sales_volume, axis=1)
+        df_sales = df_logs[df_logs["Net_Qty"] != 0.0]
         
         if not df_sales.empty:
-            # Check unique date lines in current upload tab
             unique_dates_in_file = pd.to_datetime(df_sales["Timestamp"]).dt.date.nunique()
             unique_dates_in_file = max(1, unique_dates_in_file)
             
-            # Determine daily calendar running day for July 2026
             july_1st = datetime(2026, 7, 1).date()
             today_date = datetime.now().date()
             days_elapsed_total = max(1, (today_date - july_1st).days + 1)
             
-            # Identify if upload is a large baseline file or a single daily tracking file
             is_initialization = unique_dates_in_file > 2
             
-            # Pre-calculate dictionary maps for high-speed calculation matching
-            upload_global_totals = df_sales.groupby("Item_Code")["Qty_Delta"].sum().to_dict()
+            upload_global_totals = df_sales.groupby("Item_Code")["Net_Qty"].sum().to_dict()
             
             warehouse_selectors = {
                 "Al Quoz": "Velocity_Al_Quoz",
@@ -121,30 +129,28 @@ if not df_logs.empty and not df_stock.empty:
             upload_branch_totals = {}
             for branch_keyword, column_target in warehouse_selectors.items():
                 b_df = df_sales[df_sales["Branch"].astype(str).str.contains(branch_keyword, case=False, na=False)]
-                upload_branch_totals[branch_keyword] = b_df.groupby("Item_Code")["Qty_Delta"].sum().to_dict() if not b_df.empty else {}
+                upload_branch_totals[branch_keyword] = b_df.groupby("Item_Code")["Net_Qty"].sum().to_dict() if not b_df.empty else {}
 
-            # Execute running mathematical update rules
             for idx, row in df_stock.iterrows():
                 sku = str(row["Item_Code"]).strip()
                 
-                # Update Global Average Daily Velocity Metrics
-                file_global_qty = upload_global_totals.get(sku, 0.0)
+                # Global Net Average Updates
+                file_global_net = upload_global_totals.get(sku, 0.0)
                 if is_initialization:
-                    df_stock.at[idx, "Avg_Daily_Sales"] = round(file_global_qty / unique_dates_in_file, 2)
+                    df_stock.at[idx, "Avg_Daily_Sales"] = max(0.0, round(file_global_net / unique_dates_in_file, 2))
                 else:
                     old_global_avg = float(row["Avg_Daily_Sales"]) if pd.notna(row["Avg_Daily_Sales"]) else 0.0
-                    df_stock.at[idx, "Avg_Daily_Sales"] = round(((old_global_avg * (days_elapsed_total - 1)) + file_global_qty) / days_elapsed_total, 2)
+                    df_stock.at[idx, "Avg_Daily_Sales"] = max(0.0, round(((old_global_avg * (days_elapsed_total - 1)) + file_global_net) / days_elapsed_total, 2))
                 
-                # Update Location-Specific Velocity Metrics
+                # Location Specific Net Velocity Updates
                 for branch_keyword, column_target in warehouse_selectors.items():
-                    file_branch_qty = upload_branch_totals[branch_keyword].get(sku, 0.0)
+                    file_branch_net = upload_branch_totals[branch_keyword].get(sku, 0.0)
                     if is_initialization:
-                        df_stock.at[idx, column_target] = round(file_branch_qty / unique_dates_in_file, 2)
+                        df_stock.at[idx, column_target] = max(0.0, round(file_branch_net / unique_dates_in_file, 2))
                     else:
                         old_branch_velocity = float(row[column_target]) if pd.notna(row[column_target]) else 0.0
-                        df_stock.at[idx, column_target] = round(((old_branch_velocity * (days_elapsed_total - 1)) + file_branch_qty) / days_elapsed_total, 2)
+                        df_stock.at[idx, column_target] = max(0.0, round(((old_branch_velocity * (days_elapsed_total - 1)) + file_branch_net) / days_elapsed_total, 2))
 
-            # Instantly push updated pattern metrics back to Google Sheets Cloud tab
             def serialize_cell(val):
                 return "" if pd.isna(val) or str(val).strip().lower() in ['nan', 'nat', 'inf'] else str(val).strip()
             
@@ -152,9 +158,9 @@ if not df_logs.empty and not df_stock.empty:
             ws_stock.clear()
             ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
             
-            st.success("🧠 Memory Pattern Updated! The algorithm has safely saved the sales velocities into your Master sheet. You can now clear out the data inside the 'Daily_Snapshot_Log' tab.")
+            st.success("🧠 Memory Pattern Updated! The algorithm has safely processed net sales (Invoices minus Returns) and saved velocities into your Master sheet. You can now clear out the data inside the 'Daily_Snapshot_Log' tab.")
 
-# Recalculate stock coverage factors across arrays
+# Recalculate runway numbers
 if not df_stock.empty:
     for k in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales",
               "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
