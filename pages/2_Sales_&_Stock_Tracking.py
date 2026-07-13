@@ -546,12 +546,16 @@ else:
     )
 
 if is_admin and not df_stock.empty:
-    uncat_items = df_stock[df_stock["Product_Category"] == "Uncategorized"]
+    # Ensure there are no hidden trailing or leading spaces messing up the filter
+    df_stock["Product_Category"] = df_stock["Product_Category"].astype(str).str.strip()
+    uncat_items = df_stock[df_stock["Product_Category"].isin(["Uncategorized", "", "None", "nan"])]
+    
     if not uncat_items.empty:
         st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Global Smart Assignment</b>", unsafe_allow_html=True)
         st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads.")
         
-        known_cats = sorted(list(set(df_stock["Product_Category"].unique()) - {"Uncategorized"}))
+        # Build clean distinct list of active categories
+        known_cats = sorted(list(set(df_stock["Product_Category"].unique()) - {"Uncategorized", "", "None", "nan"}))
         target_row = uncat_items.iloc[0]
         st.warning(f"**Target Code:** `{target_row['Item_Code']}` | **Specification:** `{target_row['Item_Name']}`")
         
@@ -567,38 +571,52 @@ if is_admin and not df_stock.empty:
             if final_cat_selection in ["-- Create Completely New --", ""]:
                 st.error("Please enter or choose a valid target category label before clicking update.")
             else:
-                target_description = str(target_row['Item_Name']).upper()
-                potential_kw = final_cat_selection.upper()
+                updated_stock = df_stock.copy()
+                target_code = str(target_row['Item_Code']).strip()
+                target_description = str(target_row['Item_Name']).upper().strip()
                 
+                # Try to extract a clean keyword from the user's new group or the description text
+                potential_kw = final_cat_selection.upper().replace("SHEET", "").replace("ROD", "").strip()
+                
+                # Check if we can run a bulk match, otherwise target just this specific code directly
                 if len(potential_kw) > 2 and potential_kw in target_description:
                     matched_keyword = potential_kw
                 else:
+                    # Fallback to the first two words of description if relevant
                     words = [w for w in target_description.split() if len(w) > 2]
-                    matched_keyword = " ".join(words[:2]) if len(words) >= 2 else words[0] if words else target_description
+                    matched_keyword = words[0] if words else ""
+
+                # Execute update block safely
+                updated_stock["Item_Code_Str"] = updated_stock["Item_Code"].astype(str).str.strip()
                 
-                # Create a local copy to modify, preserving your original layout variables
-                updated_stock = df_stock.copy()
-                
-                if matched_keyword:
+                if matched_keyword != "":
                     updated_stock["Item_Name_Upper"] = updated_stock["Item_Name"].astype(str).str.upper()
-                    mask = (updated_stock["Product_Category"] == "Uncategorized") & (updated_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
+                    mask = (updated_stock["Product_Category"].isin(["Uncategorized", "", "None", "nan"])) & \
+                           (updated_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
                     
-                    updated_count = len(updated_stock[mask])
+                    # Ensure the current target item is absolutely included in the update mask
                     updated_stock.loc[mask, "Product_Category"] = final_cat_selection
+                    updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
+                    
                     updated_stock.drop(columns=["Item_Name_Upper"], inplace=True)
-                    st.toast(f"🤖 Smart Engine matched and updated {updated_count} elements matching '{matched_keyword}'!")
                 else:
-                    updated_stock.loc[updated_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
+                    # Fallback straight to exact code match matching if text algorithms miss it
+                    updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
+                
+                updated_stock.drop(columns=["Item_Code_Str"], inplace=True)
                 
                 # Write changes out to the Google Sheet backend
                 if ws_stock:
                     try:
+                        # Clear sheet data completely and write current accurate memory array
                         ws_stock.clear()
                         ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
                         
-                        # IN-MEMORY PASS: Update session state directly so UI shifts immediately without clearing the cache keys
+                        # Set active cache array explicitly to completely bypass read overhead next run
                         st.session_state.df_stock_live = updated_stock
-                        st.success(f"Successfully updated inventory sheets to '{final_cat_selection}'!")
+                        
+                        st.success(f"Successfully updated items to '{final_cat_selection}'!")
+                        st.utility_logs = f"Assigned '{final_cat_selection}' successfully."
                         st.rerun()
                     except Exception as cloud_err:
                         st.error(f"Write operation failed via cloud API: {cloud_err}")
