@@ -69,28 +69,35 @@ def get_google_client():
         return None
 
 @st.cache_resource(ttl=3600)
-def get_worksheets():
+def get_google_sheet_file():
     gc = get_google_client()
-    if not gc: return None, None, None, None
+    if not gc: return None
     try:
-        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        return sh.get_worksheet(3), sh.get_worksheet(4), sh.get_worksheet(5), sh.get_worksheet(6)
+        return gc.open_by_url(st.secrets["GSHEET_URL"])
     except Exception as e:
         st.error(f"🚨 Sheet Connection Failed: {e}")
-        return None, None, None, None
+        return None
 
-@st.cache_data(ttl=5) 
-def load_data_from_sheet(ws_index, fallback_cols):
+@st.cache_data(ttl=10) 
+def load_all_inventory_data():
+    fallback_data = {3: [], 4: [], 5: []}
+    sh = get_google_sheet_file()
+    if not sh:
+        return fallback_data
+        
     try:
-        gc = get_google_client()
-        sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        ws = sh.get_worksheet(ws_index)
-        data = ws.get_all_records()
-        return pd.DataFrame(data) if data else pd.DataFrame(columns=fallback_cols)
-    except Exception:
-        return pd.DataFrame(columns=fallback_cols)
+        # One unified block pulls data in a controlled sequence
+        ws3_data = sh.get_worksheet(3).get_all_records()
+        ws4_data = sh.get_worksheet(4).get_all_records()
+        ws5_data = sh.get_worksheet(5).get_all_records()
+        
+        return {3: ws3_data, 4: ws4_data, 5: ws5_data}
+    except Exception as e:
+        st.error(f"🚨 Google Sheets Quota Error: {e}")
+        return fallback_data
 
-ws_stock, ws_log, ws_batches, ws_archive = get_worksheets()
+# Master Data Fetch Block
+sheet_payload = load_all_inventory_data()
 
 TARGET_STOCK_COLS = [
     "Item_Code", "Item_Name", "Product_Category", "Current_Stock",
@@ -99,19 +106,28 @@ TARGET_STOCK_COLS = [
     "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
 ]
 
-df_stock = load_data_from_sheet(3, TARGET_STOCK_COLS)
-df_log = load_data_from_sheet(4, ["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
-df_batches = load_data_from_sheet(5, ["Batch_ID", "Upload_Type", "Timestamp"])
+# Build DataFrames safely from single cached payload
+df_stock = pd.DataFrame(sheet_payload[3]) if sheet_payload[3] else pd.DataFrame(columns=TARGET_STOCK_COLS)
+df_log = pd.DataFrame(sheet_payload[4]) if sheet_payload[4] else pd.DataFrame(columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
+df_batches = pd.DataFrame(sheet_payload[5]) if sheet_payload[5] else pd.DataFrame(columns=["Batch_ID", "Upload_Type", "Timestamp"])
 
+# Fetch backend reference links for admin modification actions without triggering active reads
+sh_instance = get_google_sheet_file()
+ws_stock = sh_instance.get_worksheet(3) if sh_instance else None
+ws_log = sh_instance.get_worksheet(4) if sh_instance else None
+ws_batches = sh_instance.get_worksheet(5) if sh_instance else None
+ws_archive = sh_instance.get_worksheet(6) if sh_instance else None # Retained from your original script
+
+# Handle missing layout fallback values
 for col in TARGET_STOCK_COLS:
     if col not in df_stock.columns:
         df_stock[col] = 0.0 if "Velocity" in col or "Stock" in col or col == "Avg_Daily_Sales" else ""
 
+# Standard string cleanup normalization pass
 for d in [df_stock, df_log, df_batches]:
     if not d.empty:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
-
 def auto_detect_category(item_name):
     name_upper = str(item_name).upper()
     if "ABS SHEET" in name_upper: return "ABS Sheet"
