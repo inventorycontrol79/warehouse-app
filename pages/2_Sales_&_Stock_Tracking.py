@@ -79,7 +79,7 @@ def get_worksheets():
         st.error(f"🚨 Sheet Connection Failed: {e}")
         return None, None, None, None
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=5) # Reduced TTL from 300 to 5 seconds so updates reveal instantly on refresh
 def load_data_from_sheet(ws_index, fallback_cols):
     try:
         gc = get_google_client()
@@ -538,7 +538,10 @@ if is_admin and not df_stock.empty:
             custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Mirror Sheet, Rods, Adhesives):")
             
         if st.button("💾 SAVE & RE-INDEX ALL RELATED ITEMS"):
+            # Clear cache memory pools completely so old text strings vanish
             st.cache_data.clear()
+            st.cache_resource.clear()
+            
             final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
             
             if final_cat_selection in ["-- Create Completely New --", ""]:
@@ -564,16 +567,22 @@ if is_admin and not df_stock.empty:
                     if matched_keyword == "TEFLON SHEET": matched_keyword = "TEFFLON SHEET"
                     if matched_keyword == "PC TWINSHEET": matched_keyword = "PC TWIN SHEET"
                     
-                    mask = (df_stock["Product_Category"] == "Uncategorized") & (df_stock["Item_Name"].str.upper().str.contains(matched_keyword, na=False))
+                    # Safe explicit string mapping block to avoid runtime pandas crashes
+                    df_stock["Item_Name_Upper"] = df_stock["Item_Name"].astype(str).str.upper()
+                    mask = (df_stock["Product_Category"] == "Uncategorized") & (df_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
+                    
                     updated_count = len(df_stock[mask])
                     df_stock.loc[mask, "Product_Category"] = final_cat_selection
+                    df_stock.drop(columns=["Item_Name_Upper"], inplace=True)
                     st.toast(f"🤖 Smart Engine matched and updated {updated_count} elements matching '{matched_keyword}'!")
                 else:
                     # Fallback straight to individual targeted update if no system keyword found
                     df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
                 
+                # Push fresh array coordinates back to Google Sheets database
                 ws_stock.clear()
                 ws_stock.append_rows([TARGET_STOCK_COLS] + df_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                
                 st.success(f"Successfully updated inventory sheets to '{final_cat_selection}'! Re-indexing engine layout...")
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
