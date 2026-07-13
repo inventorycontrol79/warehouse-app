@@ -11,6 +11,10 @@ st.set_page_config(page_title="SABIN PLASTIC // Inventory Intelligence", layout=
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
+# Session state tracker to safely update data inline without breaking API quotas
+if "df_stock_live" not in st.session_state:
+    st.session_state.df_stock_live = None
+
 url_params = st.query_params
 if url_params.get("key", "") == "sabin_inventory":
     st.session_state.is_admin = True
@@ -78,7 +82,7 @@ def get_google_sheet_file():
         st.error(f"🚨 Sheet Connection Failed: {e}")
         return None
 
-@st.cache_data(ttl=10) 
+@st.cache_data(ttl=60) # Increased TTL buffer to aggressively lower standard browsing read overhead
 def load_all_inventory_data():
     fallback_data = {3: [], 4: [], 5: []}
     sh = get_google_sheet_file()
@@ -89,7 +93,6 @@ def load_all_inventory_data():
         ws3_data = sh.get_worksheet(3).get_all_records()
         ws4_data = sh.get_worksheet(4).get_all_records()
         ws5_data = sh.get_worksheet(5).get_all_records()
-        
         return {3: ws3_data, 4: ws4_data, 5: ws5_data}
     except Exception as e:
         st.error(f"🚨 Google Sheets Quota Error: {e}")
@@ -105,12 +108,18 @@ TARGET_STOCK_COLS = [
     "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
 ]
 
-# Build DataFrames safely from single payload
-df_stock = pd.DataFrame(sheet_payload[3]) if sheet_payload[3] else pd.DataFrame(columns=TARGET_STOCK_COLS)
+# State Management Initialization
+if st.session_state.df_stock_live is None:
+    if sheet_payload[3]:
+        st.session_state.df_stock_live = pd.DataFrame(sheet_payload[3])
+    else:
+        st.session_state.df_stock_live = pd.DataFrame(columns=TARGET_STOCK_COLS)
+
+df_stock = st.session_state.df_stock_live
 df_log = pd.DataFrame(sheet_payload[4]) if sheet_payload[4] else pd.DataFrame(columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
 df_batches = pd.DataFrame(sheet_payload[5]) if sheet_payload[5] else pd.DataFrame(columns=["Batch_ID", "Upload_Type", "Timestamp"])
 
-# Fetch backend reference links for admin modification actions without triggering active reads
+# Fetch background reference objects without active cells reads
 sh_instance = get_google_sheet_file()
 ws_stock = sh_instance.get_worksheet(3) if sh_instance else None
 ws_log = sh_instance.get_worksheet(4) if sh_instance else None
@@ -296,7 +305,6 @@ else:
                     st.error(f"🛑 Double-Upload Blocked! Document Batch `{unique_batch}` has already been processed.")
                 else:
                     if st.button("⚡ INTEGRATE INBOUND LOG INTO STOCK"):
-                        st.cache_data.clear()
                         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         new_logs, new_stock_map = [], {}
                         for _, row in df_mrn_raw.iterrows():
@@ -327,7 +335,9 @@ else:
                             ws_log.append_rows(new_logs)
                         if ws_batches:
                             ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
-                        st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully with active smart-categorization mapping!")
+                        
+                        st.session_state.df_stock_live = updated_stock
+                        st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
                         st.rerun()
             else:
                 st.error(f"Missing column fields. File must match format: {req_mrn}")
@@ -358,7 +368,6 @@ else:
                 st.error("🛑 Double-Upload Blocked! This daily sales spreadsheet has already been deducted from inventory.")
             else:
                 if st.button("⚡ EXECUTE QUANTITY DEDUCTION & ABC ANALYSIS"):
-                    st.cache_data.clear()
                     today_stamp = datetime.now().strftime("%Y-%m-%d")
                     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     new_sales_logs, sales_deduction_map = [], {}
@@ -388,7 +397,7 @@ else:
                             filtered_sales_logs.append(log_entry)
                     
                     if ignored_items_count > 0:
-                        st.warning(f"⚠️ Ignored {ignored_items_count} item(s) from the sales file because they do not exist in your Master Stock list.")
+                        st.warning(f"⚠️ Ignored {ignored_items_count} item(s) because they do not exist in Master Stock.")
                         
                     if filtered_sales_logs:
                         new_sales_df = pd.DataFrame(filtered_sales_logs, columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
@@ -403,10 +412,11 @@ else:
                         if ws_batches:
                             ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
                         
-                        st.success("Sales data successfully deducted and branch trends learned!")
+                        st.session_state.df_stock_live = updated_stock
+                        st.success("Sales data successfully deducted and trends updated!")
                         st.rerun()
                     else:
-                        st.error("❌ No items from this sales upload matched your Master Stock list. Zero adjustments recorded.")
+                        st.error("❌ No items from this sales upload matched your Master Stock list.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 grid_header_col, download_btn_col = st.columns([3, 1])
@@ -552,10 +562,6 @@ if is_admin and not df_stock.empty:
             custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Mirror Sheet, Rods, Adhesives):")
             
         if st.button("💾 SAVE & RE-INDEX ALL RELATED ITEMS"):
-            # CRITICAL FIX: Fully dump both types of caches completely right before rewriting values
-            st.cache_data.clear()
-            st.cache_resource.clear()
-            
             final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
             
             if final_cat_selection in ["-- Create Completely New --", ""]:
@@ -570,21 +576,30 @@ if is_admin and not df_stock.empty:
                     words = [w for w in target_description.split() if len(w) > 2]
                     matched_keyword = " ".join(words[:2]) if len(words) >= 2 else words[0] if words else target_description
                 
+                # Create a local copy to modify, preserving your original layout variables
+                updated_stock = df_stock.copy()
+                
                 if matched_keyword:
-                    df_stock["Item_Name_Upper"] = df_stock["Item_Name"].astype(str).str.upper()
-                    mask = (df_stock["Product_Category"] == "Uncategorized") & (df_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
+                    updated_stock["Item_Name_Upper"] = updated_stock["Item_Name"].astype(str).str.upper()
+                    mask = (updated_stock["Product_Category"] == "Uncategorized") & (updated_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
                     
-                    updated_count = len(df_stock[mask])
-                    df_stock.loc[mask, "Product_Category"] = final_cat_selection
-                    df_stock.drop(columns=["Item_Name_Upper"], inplace=True)
+                    updated_count = len(updated_stock[mask])
+                    updated_stock.loc[mask, "Product_Category"] = final_cat_selection
+                    updated_stock.drop(columns=["Item_Name_Upper"], inplace=True)
                     st.toast(f"🤖 Smart Engine matched and updated {updated_count} elements matching '{matched_keyword}'!")
                 else:
-                    df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
+                    updated_stock.loc[updated_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
                 
+                # Write changes out to the Google Sheet backend
                 if ws_stock:
-                    ws_stock.clear()
-                    ws_stock.append_rows([TARGET_STOCK_COLS] + df_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                
-                st.success(f"Successfully updated inventory sheets to '{final_cat_selection}'! Re-indexing engine layout...")
-                st.rerun()
+                    try:
+                        ws_stock.clear()
+                        ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                        
+                        # IN-MEMORY PASS: Update session state directly so UI shifts immediately without clearing the cache keys
+                        st.session_state.df_stock_live = updated_stock
+                        st.success(f"Successfully updated inventory sheets to '{final_cat_selection}'!")
+                        st.rerun()
+                    except Exception as cloud_err:
+                        st.error(f"Write operation failed via cloud API: {cloud_err}")
         st.markdown("</div>", unsafe_allow_html=True)
