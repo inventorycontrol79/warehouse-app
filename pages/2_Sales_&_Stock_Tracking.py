@@ -82,7 +82,7 @@ def get_google_sheet_file():
         st.error(f"🚨 Sheet Connection Failed: {e}")
         return None
 
-@st.cache_data(ttl=60) # Increased TTL buffer to aggressively lower standard browsing read overhead
+@st.cache_data(ttl=60) 
 def load_all_inventory_data():
     fallback_data = {3: [], 4: [], 5: []}
     sh = get_google_sheet_file()
@@ -91,7 +91,12 @@ def load_all_inventory_data():
         
     try:
         ws3_data = sh.get_worksheet(3).get_all_records()
-        ws4_data = sh.get_worksheet(4).get_all_records()
+        
+        try:
+            ws4_data = sh.worksheet("Daily_Snapshot_Log").get_all_records()
+        except Exception:
+            ws4_data = sh.get_worksheet(4).get_all_records()
+            
         ws5_data = sh.get_worksheet(5).get_all_records()
         return {3: ws3_data, 4: ws4_data, 5: ws5_data}
     except Exception as e:
@@ -116,13 +121,21 @@ if st.session_state.df_stock_live is None:
         st.session_state.df_stock_live = pd.DataFrame(columns=TARGET_STOCK_COLS)
 
 df_stock = st.session_state.df_stock_live
-df_log = pd.DataFrame(sheet_payload[4]) if sheet_payload[4] else pd.DataFrame(columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
+df_log = pd.DataFrame(sheet_payload[4]) if sheet_payload[4] else pd.DataFrame(columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch", "Voucher abbreviation"])
 df_batches = pd.DataFrame(sheet_payload[5]) if sheet_payload[5] else pd.DataFrame(columns=["Batch_ID", "Upload_Type", "Timestamp"])
 
 # Fetch background reference objects without active cells reads
 sh_instance = get_google_sheet_file()
 ws_stock = sh_instance.get_worksheet(3) if sh_instance else None
-ws_log = sh_instance.get_worksheet(4) if sh_instance else None
+
+if sh_instance:
+    try:
+        ws_log = sh_instance.worksheet("Daily_Snapshot_Log")
+    except Exception:
+        ws_log = sh_instance.get_worksheet(4)
+else:
+    ws_log = None
+
 ws_batches = sh_instance.get_worksheet(5) if sh_instance else None
 ws_archive = sh_instance.get_worksheet(6) if sh_instance else None
 
@@ -195,11 +208,21 @@ def recalculate_abc_and_velocity(stock_df, log_df):
         stock_df["ABC_Category"] = "C"
         stock_df["Avg_Daily_Sales"] = 0.0
         return stock_df
-        
-    item_sales = sales_30.groupby("Item_Code")["Qty_Delta"].sum().reset_index()
-    item_sales["Qty_Delta"] = item_sales["Qty_Delta"].abs()
-    item_sales = item_sales.sort_values(by="Qty_Delta", ascending=False)
     
+    # Apply automated sales return netting for local display analytics
+    if "Voucher abbreviation" in sales_30.columns:
+        def get_net_qty(r):
+            v_type = str(r["Voucher abbreviation"]).strip().upper()
+            q_val = abs(float(r["Qty_Delta"]))
+            return -q_val if "SRTS" in v_type else q_val
+        sales_30 = sales_30.copy()
+        sales_30["Net_Qty"] = sales_30.apply(get_net_qty, axis=1)
+        item_sales = sales_30.groupby("Item_Code")["Net_Qty"].sum().reset_index().rename(columns={"Net_Qty": "Qty_Delta"})
+    else:
+        item_sales = sales_30.groupby("Item_Code")["Qty_Delta"].sum().reset_index()
+        item_sales["Qty_Delta"] = item_sales["Qty_Delta"].abs()
+        
+    item_sales = item_sales.sort_values(by="Qty_Delta", ascending=False)
     total_volume = item_sales["Qty_Delta"].sum()
     item_sales["Cum_Percentage"] = item_sales["Qty_Delta"].cumsum() / total_volume if total_volume > 0 else 1.0
         
@@ -226,7 +249,13 @@ def recalculate_abc_and_velocity(stock_df, log_df):
     for branch_keyword, v_column in branch_mappings.items():
         sub_sales = sales_30[sales_30["Branch"].str.contains(branch_keyword, case=False, na=False)]
         if not sub_sales.empty:
-            b_sales = sub_sales.groupby("Item_Code")["Qty_Delta"].sum().abs().reset_index()
+            if "Voucher abbreviation" in sub_sales.columns:
+                sub_sales = sub_sales.copy()
+                sub_sales["Net_Qty"] = sub_sales.apply(lambda r: -abs(float(r["Qty_Delta"])) if "SRTS" in str(r["Voucher abbreviation"]).upper() else abs(float(r["Qty_Delta"])), axis=1)
+                b_sales = sub_sales.groupby("Item_Code")["Net_Qty"].sum().reset_index().rename(columns={"Net_Qty": "Qty_Delta"})
+            else:
+                b_sales = sub_sales.groupby("Item_Code")["Qty_Delta"].sum().abs().reset_index()
+                
             b_sales[v_column] = round(b_sales["Qty_Delta"] / 30, 2)
             
             stock_df.set_index("Item_Code", inplace=True)
@@ -311,7 +340,7 @@ else:
                             icode = str(row["Item.Code"]).strip()
                             iname = str(row["Item.Name"]).strip()
                             qty = float(row["Quantity"])
-                            new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str, "Central Log"])
+                            new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str, "Central Log", "MRN"])
                             new_stock_map[icode] = {"Item_Name": iname, "Qty": qty}
                         
                         updated_stock = df_stock.copy()
@@ -362,6 +391,8 @@ else:
             match_name = st.selectbox("Match Sales [Item Name]:", cols, index=cols.index(find_col(["item.name", "item_name", "description"])))
             match_qty = st.selectbox("Match Sales [Quantity]:", cols, index=cols.index(find_col(["quantity", "qty", "sold"])))
             match_branch = st.selectbox("Match Sales [Branch]:", cols, index=cols.index(find_col(["branch", "location", "warehouse"])))
+            # MAPPED DROP-DOWN SELECTOR FOR THE VOUCHER ABBREVIATION COLUMN
+            match_voucher_type = st.selectbox("Match Sales [Voucher Abbreviation]:", cols, index=cols.index(find_col(["abbreviation", "type", "voucher type", "voucher abbreviation"])))
             
             sales_batch_id = str(df_sales_raw[match_vouch].iloc[0]).strip() + "_SALES"
             if not df_batches.empty and sales_batch_id in df_batches["Batch_ID"].values:
@@ -377,17 +408,27 @@ else:
                         iname = str(row[match_name]).strip()
                         qty = float(row[match_qty])
                         branch_val = str(row[match_branch]).strip()
+                        vtype_val = str(row[match_voucher_type]).strip().upper()
                         
-                        new_sales_logs.append([str(row[match_date]), icode, iname, "Sales", -qty, str(row[match_vouch]).strip(), timestamp_str, branch_val])
-                        sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + qty
+                        # Automated Return Processing: Deduct regular sales, but add returns (SRTS) back to inventory
+                        if "SRTS" in vtype_val:
+                            net_deduction = -abs(qty)  # Negative deduction increases inventory balance
+                        else:
+                            net_deduction = abs(qty)   # Positive deduction drops inventory balance
+                            
+                        new_sales_logs.append([
+                            str(row[match_date]), icode, iname, "Sales", -qty, 
+                            str(row[match_vouch]).strip(), timestamp_str, branch_val, vtype_val
+                        ])
+                        sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + net_deduction
                         
                     updated_stock = df_stock.copy()
                     ignored_items_count = 0
                     filtered_sales_logs = []
                     
-                    for code, qty_sold in sales_deduction_map.items():
+                    for code, qty_sold_net in sales_deduction_map.items():
                         if not updated_stock.empty and code in updated_stock["Item_Code"].values:
-                            updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold
+                            updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold_net
                             updated_stock.loc[updated_stock["Item_Code"] == code, "Last_Sold_Date"] = today_stamp
                         else:
                             ignored_items_count += 1
@@ -400,7 +441,7 @@ else:
                         st.warning(f"⚠️ Ignored {ignored_items_count} item(s) because they do not exist in Master Stock.")
                         
                     if filtered_sales_logs:
-                        new_sales_df = pd.DataFrame(filtered_sales_logs, columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
+                        new_sales_df = pd.DataFrame(filtered_sales_logs, columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch", "Voucher abbreviation"])
                         temp_log_df = pd.concat([df_log, new_sales_df], ignore_index=True)
                         updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
                         
@@ -413,7 +454,7 @@ else:
                             ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
                         
                         st.session_state.df_stock_live = updated_stock
-                        st.success("Sales data successfully deducted and trends updated!")
+                        st.success("Sales data successfully processed into log sheets and stock quantities adjusted!")
                         st.rerun()
                     else:
                         st.error("❌ No items from this sales upload matched your Master Stock list.")
@@ -546,7 +587,6 @@ else:
     )
 
 if is_admin and not df_stock.empty:
-    # Ensure there are no hidden trailing or leading spaces messing up the filter
     df_stock["Product_Category"] = df_stock["Product_Category"].astype(str).str.strip()
     uncat_items = df_stock[df_stock["Product_Category"].isin(["Uncategorized", "", "None", "nan"])]
     
@@ -554,7 +594,6 @@ if is_admin and not df_stock.empty:
         st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Global Smart Assignment</b>", unsafe_allow_html=True)
         st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads.")
         
-        # Build clean distinct list of active categories
         known_cats = sorted(list(set(df_stock["Product_Category"].unique()) - {"Uncategorized", "", "None", "nan"}))
         target_row = uncat_items.iloc[0]
         st.warning(f"**Target Code:** `{target_row['Item_Code']}` | **Specification:** `{target_row['Item_Name']}`")
@@ -575,18 +614,14 @@ if is_admin and not df_stock.empty:
                 target_code = str(target_row['Item_Code']).strip()
                 target_description = str(target_row['Item_Name']).upper().strip()
                 
-                # Try to extract a clean keyword from the user's new group or the description text
                 potential_kw = final_cat_selection.upper().replace("SHEET", "").replace("ROD", "").strip()
                 
-                # Check if we can run a bulk match, otherwise target just this specific code directly
                 if len(potential_kw) > 2 and potential_kw in target_description:
                     matched_keyword = potential_kw
                 else:
-                    # Fallback to the first two words of description if relevant
                     words = [w for w in target_description.split() if len(w) > 2]
                     matched_keyword = words[0] if words else ""
 
-                # Execute update block safely
                 updated_stock["Item_Code_Str"] = updated_stock["Item_Code"].astype(str).str.strip()
                 
                 if matched_keyword != "":
@@ -594,27 +629,20 @@ if is_admin and not df_stock.empty:
                     mask = (updated_stock["Product_Category"].isin(["Uncategorized", "", "None", "nan"])) & \
                            (updated_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
                     
-                    # Ensure the current target item is absolutely included in the update mask
                     updated_stock.loc[mask, "Product_Category"] = final_cat_selection
                     updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
                     
                     updated_stock.drop(columns=["Item_Name_Upper"], inplace=True)
                 else:
-                    # Fallback straight to exact code match matching if text algorithms miss it
                     updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
                 
                 updated_stock.drop(columns=["Item_Code_Str"], inplace=True)
                 
-                # Write changes out to the Google Sheet backend
                 if ws_stock:
                     try:
-                        # Clear sheet data completely and write current accurate memory array
                         ws_stock.clear()
                         ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                        
-                        # Set active cache array explicitly to completely bypass read overhead next run
                         st.session_state.df_stock_live = updated_stock
-                        
                         st.success(f"Successfully updated items to '{final_cat_selection}'!")
                         st.utility_logs = f"Assigned '{final_cat_selection}' successfully."
                         st.rerun()

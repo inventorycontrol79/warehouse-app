@@ -83,24 +83,28 @@ if not df_stock.empty:
             df_stock[c] = 0.0 if "Velocity" in c or "Stock" in c or c == "Avg_Daily_Sales" else ""
 
 # ==========================================
-#  🧠 RUNNING MEMORY LEARNING ENGINE (WITH AUTOMATED SALES RETURNS NETTING)
+#  🧠 RUNNING MEMORY LEARNING ENGINE (DOCKING HOOKS)
 # ==========================================
 if not df_logs.empty and not df_stock.empty:
     df_logs.columns = [str(c).strip() for c in df_logs.columns]
     
-    # Accept either standard tracking label or direct Focus column name
-    type_col = "Transaction_Type" if "Transaction_Type" in df_logs.columns else ("Voucher abbreviation" if "Voucher abbreviation" in df_logs.columns else None)
+    # Smart column match based on your exact dropdown configurations
+    col_item = next((c for c in ["Item Code", "Item_Code"] if c in df_logs.columns), None)
+    col_qty = next((c for c in ["Quantity", "Qty_Delta"] if c in df_logs.columns), None)
+    col_date = next((c for c in ["Date", "Timestamp"] if c in df_logs.columns), None)
+    col_branch = "Branch" if "Branch" in df_logs.columns else None
+    col_type = next((c for c in ["Voucher abbreviation", "Voucher No", "Document No.", "Transaction_Type"] if c in df_logs.columns), None)
     
-    if "Item_Code" in df_logs.columns and "Qty_Delta" in df_logs.columns and type_col:
-        df_logs["Qty_Delta"] = pd.to_numeric(df_logs["Qty_Delta"], errors="coerce").fillna(0.0).abs()
+    if col_item and col_qty and col_date and col_branch and col_type:
+        df_logs[col_qty] = pd.to_numeric(df_logs[col_qty], errors="coerce").fillna(0.0).abs()
         
-        # Calculate true Net Quantities: SINVS/Sales add to velocity, SRTS subtracts from velocity
+        # Calculate true Net Quantities: SINVS adds to velocity, SRTS subtracts from velocity
         def calculate_net_sales_volume(row):
-            voucher_type = str(row[type_col]).strip().upper()
-            qty = float(row["Qty_Delta"])
-            if voucher_type == "SRTS":
+            voucher_val = str(row[col_type]).strip().upper()
+            qty = float(row[col_qty])
+            if "SRTS" in voucher_val:
                 return -qty
-            elif voucher_type in ["SINVS", "SALES"]:
+            elif "SINVS" in voucher_val or "SALES" in voucher_val:
                 return qty
             return 0.0
 
@@ -108,7 +112,7 @@ if not df_logs.empty and not df_stock.empty:
         df_sales = df_logs[df_logs["Net_Qty"] != 0.0]
         
         if not df_sales.empty:
-            unique_dates_in_file = pd.to_datetime(df_sales["Timestamp"]).dt.date.nunique()
+            unique_dates_in_file = pd.to_datetime(df_sales[col_date], errors='coerce').dt.date.nunique()
             unique_dates_in_file = max(1, unique_dates_in_file)
             
             july_1st = datetime(2026, 7, 1).date()
@@ -117,10 +121,11 @@ if not df_logs.empty and not df_stock.empty:
             
             is_initialization = unique_dates_in_file > 2
             
-            upload_global_totals = df_sales.groupby("Item_Code")["Net_Qty"].sum().to_dict()
+            upload_global_totals = df_sales.groupby(col_item)["Net_Qty"].sum().to_dict()
             
+            # Warehouse selectors mapped to look for 'Dubai' to feed Al Quoz
             warehouse_selectors = {
-                "Al Quoz": "Velocity_Al_Quoz",
+                "Dubai": "Velocity_Al_Quoz",
                 "Sharjah": "Velocity_Sharjah",
                 "DIP": "Velocity_DIP",
                 "Abu Dhabi": "Velocity_Abu_Dhabi"
@@ -128,8 +133,8 @@ if not df_logs.empty and not df_stock.empty:
             
             upload_branch_totals = {}
             for branch_keyword, column_target in warehouse_selectors.items():
-                b_df = df_sales[df_sales["Branch"].astype(str).str.contains(branch_keyword, case=False, na=False)]
-                upload_branch_totals[branch_keyword] = b_df.groupby("Item_Code")["Net_Qty"].sum().to_dict() if not b_df.empty else {}
+                b_df = df_sales[df_sales[col_branch].astype(str).str.contains(branch_keyword, case=False, na=False)]
+                upload_branch_totals[branch_keyword] = b_df.groupby(col_item)["Net_Qty"].sum().to_dict() if not b_df.empty else {}
 
             for idx, row in df_stock.iterrows():
                 sku = str(row["Item_Code"]).strip()
@@ -158,7 +163,7 @@ if not df_logs.empty and not df_stock.empty:
             ws_stock.clear()
             ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
             
-            st.success("🧠 Memory Pattern Updated! The algorithm has safely processed net sales (Invoices minus Returns) and saved velocities into your Master sheet. You can now clear out the data inside the 'Daily_Snapshot_Log' tab.")
+            st.success("🧠 Memory Pattern Updated! The algorithm has safely processed net sales (SINVS minus SRTS) and assigned 'Dubai' records to Al Quoz. You can now clear out the data inside the 'Daily_Snapshot_Log' tab.")
 
 # Recalculate runway numbers
 if not df_stock.empty:
