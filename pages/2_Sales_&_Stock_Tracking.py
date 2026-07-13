@@ -99,15 +99,34 @@ def load_all_inventory_data():
     if not sh:
         return fallback_data
         
+    def safe_get_records(ws):
+        try:
+            # Read raw values as a grid to bypass the duplicate header crash
+            raw_data = ws.get_all_values()
+            if not raw_data:
+                return []
+            headers = raw_data[0]
+            rows = raw_data[1:]
+            
+            # Load into a temporary DataFrame to safely drop completely blank columns
+            df = pd.DataFrame(rows, columns=headers)
+            if "" in df.columns:
+                df = df.drop(columns=[""])
+                
+            return df.to_dict(orient="records")
+        except Exception:
+            return []
+
     try:
-        ws3_data = sh.get_worksheet(3).get_all_records()
+        ws3_data = safe_get_records(sh.get_worksheet(3))
         
         try:
-            ws4_data = sh.worksheet("Daily_Snapshot_Log").get_all_records()
+            ws4_target = sh.worksheet("Daily_Snapshot_Log")
         except Exception:
-            ws4_data = sh.get_worksheet(4).get_all_records()
+            ws4_target = sh.get_worksheet(4)
+        ws4_data = safe_get_records(ws4_target)
             
-        ws5_data = sh.get_worksheet(5).get_all_records()
+        ws5_data = safe_get_records(sh.get_worksheet(5))
         return {3: ws3_data, 4: ws4_data, 5: ws5_data}
     except Exception as e:
         st.error(f"🚨 Google Sheets Quota Error: {e}")
