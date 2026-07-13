@@ -4,7 +4,6 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-import numpy as np
 
 st.set_page_config(page_title="SABIN PLASTIC // Stock Transfer Hub", layout="wide")
 
@@ -20,40 +19,23 @@ is_admin = st.session_state.is_admin
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;600;800&display=swap');
-    
     .stApp { background-color: #0B0F19; color: #E2E8F0; font-family: 'Plus Jakarta Sans', sans-serif; }
-    
-    [data-testid="stSidebar"] div, 
-    [data-testid="stSidebar"] p, 
-    [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] a { 
-        color: #FFFFFF !important; 
-    }
+    [data-testid="stSidebar"] div, [data-testid="stSidebar"] p, [data-testid="stSidebar"] label { color: #FFFFFF !important; }
     [data-testid="stSidebar"] { background-color: #0F172A !important; border-right: 1px solid #1E293B !important; }
-    
-    [data-testid="stExpander"] { background-color: #111827 !important; border: 1px solid #1E293B !important; border-radius: 8px; }
-    [data-testid="stExpander"] summary { color: #FFFFFF !important; }
-    [data-testid="stFileUploader"] section { background-color: #111827 !important; border: 1px dashed #38BDF8 !important; }
-    
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p { color: #F8FAFC !important; }
     label, .stWidgetLabel p { color: #FFFFFF !important; font-weight: 600 !important; }
     .premium-header { border-bottom: 1px solid #1E293B; padding-bottom: 1.5rem; margin-bottom: 2rem; margin-top: 1rem; }
     .sabin-logo { font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #F8FAFC !important; margin: 0; line-height: 1.2; }
     .sabin-logo span { color: #0EA5E9 !important; }
     .sabin-sub { font-size: 11px; font-weight: 600; letter-spacing: 3px; color: #94A3B8 !important; text-transform: uppercase; margin-top: 4px; }
-    .advice-card { background-color: #151F32; border-left: 4px solid #38BDF8; border-radius: 6px; padding: 16px; margin-bottom: 12px; border-top: 1px solid #1E293B; border-right: 1px solid #1E293B; border-bottom: 1px solid #1E293B; }
+    .route-container { background-color: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
     .critical-badge { color: #F87171 !important; font-weight: 800; background-color: rgba(239, 68, 68, 0.15); padding: 4px 8px; border-radius: 4px; }
     .surplus-badge { color: #34D399 !important; font-weight: 800; background-color: rgba(52, 211, 153, 0.15); padding: 4px 8px; border-radius: 4px; }
+    .idle-badge { color: #FB923C !important; font-weight: 800; background-color: rgba(251, 146, 60, 0.15); padding: 4px 8px; border-radius: 4px; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-    <div class='premium-header'>
-        <div class='sabin-logo'>SABIN <span>PLASTIC</span></div>
-        <div class='sabin-sub'>Multi-Warehouse Stock Transfer & Advisor System</div>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown("<div class='premium-header'><div class='sabin-logo'>SABIN <span>PLASTIC</span></div><div class='sabin-sub'>Multi-Warehouse Stock Transfer & Demand Planner</div></div>", unsafe_allow_html=True)
 
 def get_google_client():
     try:
@@ -63,170 +45,195 @@ def get_google_client():
         creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return gspread.authorize(creds)
     except Exception as e:
-        st.error(f"🚨 Google Cloud Security Link Failed: {e}")
+        st.error(f"🚨 Authentication Link Failed: {e}")
         return None
 
-@st.cache_data(ttl=300)
-def pull_master_stock_data():
+@st.cache_data(ttl=10)
+def pull_master_database_payload():
     gc = get_google_client()
-    if not gc:
-        return pd.DataFrame(), None
+    if not gc: return pd.DataFrame(), pd.DataFrame(), None, None
     try:
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        ws = sh.get_worksheet(3) 
-        data = ws.get_all_records()
-        return pd.DataFrame(data), ws
+        ws_stock = sh.get_worksheet(3) 
+        
+        # Access temporary snapshot log sheet by explicit name
+        try:
+            ws_snapshot_log = sh.worksheet("Daily_Snapshot_Log")
+            df_l = pd.DataFrame(ws_snapshot_log.get_all_records())
+        except Exception:
+            df_l = pd.DataFrame() # Handle case if empty or not cleared properly
+            
+        df_s = pd.DataFrame(ws_stock.get_all_records())
+        return df_s, df_l, ws_stock, ws_snapshot_log if 'ws_snapshot_log' in locals() else None
     except Exception as e:
-        st.error(f"🚨 Error Fetching Master Stock sheet: {e}")
-        return pd.DataFrame(), None
+        st.error(f"🚨 Database Payload Read Failure: {e}")
+        return pd.DataFrame(), pd.DataFrame(), None, None
 
-df_stock, ws_stock_raw = pull_master_stock_data()
+df_stock, df_logs, ws_stock, ws_snapshot_log = pull_master_database_payload()
 
-TARGET_COLUMNS = [
+MASTER_TRACKING_COLS = [
     "Item_Code", "Item_Name", "Product_Category", "Current_Stock",
     "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi",
-    "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date", "Days_of_Coverage"
+    "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date", "Days_of_Coverage",
+    "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
 ]
 
-if is_admin:
-    with st.sidebar.expander("🛠️ SYSTEM MASTER INITIALIZATION"):
-        st.markdown("<small>Use this to upload a baseline if setting physical stock for the first time.</small>", unsafe_allow_html=True)
-        init_file = st.file_uploader("Upload Master Stock Balance File", type=["xlsx", "csv"], key="init_uploader")
-        
-        if init_file is not None and st.button("🚀 BULK OVERWRITE STOCK BASELINE"):
-            try:
-                df_init = pd.read_excel(init_file) if init_file.name.endswith("xlsx") else pd.read_csv(init_file)
-                df_init.columns = [str(c).strip() for c in df_init.columns]
-                
-                req = ["Item_Code", "Item_Name", "Stock_Sharjah", "Stock_Al_Quoz"]
-                if all(c in df_init.columns for c in req):
-                    gc = get_google_client()
-                    sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-                    ws_to_init = sh.get_worksheet(3)
-                    
-                    for col in TARGET_COLUMNS:
-                        if col not in df_init.columns:
-                            df_init[col] = "" 
-                    
-                    df_to_upload = df_init[TARGET_COLUMNS].copy()
-                    
-                    def serialize_cell(val):
-                        if pd.isna(val) or val is None or str(val).strip().lower() in ['nan', 'nat', 'inf', '-inf']:
-                            return ""
-                        return str(val).strip()
-                    
-                    clean_rows = df_to_upload.map(serialize_cell).values.tolist()
-                    ws_to_init.clear()
-                    ws_to_init.append_rows([TARGET_COLUMNS] + clean_rows)
-                    
-                    st.success("🎉 Master database structure initialized successfully!")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("❌ Column structure mismatch. Ensure warehouse name suffixes are present.")
-            except Exception as e:
-                st.error(f"Initialization Failed: {e}")
+if not df_stock.empty:
+    for c in MASTER_TRACKING_COLS:
+        if c not in df_stock.columns: 
+            df_stock[c] = 0.0 if "Velocity" in c or "Stock" in c or c == "Avg_Daily_Sales" else ""
 
-st.header("📥 Sync Daily Warehouse-Wise Stock Snapshot")
-st.markdown("Upload your cleaned Focus inventory matrix file. The dashboard will automatically update active tracking codes and overwrite warehouse columns.")
+# ==========================================
+#  🧠 RUNNING MEMORY LEARNING ENGINE
+# ==========================================
+if not df_logs.empty and not df_stock.empty:
+    df_logs.columns = [str(c).strip() for c in df_logs.columns]
+    
+    if "Item_Code" in df_logs.columns and "Qty_Delta" in df_logs.columns:
+        df_logs["Qty_Delta"] = pd.to_numeric(df_logs["Qty_Delta"], errors="coerce").fillna(0.0).abs()
+        
+        # Filter strictly for standard sales transactions
+        df_sales = df_logs[df_logs["Transaction_Type"].astype(str).str.strip().str.lower() == "sales"]
+        
+        if not df_sales.empty:
+            # Check unique date lines in current upload tab
+            unique_dates_in_file = pd.to_datetime(df_sales["Timestamp"]).dt.date.nunique()
+            unique_dates_in_file = max(1, unique_dates_in_file)
+            
+            # Determine daily calendar running day for July 2026
+            july_1st = datetime(2026, 7, 1).date()
+            today_date = datetime.now().date()
+            days_elapsed_total = max(1, (today_date - july_1st).days + 1)
+            
+            # Identify if upload is a large baseline file or a single daily tracking file
+            is_initialization = unique_dates_in_file > 2
+            
+            # Pre-calculate dictionary maps for high-speed calculation matching
+            upload_global_totals = df_sales.groupby("Item_Code")["Qty_Delta"].sum().to_dict()
+            
+            warehouse_selectors = {
+                "Al Quoz": "Velocity_Al_Quoz",
+                "Sharjah": "Velocity_Sharjah",
+                "DIP": "Velocity_DIP",
+                "Abu Dhabi": "Velocity_Abu_Dhabi"
+            }
+            
+            upload_branch_totals = {}
+            for branch_keyword, column_target in warehouse_selectors.items():
+                b_df = df_sales[df_sales["Branch"].astype(str).str.contains(branch_keyword, case=False, na=False)]
+                upload_branch_totals[branch_keyword] = b_df.groupby("Item_Code")["Qty_Delta"].sum().to_dict() if not b_df.empty else {}
+
+            # Execute running mathematical update rules
+            for idx, row in df_stock.iterrows():
+                sku = str(row["Item_Code"]).strip()
+                
+                # Update Global Average Daily Velocity Metrics
+                file_global_qty = upload_global_totals.get(sku, 0.0)
+                if is_initialization:
+                    df_stock.at[idx, "Avg_Daily_Sales"] = round(file_global_qty / unique_dates_in_file, 2)
+                else:
+                    old_global_avg = float(row["Avg_Daily_Sales"]) if pd.notna(row["Avg_Daily_Sales"]) else 0.0
+                    df_stock.at[idx, "Avg_Daily_Sales"] = round(((old_global_avg * (days_elapsed_total - 1)) + file_global_qty) / days_elapsed_total, 2)
+                
+                # Update Location-Specific Velocity Metrics
+                for branch_keyword, column_target in warehouse_selectors.items():
+                    file_branch_qty = upload_branch_totals[branch_keyword].get(sku, 0.0)
+                    if is_initialization:
+                        df_stock.at[idx, column_target] = round(file_branch_qty / unique_dates_in_file, 2)
+                    else:
+                        old_branch_velocity = float(row[column_target]) if pd.notna(row[column_target]) else 0.0
+                        df_stock.at[idx, column_target] = round(((old_branch_velocity * (days_elapsed_total - 1)) + file_branch_qty) / days_elapsed_total, 2)
+
+            # Instantly push updated pattern metrics back to Google Sheets Cloud tab
+            def serialize_cell(val):
+                return "" if pd.isna(val) or str(val).strip().lower() in ['nan', 'nat', 'inf'] else str(val).strip()
+            
+            clean_rows = df_stock[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
+            ws_stock.clear()
+            ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
+            
+            st.success("🧠 Memory Pattern Updated! The algorithm has safely saved the sales velocities into your Master sheet. You can now clear out the data inside the 'Daily_Snapshot_Log' tab.")
+
+# Recalculate stock coverage factors across arrays
+if not df_stock.empty:
+    for k in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales",
+              "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
+        df_stock[k] = pd.to_numeric(df_stock[k], errors='coerce').fillna(0.0)
+    
+    df_stock["Days_of_Coverage"] = df_stock.apply(
+        lambda r: 999 if r["Avg_Daily_Sales"] <= 0 else round(r["Current_Stock"] / r["Avg_Daily_Sales"], 1), axis=1
+    )
+
+# ==========================================
+#  INVENTORY MATRIX SNAPSHOT OVERWRITE
+# ==========================================
+st.subheader("📥 Reconcile Physical Warehouse Stock Snapshot")
+st.markdown("<small>Upload your clean Focus matrix file here to update the on-hand quantities across locations.</small>", unsafe_allow_html=True)
 
 if df_stock.empty:
-    st.info("ℹ️ Load Master Stock Sheets first before handling bulk files.")
+    st.info("ℹ️ Loading balance tables from cloud infrastructure...")
 elif not is_admin:
-    st.warning("🔒 Device write lock is active. Please use your authenticated dashboard link to process files.")
+    st.warning("🔒 Device write lock is active. Authentication parameters required to modify inventory records.")
 else:
-    uploaded_snap = st.file_uploader("Select Cleaned Warehouse Matrix Report (Excel/CSV)", type=["xlsx", "csv"])
-    
-    if uploaded_snap is not None:
-        if st.button("⚡ EXECUTE SELECTIVE DASHBOARD OVERWRITE"):
-            try:
-                if uploaded_snap.name.endswith(".csv"):
-                    df_snap = pd.read_csv(uploaded_snap)
-                else:
-                    df_snap = pd.read_excel(uploaded_snap)
-                
-                df_snap.columns = [str(c).strip() for c in df_snap.columns]
-                
-                if "Item_Code" not in df_snap.columns:
-                    st.error("❌ Column Header Verification Failed: Ensure your first rows contain an exact label named 'Item_Code'.")
-                    st.stop()
-                
-                updated_master_df = df_stock.copy()
-                snap_dict = {}
-                for _, row in df_snap.iterrows():
-                    s_code = str(row["Item_Code"]).strip()
-                    if s_code and s_code.lower() not in ["", "nan", "total", "grand total"]:
-                        snap_dict[s_code] = row
+    uploaded_snap = st.file_uploader("Select Cleaned Warehouse Matrix Report (Excel/CSV)", type=["xlsx", "csv"], key="matrix_up")
+    if uploaded_snap is not None and st.button("⚡ EXECUTE SELECTIVE BALANCE OVERWRITE"):
+        try:
+            df_snap = pd.read_csv(uploaded_snap) if uploaded_snap.name.endswith(".csv") else pd.read_excel(uploaded_snap)
+            df_snap.columns = [str(c).strip() for c in df_snap.columns]
+            
+            if "Item_Code" not in df_snap.columns:
+                st.error("❌ Schema Verification Error: Missing column exact label 'Item_Code'.")
+                st.stop()
+            
+            updated_master_df = df_stock.copy()
+            snap_dict = {str(row["Item_Code"]).strip(): row for _, row in df_snap.iterrows()}
+            matched_count = 0
+            
+            def safe_float(val):
+                res = pd.to_numeric(val, errors="coerce")
+                return float(res) if pd.notna(res) else 0.0
 
-                matched_count = 0
-                
-                def safe_float(val):
-                    res = pd.to_numeric(val, errors="coerce")
-                    return float(res) if pd.notna(res) else 0.0
-                
-                for idx, m_row in updated_master_df.iterrows():
-                    m_sku = str(m_row["Item_Code"]).strip()
+            for idx, m_row in updated_master_df.iterrows():
+                m_sku = str(m_row["Item_Code"]).strip()
+                if m_sku in snap_dict:
+                    erp_row = snap_dict[m_sku]
+                    q_aq = safe_float(erp_row.get("Al Quoz Trading SP", 0))
+                    q_shj = safe_float(erp_row.get("Sharjah Trading SP", 0))
+                    q_ad = safe_float(erp_row.get("Abu Dhabi Trading SP", 0))
+                    q_dip = safe_float(erp_row.get("DIP Trading", 0))
+                    q_o_ad = safe_float(erp_row.get("Online Abu Dhabi Trading SP", 0))
+                    q_o_aq = safe_float(erp_row.get("Online Al Quoz Trading SP", 0))
                     
-                    if m_sku in snap_dict:
-                        erp_row = snap_dict[m_sku]
-                        
-                        q_aq = safe_float(erp_row.get("Al Quoz Trading SP", 0))
-                        q_shj = safe_float(erp_row.get("Sharjah Trading SP", 0))
-                        q_ad = safe_float(erp_row.get("Abu Dhabi Trading SP", 0))
-                        q_dip = safe_float(erp_row.get("DIP Trading", 0))
-                        
-                        q_o_ad = safe_float(erp_row.get("Online Abu Dhabi Trading SP", 0))
-                        q_o_aq = safe_float(erp_row.get("Online Al Quoz Trading SP", 0))
-                        
-                        updated_master_df.at[idx, "Stock_Sharjah"] = q_shj
-                        updated_master_df.at[idx, "Stock_Al_Quoz"] = q_aq
-                        updated_master_df.at[idx, "Stock_DIP"] = q_dip
-                        updated_master_df.at[idx, "Stock_Abu_Dhabi"] = q_ad
-                        
-                        updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_ad + q_dip + q_o_ad + q_o_aq)
-                        matched_count += 1
-                
-                if matched_count > 0:
-                    def serialize_cell(val):
-                        if pd.isna(val) or val is None or str(val).strip().lower() in ['nan', 'nat', 'inf', '-inf']:
-                            return ""
-                        return str(val).strip()
-                    
-                    clean_rows = updated_master_df[TARGET_COLUMNS].map(serialize_cell).values.tolist()
-                    
-                    gc = get_google_client()
-                    sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-                    ws_stock_write = sh.get_worksheet(3)
-                    
-                    ws_stock_write.clear()
-                    ws_stock_write.append_rows([TARGET_COLUMNS] + clean_rows)
-                    
-                    st.success(f"🎉 Stock overwritten successfully! Total stock columns resolved for {matched_count} tracked items.")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("❌ Verification Error: No matching SKU intersections found between your file and the dashboard master catalog.")
-            except Exception as e:
-                st.error(f"🚨 Operational Snapshot Failure: {e}")
+                    updated_master_df.at[idx, "Stock_Sharjah"] = q_shj
+                    updated_master_df.at[idx, "Stock_Al_Quoz"] = q_aq
+                    updated_master_df.at[idx, "Stock_DIP"] = q_dip
+                    updated_master_df.at[idx, "Stock_Abu_Dhabi"] = q_ad
+                    updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_ad + q_dip + q_o_ad + q_o_aq)
+                    matched_count += 1
+            
+            if matched_count > 0:
+                def serialize_cell(val):
+                    return "" if pd.isna(val) or str(val).strip().lower() in ['nan', 'nat', 'inf'] else str(val).strip()
+                clean_rows = updated_master_df[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
+                ws_stock.clear()
+                ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
+                st.success(f"🎉 Snapshot mapped successfully for {matched_count} tracked inventory items!")
+                st.cache_data.clear()
+                st.rerun()
+        except Exception as e:
+            st.error(f"🚨 Snapshot Balance Overwrite Failure: {e}")
 
 st.markdown("---")
-st.header("🧠 Intelligent Supply Redistribution Advisor")
+st.header("🧠 Intelligent Supply Redistribution Advisor (Demand Planner)")
 
 if df_stock.empty:
-    st.info("ℹ️ Master warehouse balance tables are currently loading.")
+    st.info("ℹ️ Processing real-time ledger distributions...")
 else:
-    def clean_float(value):
-        try: return float(value) if str(value).strip() != "" else 0.0
-        except: return 0.0
-
-    for k in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]:
-        if k not in df_stock.columns: df_stock[k] = 0
-            
     col_search, col_vel_filter = st.columns([2, 1])
     with col_search:
-        search_query = st.text_input("🔍 Search Matrix or Advisor by SKU / Item Name:", value="", placeholder="Type SKU code...").strip()
+        search_query = st.text_input("🔍 Search Matrix or Planner by SKU / Item Name:", value="").strip()
     with col_vel_filter:
-        min_velocity = st.number_input("📉 Minimum Daily Sales Velocity (Filter out slow items):", min_value=0.0, max_value=50.0, value=0.0, step=0.1)
+        min_velocity = st.number_input("📉 Minimum Global Daily Sales Velocity Filter:", min_value=0.0, value=0.0)
 
     df_filtered = df_stock.copy()
     if search_query:
@@ -234,60 +241,86 @@ else:
             df_filtered["Item_Code"].astype(str).str.contains(search_query, case=False, na=False) |
             df_filtered["Item_Name"].astype(str).str.contains(search_query, case=False, na=False)
         ]
-    
-    df_filtered = df_filtered[df_filtered["Avg_Daily_Sales"].apply(clean_float) >= min_velocity]
+    df_filtered = df_filtered[df_filtered["Avg_Daily_Sales"] >= min_velocity]
 
     st.subheader("📊 Dynamic Global Stock Allocation Matrix")
-    st.dataframe(df_filtered[["Item_Code", "Item_Name", "Current_Stock", 
-                               "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales"]], 
-                 hide_index=True)
-    
-    st.markdown("### 💡 Recommended Optimization Routes & Interactive Prep Console")
-    
+    st.dataframe(
+        df_filtered[["Item_Code", "Item_Name", "Current_Stock", "Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi", 
+                     "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]], 
+        hide_index=True,
+        column_config={
+            "Velocity_Al_Quoz": "Velo AQ", "Velocity_Sharjah": "Velo SHJ", "Velocity_DIP": "Velo DIP", "Velocity_Abu_Dhabi": "Velo AD",
+            "Stock_Al_Quoz": "Stock AQ", "Stock_Sharjah": "Stock SHJ", "Stock_DIP": "Stock DIP", "Stock_Abu_Dhabi": "Stock AD"
+        }
+    )
+
+    st.markdown("### 💡 Recommended Optimization Routes")
     advisor_routes_found = False
-    priority_destinations = ["Stock_Al_Quoz", "Stock_Sharjah", "Stock_DIP", "Stock_Abu_Dhabi"]
+    
+    warehouse_mappings = [
+        {"stock_col": "Stock_Al_Quoz", "vel_col": "Velocity_Al_Quoz", "label": "Al Quoz"},
+        {"stock_col": "Stock_Sharjah", "vel_col": "Velocity_Sharjah", "label": "Sharjah"},
+        {"stock_col": "Stock_DIP", "vel_col": "Velocity_DIP", "label": "DIP"},
+        {"stock_col": "Stock_Abu_Dhabi", "vel_col": "Velocity_Abu_Dhabi", "label": "Abu Dhabi"}
+    ]
     
     for idx, row in df_filtered.iterrows():
         sku = row["Item_Code"]
         name = row["Item_Name"]
-        global_velocity = clean_float(row["Avg_Daily_Sales"])
         
-        for dest_wh in priority_destinations:
-            dest_qty = clean_float(row[dest_wh])
-            days_of_coverage = dest_qty / global_velocity if global_velocity > 0 else 999
+        for dest in warehouse_mappings:
+            dest_qty = row[dest["stock_col"]]
+            dest_vel = row[dest["vel_col"]]
             
-            if days_of_coverage <= 7.0:
-                for source_wh in reversed(priority_destinations):
-                    if source_wh == dest_wh: continue
+            if dest_vel > 0:
+                dest_coverage = dest_qty / dest_vel
+                trigger_routing = (dest_coverage <= 10.0)
+            else:
+                dest_coverage = 999
+                trigger_routing = False
+                
+            if trigger_routing:
+                for src in warehouse_mappings:
+                    if src["stock_col"] == dest["stock_col"]: 
+                        continue
                         
-                    src_qty = clean_float(row[source_wh])
-                    src_coverage = src_qty / global_velocity if global_velocity > 0 else 0
+                    src_qty = row[src["stock_col"]]
+                    src_vel = row[src["vel_col"]]
                     
-                    if src_coverage > 25.0:
-                        target_replenish_qty = int((15 * global_velocity) - dest_qty)
-                        donor_safe_limit = int(src_qty - (14 * global_velocity))
+                    if src_vel > 0:
+                        src_coverage = src_qty / src_vel
+                        is_eligible_donor = (src_coverage > 25.0 and src_qty > 5)
+                        donor_status_msg = f"holds safety cushions (~{src_coverage:.1f} days runway)"
+                        badge_style = "surplus-badge"
+                    else:
+                        src_coverage = 999
+                        is_eligible_donor = (src_qty >= 1)
+                        donor_status_msg = "holds completely IDLE inventory (0 local sales this month)"
+                        badge_style = "idle-badge"
+                        
+                    if is_eligible_donor:
+                        target_replenish_qty = int((20 * dest_vel) - dest_qty)
+                        donor_safe_limit = int(src_qty - (15 * src_vel)) if src_vel > 0 else int(src_qty)
                         optimal_transfer = min(target_replenish_qty, donor_safe_limit)
                         
-                        if optimal_transfer > 5:
-                            clean_src = source_wh.replace("Stock_", "")
-                            clean_dest = dest_wh.replace("Stock_", "")
+                        if optimal_transfer >= 1:
                             advisor_routes_found = True
                             
-                            with st.container():
-                                st.markdown(f"**🌐 Route Matched: `{sku}` — {name}**")
-                                c1, c2, c3 = st.columns([2, 1, 1])
-                                with c1:
-                                    st.markdown(f"""
-                                        ⚠️ <span class="critical-badge">{clean_dest}</span> holds critical deficit values ({int(dest_qty)} pcs | ~{days_of_coverage:.1f} days left).<br/>
-                                        📦 <span class="surplus-badge">{clean_src}</span> has excess operational volume ({int(src_qty)} pcs).
-                                    """, unsafe_allow_html=True)
-                                with c2:
-                                    final_qty = st.number_input(f"Adjust Qty ({sku})", min_value=1, max_value=int(src_qty), value=int(optimal_transfer), key=f"adj_{sku}_{clean_dest}")
-                                with c3:
-                                    erp_string = f"SRTS: Move {final_qty} pcs of SKU {sku} from {clean_src} to {clean_dest}"
-                                    st.text_input("📋 Focus ERP Ready Command String:", value=erp_string, disabled=True, key=f"cmd_{sku}_{clean_dest}")
-                                st.markdown("<div style='border-bottom: 1px dashed #1E293B; margin: 15px 0;'></div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='route-container'>", unsafe_allow_html=True)
+                            st.markdown(f"**🌐 Balancing Optimization Route Matched: `{sku}` — {name}**")
+                            c1, c2, c3 = st.columns([2, 1, 1])
+                            with c1:
+                                st.markdown(f"""
+                                    ⚠️ Deficit Area: <span class='critical-badge'>{dest['label']}</span> runs hot ({int(dest_qty)} units left | local demand consumes **{dest_vel:.2f} units/day** &rarr; **{dest_coverage:.1f} days runway**).<br/>
+                                    📦 Surplus Area: <span class='{badge_style}'>{src['label']}</span> {donor_status_msg} ({int(src_qty)} units on hand).
+                                """, unsafe_allow_html=True)
+                            with c2:
+                                final_qty = st.number_input(f"Confirm Transfer Quantity ({sku})", min_value=1, max_value=int(src_qty), value=int(optimal_transfer), key=f"tr_{sku}_{dest['label']}")
+                            with c3:
+                                erp_string = f"SRTS: Move {final_qty} units of SKU {sku} from {src['label']} to {dest['label']}"
+                                st.text_input("📋 Focus ERP Direct Command Output:", value=erp_string, disabled=True, key=f"cmd_{sku}_{dest['label']}")
+                            st.markdown("</div>", unsafe_allow_html=True)
                             break 
                             
     if not advisor_routes_found:
-        st.success("✅ Multi-warehouse supply lines are evenly distributed.")
+        st.success("✅ Smart Supply Chains Aligned: All location inventory metrics balance accurately against their respective sales trends.")
