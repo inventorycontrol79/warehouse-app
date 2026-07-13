@@ -79,7 +79,7 @@ def get_worksheets():
         st.error(f"🚨 Sheet Connection Failed: {e}")
         return None, None, None, None
 
-@st.cache_data(ttl=5) # Reduced TTL from 300 to 5 seconds so updates reveal instantly on refresh
+@st.cache_data(ttl=5) 
 def load_data_from_sheet(ws_index, fallback_cols):
     try:
         gc = get_google_client()
@@ -112,11 +112,8 @@ for d in [df_stock, df_log, df_batches]:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
 
-# Smart Intelligence Module for Dynamic Categorization
 def auto_detect_category(item_name):
     name_upper = str(item_name).upper()
-    
-    # Priority multi-word/specific checks first
     if "ABS SHEET" in name_upper: return "ABS Sheet"
     if "ACRYLIC ROD" in name_upper: return "Acrylic Rod"
     if "ACRYLIC TUBE" in name_upper: return "Acrylic Tube"
@@ -125,19 +122,14 @@ def auto_detect_category(item_name):
     if "FOAM BOARD" in name_upper: return "Foam Board"
     if "FREE FOAM SHEET" in name_upper: return "Free Foam Sheet"
     if "HDPE ROD" in name_upper: return "HDPE Rod"
-    
-    # Standard Polycarbonate checks
     if "PC TWIN SHEET" in name_upper or "PC TWINSHEET" in name_upper: return "PC Twin Sheet"
     if "PC ROLL" in name_upper: return "PC Roll"
     if "PC SHEET" in name_upper: return "PC Sheet"
-    
-    # Standard PVC and Miscellaneous checks
     if "PVC SHEET" in name_upper: return "PVC Sheet"
     if "TEFFLON SHEET" in name_upper or "TEFLON SHEET" in name_upper: return "Tefflon Sheet"
     if "ACP" in name_upper: return "ACP"
     if "GLUE" in name_upper: return "Glue"
     if "TAPE" in name_upper: return "Tape"
-    
     return "Uncategorized"
 
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
@@ -525,7 +517,7 @@ if is_admin and not df_stock.empty:
     uncat_items = df_stock[df_stock["Product_Category"] == "Uncategorized"]
     if not uncat_items.empty:
         st.markdown("<div class='admin-box'>⚙️ <b>Autonomous Intelligence Gateway: Global Smart Assignment</b>", unsafe_allow_html=True)
-        st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads. Assigning a category here will update **all related historical inventory items** matching its key description criteria automatically.")
+        st.info(f"The system has detected **{len(uncat_items)}** unique item(s) currently marked as `Uncategorized` from your uploads.")
         
         known_cats = sorted(list(set(df_stock["Product_Category"].unique()) - {"Uncategorized"}))
         target_row = uncat_items.iloc[0]
@@ -538,7 +530,6 @@ if is_admin and not df_stock.empty:
             custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Mirror Sheet, Rods, Adhesives):")
             
         if st.button("💾 SAVE & RE-INDEX ALL RELATED ITEMS"):
-            # Clear cache memory pools completely so old text strings vanish
             st.cache_data.clear()
             st.cache_resource.clear()
             
@@ -547,27 +538,21 @@ if is_admin and not df_stock.empty:
             if final_cat_selection in ["-- Create Completely New --", ""]:
                 st.error("Please enter or choose a valid target category label before clicking update.")
             else:
-                # Intelligent Multi-Item Extraction: Detect defining core keyword of the manually fixed item
                 target_description = str(target_row['Item_Name']).upper()
-                keywords_to_test = [
-                    "ABS SHEET", "ACRYLIC ROD", "ACRYLIC TUBE", "ACRYLIC SHEET", "COLD LAMINATION", 
-                    "FOAM BOARD", "FREE FOAM SHEET", "HDPE ROD", "PC TWIN SHEET", "PC TWINSHEET",
-                    "PC ROLL", "PC SHEET", "PVC SHEET", "TEFFLON SHEET", "TEFLON SHEET", "ACP", "GLUE", "TAPE"
-                ]
                 
-                matched_keyword = None
-                for kw in keywords_to_test:
-                    if kw in target_description:
-                        matched_keyword = kw
-                        break
+                # Dynamic Keyword Identification: Use the exact value you provided as the matching string
+                # If you typed a new value (e.g. "Mirror Sheet"), it will look for "MIRROR SHEET" across all items.
+                # If it's a completely arbitrary name, it defaults to the item name's first two words.
+                potential_kw = final_cat_selection.upper()
                 
-                # If a keyword is identified, update ALL unassigned elements that contain it
+                if len(potential_kw) > 2 and potential_kw in target_description:
+                    matched_keyword = potential_kw
+                else:
+                    # Fallback string parsing: grabs the first two primary words of the item description (e.g. "ACRYLIC MIRROR")
+                    words = [w for w in target_description.split() if len(w) > 2]
+                    matched_keyword = " ".join(words[:2]) if len(words) >= 2 else words[0] if words else target_description
+                
                 if matched_keyword:
-                    # Map variations cleanly back to user standards if dealing with duplicates
-                    if matched_keyword == "TEFLON SHEET": matched_keyword = "TEFFLON SHEET"
-                    if matched_keyword == "PC TWINSHEET": matched_keyword = "PC TWIN SHEET"
-                    
-                    # Safe explicit string mapping block to avoid runtime pandas crashes
                     df_stock["Item_Name_Upper"] = df_stock["Item_Name"].astype(str).str.upper()
                     mask = (df_stock["Product_Category"] == "Uncategorized") & (df_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
                     
@@ -576,10 +561,8 @@ if is_admin and not df_stock.empty:
                     df_stock.drop(columns=["Item_Name_Upper"], inplace=True)
                     st.toast(f"🤖 Smart Engine matched and updated {updated_count} elements matching '{matched_keyword}'!")
                 else:
-                    # Fallback straight to individual targeted update if no system keyword found
                     df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
                 
-                # Push fresh array coordinates back to Google Sheets database
                 ws_stock.clear()
                 ws_stock.append_rows([TARGET_STOCK_COLS] + df_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
                 
