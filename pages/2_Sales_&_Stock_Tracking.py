@@ -72,6 +72,7 @@ def get_google_client():
         st.error(f"🚨 Authentication Failed: {e}")
         return None
 
+# Used for fast, cached read operations across pages
 @st.cache_resource(ttl=3600)
 def get_google_sheet_file():
     gc = get_google_client()
@@ -80,6 +81,15 @@ def get_google_sheet_file():
         return gc.open_by_url(st.secrets["GSHEET_URL"])
     except Exception as e:
         st.error(f"🚨 Sheet Connection Failed: {e}")
+        return None
+
+# NEW: Used exclusively inside write-buttons to prevent thread conflicts
+def get_fresh_google_sheet_file():
+    gc = get_google_client()
+    if not gc: return None
+    try:
+        return gc.open_by_url(st.secrets["GSHEET_URL"])
+    except Exception as e:
         return None
 
 @st.cache_data(ttl=60) 
@@ -123,21 +133,6 @@ if st.session_state.df_stock_live is None:
 df_stock = st.session_state.df_stock_live
 df_log = pd.DataFrame(sheet_payload[4]) if sheet_payload[4] else pd.DataFrame(columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch", "Voucher abbreviation"])
 df_batches = pd.DataFrame(sheet_payload[5]) if sheet_payload[5] else pd.DataFrame(columns=["Batch_ID", "Upload_Type", "Timestamp"])
-
-# Fetch background reference objects without active cells reads
-sh_instance = get_google_sheet_file()
-ws_stock = sh_instance.get_worksheet(3) if sh_instance else None
-
-if sh_instance:
-    try:
-        ws_log = sh_instance.worksheet("Daily_Snapshot_Log")
-    except Exception:
-        ws_log = sh_instance.get_worksheet(4)
-else:
-    ws_log = None
-
-ws_batches = sh_instance.get_worksheet(5) if sh_instance else None
-ws_archive = sh_instance.get_worksheet(6) if sh_instance else None
 
 # Handle missing layout fallback values
 for col in TARGET_STOCK_COLS:
@@ -334,40 +329,52 @@ else:
                     st.error(f"🛑 Double-Upload Blocked! Document Batch `{unique_batch}` has already been processed.")
                 else:
                     if st.button("⚡ INTEGRATE INBOUND LOG INTO STOCK"):
-                        timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        new_logs, new_stock_map = [], {}
-                        for _, row in df_mrn_raw.iterrows():
-                            icode = str(row["Item.Code"]).strip()
-                            iname = str(row["Item.Name"]).strip()
-                            qty = float(row["Quantity"])
-                            new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str, "Central Log", "MRN"])
-                            new_stock_map[icode] = {"Item_Name": iname, "Qty": qty}
-                        
-                        updated_stock = df_stock.copy()
-                        for code, info in new_stock_map.items():
-                            if not updated_stock.empty and code in updated_stock["Item_Code"].values:
-                                updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] += info["Qty"]
-                            else:
-                                guessed_cat = auto_detect_category(info["Item_Name"])
-                                new_rows_data = {
-                                    "Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": guessed_cat, 
-                                    "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": ""
-                                }
-                                for b_col in ["Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
-                                    new_rows_data[b_col] = 0.0
-                                updated_stock = pd.concat([updated_stock, pd.DataFrame([new_rows_data])], ignore_index=True)
-                                
-                        if ws_stock:
-                            ws_stock.clear()
-                            ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                        if ws_log:
-                            ws_log.append_rows(new_logs)
-                        if ws_batches:
-                            ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
-                        
-                        st.session_state.df_stock_live = updated_stock
-                        st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
-                        st.rerun()
+                        # FIX: Open dedicated thread-isolated connection line
+                        fresh_sh = get_fresh_google_sheet_file()
+                        if not fresh_sh:
+                            st.error("🚨 Cloud Write Connection Failed. Please try again.")
+                        else:
+                            fresh_ws_stock = fresh_sh.get_worksheet(3)
+                            try:
+                                fresh_ws_log = fresh_sh.worksheet("Daily_Snapshot_Log")
+                            except Exception:
+                                fresh_ws_log = fresh_sh.get_worksheet(4)
+                            fresh_ws_batches = fresh_sh.get_worksheet(5)
+
+                            timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            new_logs, new_stock_map = [], {}
+                            for _, row in df_mrn_raw.iterrows():
+                                icode = str(row["Item.Code"]).strip()
+                                iname = str(row["Item.Name"]).strip()
+                                qty = float(row["Quantity"])
+                                new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str, "Central Log", "MRN"])
+                                new_stock_map[icode] = {"Item_Name": iname, "Qty": qty}
+                            
+                            updated_stock = df_stock.copy()
+                            for code, info in new_stock_map.items():
+                                if not updated_stock.empty and code in updated_stock["Item_Code"].values:
+                                    updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] += info["Qty"]
+                                else:
+                                    guessed_cat = auto_detect_category(info["Item_Name"])
+                                    new_rows_data = {
+                                        "Item_Code": code, "Item_Name": info["Item_Name"], "Product_Category": guessed_cat, 
+                                        "Current_Stock": info["Qty"], "ABC_Category": "C", "Avg_Daily_Sales": 0.0, "Last_Sold_Date": ""
+                                    }
+                                    for b_col in ["Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
+                                        new_rows_data[b_col] = 0.0
+                                    updated_stock = pd.concat([updated_stock, pd.DataFrame([new_rows_data])], ignore_index=True)
+                                    
+                            if fresh_ws_stock:
+                                fresh_ws_stock.clear()
+                                fresh_ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                            if fresh_ws_log:
+                                fresh_ws_log.append_rows(new_logs)
+                            if fresh_ws_batches:
+                                fresh_ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
+                            
+                            st.session_state.df_stock_live = updated_stock
+                            st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully!")
+                            st.rerun()
             else:
                 st.error(f"Missing column fields. File must match format: {req_mrn}")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -391,7 +398,6 @@ else:
             match_name = st.selectbox("Match Sales [Item Name]:", cols, index=cols.index(find_col(["item.name", "item_name", "description"])))
             match_qty = st.selectbox("Match Sales [Quantity]:", cols, index=cols.index(find_col(["quantity", "qty", "sold"])))
             match_branch = st.selectbox("Match Sales [Branch]:", cols, index=cols.index(find_col(["branch", "location", "warehouse"])))
-            # MAPPED DROP-DOWN SELECTOR FOR THE VOUCHER ABBREVIATION COLUMN
             match_voucher_type = st.selectbox("Match Sales [Voucher Abbreviation]:", cols, index=cols.index(find_col(["abbreviation", "type", "voucher type", "voucher abbreviation"])))
             
             sales_batch_id = str(df_sales_raw[match_vouch].iloc[0]).strip() + "_SALES"
@@ -399,65 +405,76 @@ else:
                 st.error("🛑 Double-Upload Blocked! This daily sales spreadsheet has already been deducted from inventory.")
             else:
                 if st.button("⚡ EXECUTE QUANTITY DEDUCTION & ABC ANALYSIS"):
-                    today_stamp = datetime.now().strftime("%Y-%m-%d")
-                    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    new_sales_logs, sales_deduction_map = [], {}
-                    
-                    for _, row in df_sales_raw.iterrows():
-                        icode = str(row[match_code]).strip()
-                        iname = str(row[match_name]).strip()
-                        qty = float(row[match_qty])
-                        branch_val = str(row[match_branch]).strip()
-                        vtype_val = str(row[match_voucher_type]).strip().upper()
-                        
-                        # Automated Return Processing: Deduct regular sales, but add returns (SRTS) back to inventory
-                        if "SRTS" in vtype_val:
-                            net_deduction = -abs(qty)  # Negative deduction increases inventory balance
-                        else:
-                            net_deduction = abs(qty)   # Positive deduction drops inventory balance
-                            
-                        new_sales_logs.append([
-                            str(row[match_date]), icode, iname, "Sales", -qty, 
-                            str(row[match_vouch]).strip(), timestamp_str, branch_val, vtype_val
-                        ])
-                        sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + net_deduction
-                        
-                    updated_stock = df_stock.copy()
-                    ignored_items_count = 0
-                    filtered_sales_logs = []
-                    
-                    for code, qty_sold_net in sales_deduction_map.items():
-                        if not updated_stock.empty and code in updated_stock["Item_Code"].values:
-                            updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold_net
-                            updated_stock.loc[updated_stock["Item_Code"] == code, "Last_Sold_Date"] = today_stamp
-                        else:
-                            ignored_items_count += 1
-                            
-                    for log_entry in new_sales_logs:
-                        if log_entry[1] in updated_stock["Item_Code"].values:
-                            filtered_sales_logs.append(log_entry)
-                    
-                    if ignored_items_count > 0:
-                        st.warning(f"⚠️ Ignored {ignored_items_count} item(s) because they do not exist in Master Stock.")
-                        
-                    if filtered_sales_logs:
-                        new_sales_df = pd.DataFrame(filtered_sales_logs, columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch", "Voucher abbreviation"])
-                        temp_log_df = pd.concat([df_log, new_sales_df], ignore_index=True)
-                        updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
-                        
-                        if ws_stock:
-                            ws_stock.clear()
-                            ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                        if ws_log:
-                            ws_log.append_rows(filtered_sales_logs)
-                        if ws_batches:
-                            ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
-                        
-                        st.session_state.df_stock_live = updated_stock
-                        st.success("Sales data successfully processed into log sheets and stock quantities adjusted!")
-                        st.rerun()
+                    # FIX: Open dedicated thread-isolated connection line
+                    fresh_sh = get_fresh_google_sheet_file()
+                    if not fresh_sh:
+                        st.error("🚨 Cloud Write Connection Failed. Please try again.")
                     else:
-                        st.error("❌ No items from this sales upload matched your Master Stock list.")
+                        fresh_ws_stock = fresh_sh.get_worksheet(3)
+                        try:
+                            fresh_ws_log = fresh_sh.worksheet("Daily_Snapshot_Log")
+                        except Exception:
+                            fresh_ws_log = fresh_sh.get_worksheet(4)
+                        fresh_ws_batches = fresh_sh.get_worksheet(5)
+
+                        today_stamp = datetime.now().strftime("%Y-%m-%d")
+                        timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        new_sales_logs, sales_deduction_map = [], {}
+                        
+                        for _, row in df_sales_raw.iterrows():
+                            icode = str(row[match_code]).strip()
+                            iname = str(row[match_name]).strip()
+                            qty = float(row[match_qty])
+                            branch_val = str(row[match_branch]).strip()
+                            vtype_val = str(row[match_voucher_type]).strip().upper()
+                            
+                            if "SRTS" in vtype_val:
+                                net_deduction = -abs(qty)  # Return items increase inventory balance
+                            else:
+                                net_deduction = abs(qty)   # Sales decrease inventory balance
+                                
+                            new_sales_logs.append([
+                                str(row[match_date]), icode, iname, "Sales", -qty, 
+                                str(row[match_vouch]).strip(), timestamp_str, branch_val, vtype_val
+                            ])
+                            sales_deduction_map[icode] = sales_deduction_map.get(icode, 0) + net_deduction
+                            
+                        updated_stock = df_stock.copy()
+                        ignored_items_count = 0
+                        filtered_sales_logs = []
+                        
+                        for code, qty_sold_net in sales_deduction_map.items():
+                            if not updated_stock.empty and code in updated_stock["Item_Code"].values:
+                                updated_stock.loc[updated_stock["Item_Code"] == code, "Current_Stock"] -= qty_sold_net
+                                updated_stock.loc[updated_stock["Item_Code"] == code, "Last_Sold_Date"] = today_stamp
+                            else:
+                                ignored_items_count += 1
+                                
+                        for log_entry in new_sales_logs:
+                            if log_entry[1] in updated_stock["Item_Code"].values:
+                                filtered_sales_logs.append(log_entry)
+                        
+                        if ignored_items_count > 0:
+                            st.warning(f"⚠️ Ignored {ignored_items_count} item(s) because they do not exist in Master Stock.")
+                            
+                        if filtered_sales_logs:
+                            new_sales_df = pd.DataFrame(filtered_sales_logs, columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch", "Voucher abbreviation"])
+                            temp_log_df = pd.concat([df_log, new_sales_df], ignore_index=True)
+                            updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
+                            
+                            if fresh_ws_stock:
+                                fresh_ws_stock.clear()
+                                fresh_ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                            if fresh_ws_log:
+                                fresh_ws_log.append_rows(filtered_sales_logs)
+                            if fresh_ws_batches:
+                                fresh_ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
+                            
+                            st.session_state.df_stock_live = updated_stock
+                            st.success("Sales data successfully processed into log sheets and stock quantities adjusted!")
+                            st.rerun()
+                        else:
+                            st.error("❌ No items from this sales upload matched your Master Stock list.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 grid_header_col, download_btn_col = st.columns([3, 1])
@@ -605,47 +622,53 @@ if is_admin and not df_stock.empty:
             custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Mirror Sheet, Rods, Adhesives):")
             
         if st.button("💾 SAVE & RE-INDEX ALL RELATED ITEMS"):
-            final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
-            
-            if final_cat_selection in ["-- Create Completely New --", ""]:
-                st.error("Please enter or choose a valid target category label before clicking update.")
+            # FIX: Open dedicated thread-isolated connection line
+            fresh_sh = get_fresh_google_sheet_file()
+            if not fresh_sh:
+                st.error("🚨 Cloud Write Connection Failed. Please try again.")
             else:
-                updated_stock = df_stock.copy()
-                target_code = str(target_row['Item_Code']).strip()
-                target_description = str(target_row['Item_Name']).upper().strip()
+                fresh_ws_stock = fresh_sh.get_worksheet(3)
                 
-                potential_kw = final_cat_selection.upper().replace("SHEET", "").replace("ROD", "").strip()
+                final_cat_selection = custom_new_cat.strip() if chosen_existing == "-- Create Completely New --" and custom_new_cat.strip() != "" else chosen_existing
                 
-                if len(potential_kw) > 2 and potential_kw in target_description:
-                    matched_keyword = potential_kw
+                if final_cat_selection in ["-- Create Completely New --", ""]:
+                    st.error("Please enter or choose a valid target category label before clicking update.")
                 else:
-                    words = [w for w in target_description.split() if len(w) > 2]
-                    matched_keyword = words[0] if words else ""
+                    updated_stock = df_stock.copy()
+                    target_code = str(target_row['Item_Code']).strip()
+                    target_description = str(target_row['Item_Name']).upper().strip()
+                    
+                    potential_kw = final_cat_selection.upper().replace("SHEET", "").replace("ROD", "").strip()
+                    
+                    if len(potential_kw) > 2 and potential_kw in target_description:
+                        matched_keyword = potential_kw
+                    else:
+                        words = [w for w in target_description.split() if len(w) > 2]
+                        matched_keyword = words[0] if words else ""
 
-                updated_stock["Item_Code_Str"] = updated_stock["Item_Code"].astype(str).str.strip()
-                
-                if matched_keyword != "":
-                    updated_stock["Item_Name_Upper"] = updated_stock["Item_Name"].astype(str).str.upper()
-                    mask = (updated_stock["Product_Category"].isin(["Uncategorized", "", "None", "nan"])) & \
-                           (updated_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
+                    updated_stock["Item_Code_Str"] = updated_stock["Item_Code"].astype(str).str.strip()
                     
-                    updated_stock.loc[mask, "Product_Category"] = final_cat_selection
-                    updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
+                    if matched_keyword != "":
+                        updated_stock["Item_Name_Upper"] = updated_stock["Item_Name"].astype(str).str.upper()
+                        mask = (updated_stock["Product_Category"].isin(["Uncategorized", "", "None", "nan"])) & \
+                               (updated_stock["Item_Name_Upper"].str.contains(matched_keyword, na=False))
+                        
+                        updated_stock.loc[mask, "Product_Category"] = final_cat_selection
+                        updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
+                        
+                        updated_stock.drop(columns=["Item_Name_Upper"], inplace=True)
+                    else:
+                        updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
                     
-                    updated_stock.drop(columns=["Item_Name_Upper"], inplace=True)
-                else:
-                    updated_stock.loc[updated_stock["Item_Code_Str"] == target_code, "Product_Category"] = final_cat_selection
-                
-                updated_stock.drop(columns=["Item_Code_Str"], inplace=True)
-                
-                if ws_stock:
-                    try:
-                        ws_stock.clear()
-                        ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                        st.session_state.df_stock_live = updated_stock
-                        st.success(f"Successfully updated items to '{final_cat_selection}'!")
-                        st.utility_logs = f"Assigned '{final_cat_selection}' successfully."
-                        st.rerun()
-                    except Exception as cloud_err:
-                        st.error(f"Write operation failed via cloud API: {cloud_err}")
+                    updated_stock.drop(columns=["Item_Code_Str"], inplace=True)
+                    
+                    if fresh_ws_stock:
+                        try:
+                            fresh_ws_stock.clear()
+                            fresh_ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                            st.session_state.df_stock_live = updated_stock
+                            st.success(f"Successfully updated items to '{final_cat_selection}'!")
+                            st.rerun()
+                        except Exception as cloud_err:
+                            st.error(f"Write operation failed via cloud API: {cloud_err}")
         st.markdown("</div>", unsafe_allow_html=True)
