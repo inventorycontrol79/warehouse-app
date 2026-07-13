@@ -187,7 +187,8 @@ if not df_logs.empty and not df_stock.empty:
 
 # Recalculate runway numbers
 if not df_stock.empty:
-    for k in ["Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales",
+    # FIX: Added "Current_Stock" to the list below so it converts from text to numbers
+    for k in ["Current_Stock", "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales",
               "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
         df_stock[k] = pd.to_numeric(df_stock[k], errors='coerce').fillna(0.0)
     
