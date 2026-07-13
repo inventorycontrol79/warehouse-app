@@ -48,27 +48,49 @@ def get_google_client():
         st.error(f"🚨 Authentication Link Failed: {e}")
         return None
 
+# FIX: Added un-cached fresh connector for database write/clear operations
+def get_fresh_google_sheet_file():
+    gc = get_google_client()
+    if not gc: return None
+    try:
+        return gc.open_by_url(st.secrets["GSHEET_URL"])
+    except Exception:
+        return None
+
+# FIX: Refined parsing routine to completely drop duplicate/blank ghost columns
 @st.cache_data(ttl=10)
 def pull_master_database_payload():
     gc = get_google_client()
-    if not gc: return pd.DataFrame(), pd.DataFrame(), None, None
+    if not gc: return pd.DataFrame(), pd.DataFrame()
     try:
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
+        
+        def safe_worksheet_to_df(ws):
+            raw_grid = ws.get_all_values()
+            if not raw_grid:
+                return pd.DataFrame()
+            headers = [str(h).strip() for h in raw_grid[0]]
+            rows = raw_grid[1:]
+            df = pd.DataFrame(rows, columns=headers)
+            if "" in df.columns:
+                df = df.drop(columns=[""])
+            return df
+
         ws_stock = sh.get_worksheet(3) 
+        df_s = safe_worksheet_to_df(ws_stock)
         
         try:
             ws_snapshot_log = sh.worksheet("Daily_Snapshot_Log")
-            df_l = pd.DataFrame(ws_snapshot_log.get_all_records())
+            df_l = safe_worksheet_to_df(ws_snapshot_log)
         except Exception:
             df_l = pd.DataFrame() 
             
-        df_s = pd.DataFrame(ws_stock.get_all_records())
-        return df_s, df_l, ws_stock, ws_snapshot_log if 'ws_snapshot_log' in locals() else None
+        return df_s, df_l
     except Exception as e:
         st.error(f"🚨 Database Payload Read Failure: {e}")
-        return pd.DataFrame(), pd.DataFrame(), None, None
+        return pd.DataFrame(), pd.DataFrame()
 
-df_stock, df_logs, ws_stock, ws_snapshot_log = pull_master_database_payload()
+df_stock, df_logs = pull_master_database_payload()
 
 MASTER_TRACKING_COLS = [
     "Item_Code", "Item_Name", "Product_Category", "Current_Stock",
@@ -88,7 +110,6 @@ if not df_stock.empty:
 if not df_logs.empty and not df_stock.empty:
     df_logs.columns = [str(c).strip() for c in df_logs.columns]
     
-    # Smart column match based on your exact dropdown configurations
     col_item = next((c for c in ["Item Code", "Item_Code"] if c in df_logs.columns), None)
     col_qty = next((c for c in ["Quantity", "Qty_Delta"] if c in df_logs.columns), None)
     col_date = next((c for c in ["Date", "Timestamp"] if c in df_logs.columns), None)
@@ -98,7 +119,6 @@ if not df_logs.empty and not df_stock.empty:
     if col_item and col_qty and col_date and col_branch and col_type:
         df_logs[col_qty] = pd.to_numeric(df_logs[col_qty], errors="coerce").fillna(0.0).abs()
         
-        # Calculate true Net Quantities: SINVS adds to velocity, SRTS subtracts from velocity
         def calculate_net_sales_volume(row):
             voucher_val = str(row[col_type]).strip().upper()
             qty = float(row[col_qty])
@@ -123,7 +143,6 @@ if not df_logs.empty and not df_stock.empty:
             
             upload_global_totals = df_sales.groupby(col_item)["Net_Qty"].sum().to_dict()
             
-            # Warehouse selectors mapped to look for 'Dubai' to feed Al Quoz
             warehouse_selectors = {
                 "Dubai": "Velocity_Al_Quoz",
                 "Sharjah": "Velocity_Sharjah",
@@ -139,7 +158,6 @@ if not df_logs.empty and not df_stock.empty:
             for idx, row in df_stock.iterrows():
                 sku = str(row["Item_Code"]).strip()
                 
-                # Global Net Average Updates
                 file_global_net = upload_global_totals.get(sku, 0.0)
                 if is_initialization:
                     df_stock.at[idx, "Avg_Daily_Sales"] = max(0.0, round(file_global_net / unique_dates_in_file, 2))
@@ -147,7 +165,6 @@ if not df_logs.empty and not df_stock.empty:
                     old_global_avg = float(row["Avg_Daily_Sales"]) if pd.notna(row["Avg_Daily_Sales"]) else 0.0
                     df_stock.at[idx, "Avg_Daily_Sales"] = max(0.0, round(((old_global_avg * (days_elapsed_total - 1)) + file_global_net) / days_elapsed_total, 2))
                 
-                # Location Specific Net Velocity Updates
                 for branch_keyword, column_target in warehouse_selectors.items():
                     file_branch_net = upload_branch_totals[branch_keyword].get(sku, 0.0)
                     if is_initialization:
@@ -159,11 +176,14 @@ if not df_logs.empty and not df_stock.empty:
             def serialize_cell(val):
                 return "" if pd.isna(val) or str(val).strip().lower() in ['nan', 'nat', 'inf'] else str(val).strip()
             
-            clean_rows = df_stock[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
-            ws_stock.clear()
-            ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
-            
-            st.success("🧠 Memory Pattern Updated! The algorithm has safely processed net sales (SINVS minus SRTS) and assigned 'Dubai' records to Al Quoz. You can now clear out the data inside the 'Daily_Snapshot_Log' tab.")
+            # FIX: Open dedicated isolated stream to commit automated learning back to Cloud Core
+            fresh_sh = get_fresh_google_sheet_file()
+            if fresh_sh:
+                fresh_ws_stock = fresh_sh.get_worksheet(3)
+                clean_rows = df_stock[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
+                fresh_ws_stock.clear()
+                fresh_ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
+                st.success("🧠 Memory Pattern Updated! The algorithm has safely processed net sales and assigned metrics. You can now clear the 'Daily_Snapshot_Log' tab.")
 
 # Recalculate runway numbers
 if not df_stock.empty:
@@ -225,12 +245,19 @@ else:
             if matched_count > 0:
                 def serialize_cell(val):
                     return "" if pd.isna(val) or str(val).strip().lower() in ['nan', 'nat', 'inf'] else str(val).strip()
-                clean_rows = updated_master_df[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
-                ws_stock.clear()
-                ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
-                st.success(f"🎉 Snapshot mapped successfully for {matched_count} tracked inventory items!")
-                st.cache_data.clear()
-                st.rerun()
+                
+                # FIX: Swapped to un-cached connection object to avoid session corruption crashes
+                fresh_sh = get_fresh_google_sheet_file()
+                if fresh_sh:
+                    fresh_ws_stock = fresh_sh.get_worksheet(3)
+                    clean_rows = updated_master_df[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
+                    fresh_ws_stock.clear()
+                    fresh_ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
+                    st.success(f"🎉 Snapshot mapped successfully for {matched_count} tracked inventory items!")
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.error("🚨 Cloud Connection busy. Please try executing the upload action again.")
         except Exception as e:
             st.error(f"🚨 Snapshot Balance Overwrite Failure: {e}")
 
@@ -266,6 +293,15 @@ else:
     )
 
     st.markdown("### 💡 Recommended Optimization Routes")
+    
+    # NEW: Added interactive dropdown filter for individual Warehouse Supervisors
+    wh_options = ["All Warehouses", "Al Quoz", "Sharjah", "DIP", "Abu Dhabi"]
+    selected_wh = st.selectbox(
+        "📍 Filter Optimization Feed by Supervisor Location:", 
+        options=wh_options,
+        index=0
+    )
+    
     advisor_routes_found = False
     
     warehouse_mappings = [
@@ -310,6 +346,11 @@ else:
                         badge_style = "idle-badge"
                         
                     if is_eligible_donor:
+                        # NEW: Route selection skip check to serve supervisor-isolated feeds
+                        if selected_wh != "All Warehouses":
+                            if dest["label"] != selected_wh and src["label"] != selected_wh:
+                                continue
+
                         target_replenish_qty = int((20 * dest_vel) - dest_qty)
                         donor_safe_limit = int(src_qty - (15 * src_vel)) if src_vel > 0 else int(src_qty)
                         optimal_transfer = min(target_replenish_qty, donor_safe_limit)
@@ -334,4 +375,7 @@ else:
                             break 
                             
     if not advisor_routes_found:
-        st.success("✅ Smart Supply Chains Aligned: All location inventory metrics balance accurately against their respective sales trends.")
+        if selected_wh != "All Warehouses":
+            st.success(f"✅ Smart Supply Chains Aligned: **{selected_wh}** does not require any replenishment or stock-shifting operations right now.")
+        else:
+            st.success("✅ Smart Supply Chains Aligned: All location inventory metrics balance accurately against their respective sales trends.")
