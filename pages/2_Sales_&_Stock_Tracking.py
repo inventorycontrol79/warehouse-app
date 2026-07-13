@@ -86,7 +86,6 @@ def load_all_inventory_data():
         return fallback_data
         
     try:
-        # Pulls data in a controlled batch to secure API quota limits
         ws3_data = sh.get_worksheet(3).get_all_records()
         ws4_data = sh.get_worksheet(4).get_all_records()
         ws5_data = sh.get_worksheet(5).get_all_records()
@@ -553,6 +552,7 @@ if is_admin and not df_stock.empty:
             custom_new_cat = st.text_input("Or Type a Brand New Category Name (e.g., Mirror Sheet, Rods, Adhesives):")
             
         if st.button("💾 SAVE & RE-INDEX ALL RELATED ITEMS"):
+            # CRITICAL FIX: Fully dump both types of caches completely right before rewriting values
             st.cache_data.clear()
             st.cache_resource.clear()
             
