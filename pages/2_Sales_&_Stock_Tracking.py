@@ -86,7 +86,7 @@ def load_all_inventory_data():
         return fallback_data
         
     try:
-        # One unified block pulls data in a controlled sequence
+        # Pulls data in a controlled batch to secure API quota limits
         ws3_data = sh.get_worksheet(3).get_all_records()
         ws4_data = sh.get_worksheet(4).get_all_records()
         ws5_data = sh.get_worksheet(5).get_all_records()
@@ -106,7 +106,7 @@ TARGET_STOCK_COLS = [
     "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
 ]
 
-# Build DataFrames safely from single cached payload
+# Build DataFrames safely from single payload
 df_stock = pd.DataFrame(sheet_payload[3]) if sheet_payload[3] else pd.DataFrame(columns=TARGET_STOCK_COLS)
 df_log = pd.DataFrame(sheet_payload[4]) if sheet_payload[4] else pd.DataFrame(columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch"])
 df_batches = pd.DataFrame(sheet_payload[5]) if sheet_payload[5] else pd.DataFrame(columns=["Batch_ID", "Upload_Type", "Timestamp"])
@@ -116,7 +116,7 @@ sh_instance = get_google_sheet_file()
 ws_stock = sh_instance.get_worksheet(3) if sh_instance else None
 ws_log = sh_instance.get_worksheet(4) if sh_instance else None
 ws_batches = sh_instance.get_worksheet(5) if sh_instance else None
-ws_archive = sh_instance.get_worksheet(6) if sh_instance else None # Retained from your original script
+ws_archive = sh_instance.get_worksheet(6) if sh_instance else None
 
 # Handle missing layout fallback values
 for col in TARGET_STOCK_COLS:
@@ -128,6 +128,7 @@ for d in [df_stock, df_log, df_batches]:
     if not d.empty:
         for col in d.columns:
             if d[col].dtype == 'object': d[col] = d[col].astype(str).str.strip()
+
 def auto_detect_category(item_name):
     name_upper = str(item_name).upper()
     if "ABS SHEET" in name_upper: return "ABS Sheet"
@@ -320,10 +321,13 @@ else:
                                     new_rows_data[b_col] = 0.0
                                 updated_stock = pd.concat([updated_stock, pd.DataFrame([new_rows_data])], ignore_index=True)
                                 
-                        ws_stock.clear()
-                        ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                        ws_log.append_rows(new_logs)
-                        ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
+                        if ws_stock:
+                            ws_stock.clear()
+                            ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                        if ws_log:
+                            ws_log.append_rows(new_logs)
+                        if ws_batches:
+                            ws_batches.append_rows([[unique_batch, "MRN", timestamp_str]])
                         st.success(f"Inbound Sheet Data `{unique_batch}` incorporated successfully with active smart-categorization mapping!")
                         st.rerun()
             else:
@@ -392,10 +396,13 @@ else:
                         temp_log_df = pd.concat([df_log, new_sales_df], ignore_index=True)
                         updated_stock = recalculate_abc_and_velocity(updated_stock, temp_log_df)
                         
-                        ws_stock.clear()
-                        ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                        ws_log.append_rows(filtered_sales_logs)
-                        ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
+                        if ws_stock:
+                            ws_stock.clear()
+                            ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                        if ws_log:
+                            ws_log.append_rows(filtered_sales_logs)
+                        if ws_batches:
+                            ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
                         
                         st.success("Sales data successfully deducted and branch trends learned!")
                         st.rerun()
@@ -555,16 +562,11 @@ if is_admin and not df_stock.empty:
                 st.error("Please enter or choose a valid target category label before clicking update.")
             else:
                 target_description = str(target_row['Item_Name']).upper()
-                
-                # Dynamic Keyword Identification: Use the exact value you provided as the matching string
-                # If you typed a new value (e.g. "Mirror Sheet"), it will look for "MIRROR SHEET" across all items.
-                # If it's a completely arbitrary name, it defaults to the item name's first two words.
                 potential_kw = final_cat_selection.upper()
                 
                 if len(potential_kw) > 2 and potential_kw in target_description:
                     matched_keyword = potential_kw
                 else:
-                    # Fallback string parsing: grabs the first two primary words of the item description (e.g. "ACRYLIC MIRROR")
                     words = [w for w in target_description.split() if len(w) > 2]
                     matched_keyword = " ".join(words[:2]) if len(words) >= 2 else words[0] if words else target_description
                 
@@ -579,8 +581,9 @@ if is_admin and not df_stock.empty:
                 else:
                     df_stock.loc[df_stock["Item_Code"] == target_row["Item_Code"], "Product_Category"] = final_cat_selection
                 
-                ws_stock.clear()
-                ws_stock.append_rows([TARGET_STOCK_COLS] + df_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
+                if ws_stock:
+                    ws_stock.clear()
+                    ws_stock.append_rows([TARGET_STOCK_COLS] + df_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
                 
                 st.success(f"Successfully updated inventory sheets to '{final_cat_selection}'! Re-indexing engine layout...")
                 st.rerun()
