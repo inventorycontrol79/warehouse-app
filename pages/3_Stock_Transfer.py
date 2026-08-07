@@ -120,12 +120,50 @@ else:
             df_snap = pd.read_csv(uploaded_snap) if uploaded_snap.name.endswith(".csv") else pd.read_excel(uploaded_snap)
             df_snap.columns = [str(c).strip() for c in df_snap.columns]
             
-            if "Item_Code" not in df_snap.columns:
-                st.error("❌ Schema Verification Error: Missing column exact label 'Item_Code'.")
+            # Smart Column Detector for Focus Matrix
+            cols = df_snap.columns.tolist()
+            
+            def find_smart_col(keywords):
+                for kw in keywords:
+                    for c in cols:
+                        if kw.lower() in c.lower():
+                            return c
+                return None
+
+            col_code = find_smart_col(["item_code", "item.code", "item code", "code"])
+            col_name = find_smart_col(["item_name", "item.name", "item name", "description", "specification"])
+            
+            col_shj = find_smart_col(["sharjah"])
+            col_aq = find_smart_col(["al quoz", "al_quoz", "quoz", "dubai"])
+            col_dip = find_smart_col(["dip"])
+            col_ad = find_smart_col(["abu dhabi", "abu_dhabi", "ad trading"])
+            col_online_ad = find_smart_col(["online abu dhabi", "online_ad"])
+            col_online_aq = find_smart_col(["online al quoz", "online_aq"])
+
+            if not col_code:
+                st.error(f"❌ Schema Error: Could not detect Item Code column. Found headers: {cols}")
                 st.stop()
             
             updated_master_df = df_stock.copy()
-            snap_dict = {str(row["Item_Code"]).strip(): row for _, row in df_snap.iterrows()}
+            
+            def clean_code_str(val):
+                return str(val).split('.')[0].strip().upper()
+
+            def clean_name_str(val):
+                return str(val).strip().upper()
+
+            # Create lookup map using composite key (Code + Description) for accuracy
+            snap_map_composite = {}
+            snap_map_code_only = {}
+
+            for _, row in df_snap.iterrows():
+                c_code = clean_code_str(row[col_code])
+                c_name = clean_name_str(row[col_name]) if col_name and pd.notna(row[col_name]) else ""
+                
+                comp_key = f"{c_code}|||{c_name}"
+                snap_map_composite[comp_key] = row
+                snap_map_code_only[c_code] = row
+
             matched_count = 0
             
             def safe_float(val):
@@ -133,21 +171,29 @@ else:
                 return float(res) if pd.notna(res) else 0.0
 
             for idx, m_row in updated_master_df.iterrows():
-                m_sku = str(m_row["Item_Code"]).strip()
-                if m_sku in snap_dict:
-                    erp_row = snap_dict[m_sku]
-                    q_aq = safe_float(erp_row.get("Al Quoz Trading SP", 0))
-                    q_shj = safe_float(erp_row.get("Sharjah Trading SP", 0))
-                    q_ad = safe_float(erp_row.get("Abu Dhabi Trading SP", 0))
-                    q_dip = safe_float(erp_row.get("DIP Trading", 0))
-                    q_o_ad = safe_float(erp_row.get("Online Abu Dhabi Trading SP", 0))
-                    q_o_aq = safe_float(erp_row.get("Online Al Quoz Trading SP", 0))
-                    
+                m_code = clean_code_str(m_row["Item_Code"])
+                m_name = clean_name_str(m_row["Item_Name"])
+                comp_key = f"{m_code}|||{m_name}"
+
+                target_row = None
+                if comp_key in snap_map_composite:
+                    target_row = snap_map_composite[comp_key]
+                elif m_code in snap_map_code_only:
+                    target_row = snap_map_code_only[m_code]
+
+                if target_row is not None:
+                    q_shj = safe_float(target_row[col_shj]) if col_shj else 0.0
+                    q_aq = safe_float(target_row[col_aq]) if col_aq else 0.0
+                    q_dip = safe_float(target_row[col_dip]) if col_dip else 0.0
+                    q_ad = safe_float(target_row[col_ad]) if col_ad else 0.0
+                    q_o_ad = safe_float(target_row[col_online_ad]) if col_online_ad else 0.0
+                    q_o_aq = safe_float(target_row[col_online_aq]) if col_online_aq else 0.0
+
                     updated_master_df.at[idx, "Stock_Sharjah"] = q_shj
                     updated_master_df.at[idx, "Stock_Al_Quoz"] = q_aq + q_o_aq
                     updated_master_df.at[idx, "Stock_DIP"] = q_dip
                     updated_master_df.at[idx, "Stock_Abu_Dhabi"] = q_ad + q_o_ad
-                    updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_ad + q_dip + q_o_ad + q_o_aq)
+                    updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_dip + q_ad + q_o_ad + q_o_aq)
                     matched_count += 1
             
             if matched_count > 0:
@@ -160,10 +206,12 @@ else:
                     clean_rows = updated_master_df[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
                     fresh_ws_stock.clear()
                     fresh_ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
-                    st.success(f"🎉 Snapshot mapped successfully for {matched_count} tracked inventory items!")
+                    st.success(f"🎉 Snapshot successfully matched and overwritten for {matched_count} SKUs!")
                     st.cache_data.clear()
                     st.rerun()
                 else: st.error("🚨 Cloud Connection busy. Please try executing the upload action again.")
+            else:
+                st.warning("⚠️ Zero items matched between your uploaded snapshot and the database. Check if Item Codes match.")
         except Exception as e:
             st.error(f"🚨 Snapshot Balance Overwrite Failure: {e}")
 
@@ -217,13 +265,11 @@ else:
         name = row["Item_Name"]
         total_system_stock = float(row["Current_Stock"])
         
-        # Calculate Total Network Velocity across all locations
         total_net_vel = sum(float(row[w["vel_col"]]) for w in warehouse_mappings)
         
         if total_net_vel <= 0 or total_system_stock <= 0:
             continue
 
-        # Proportional Target Stock Equalization
         branch_needs = []
         for w in warehouse_mappings:
             b_vel = float(row[w["vel_col"]])
@@ -245,7 +291,6 @@ else:
                 "net_need": net_need
             })
 
-        # Identify Deficit (Recipients) and Surplus (Donors)
         deficits = [b for b in branch_needs if b["net_need"] > 1.0 and b["runway"] < 12.0]
         surpluses = [b for b in branch_needs if b["net_need"] < -1.0 or (b["vel"] == 0 and b["stock"] >= 1)]
 
@@ -257,7 +302,6 @@ else:
                     if dest["label"] != selected_wh and src["label"] != selected_wh:
                         continue
 
-                # Donor safety cushion protection rule
                 if src["vel"] > 0:
                     src_safe_donor_limit = max(0, int(src["stock"] - (10.0 * src["vel"])))
                     donor_status_msg = f"holds surplus runway (~{src['runway']:.1f} days)"
