@@ -300,7 +300,7 @@ def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
             eligible_donors = []
             for stock_col, branch_name in donor_branches:
                 d_qty = float(row.get(stock_col, 0.0))
-                if d_qty > 25:
+                if d_qty > 15:
                     eligible_donors.append(f"{branch_name} ({int(d_qty)} pcs)")
 
             if eligible_donors:
