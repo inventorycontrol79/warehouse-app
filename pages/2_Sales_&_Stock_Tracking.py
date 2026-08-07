@@ -190,12 +190,14 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
     except Exception:
         current_file_date = datetime.now().date()
 
-    # Net sales by SKU and Branch
+    # Clean code formatting to avoid mismatch
+    updated_stock["Item_Code"] = updated_stock["Item_Code"].astype(str).str.split('.').str[0].str.strip()
+
     sales_summary = {}
     branch_summary = {}
     
     for _, r in df_sales_raw.iterrows():
-        icode = str(r["Item_Code"]).strip()
+        icode = str(r["Item_Code"]).split('.')[0].strip()
         qty = float(r["Qty_Sold"])
         vtype = str(r.get("Voucher_Type", "")).upper()
         branch = str(r.get("Branch", "")).strip()
@@ -208,7 +210,7 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
             branch_summary[icode][branch] = branch_summary[icode].get(branch, 0.0) + net_q
 
     for idx, row in updated_stock.iterrows():
-        sku = str(row["Item_Code"]).strip()
+        sku = str(row["Item_Code"]).split('.')[0].strip()
         last_up = str(row.get("Last_Updated_Date", "")).strip()
         
         if last_up and last_up.lower() not in ["nan", "none", ""]:
@@ -361,7 +363,7 @@ else:
                             timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             new_logs, new_stock_map = [], {}
                             for _, row in df_mrn_raw.iterrows():
-                                icode = str(row["Item.Code"]).strip()
+                                icode = str(row["Item.Code"]).split('.')[0].strip()
                                 iname = str(row["Item.Name"]).strip()
                                 qty = float(row["Quantity"])
                                 new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str, "Central Log", "MRN"])
@@ -422,50 +424,69 @@ else:
             else:
                 if st.button("⚡ EXECUTE STATEFUL DEMAND ENGINE"):
                     fresh_sh = get_fresh_google_sheet_file()
-                    if not fresh_sh: st.error("🚨 Cloud Write Connection Failed. Please try again.")
+                    if not fresh_sh: 
+                        st.error("🚨 Cloud Write Connection Failed. Please try again.")
                     else:
                         fresh_ws_stock = fresh_sh.get_worksheet(3)
                         try: fresh_ws_log = fresh_sh.worksheet("Daily_Snapshot_Log")
                         except Exception: fresh_ws_log = fresh_sh.get_worksheet(4)
                         fresh_ws_batches = fresh_sh.get_worksheet(5)
 
-                        raw_file_date = str(df_sales_raw[match_date].iloc[0])
-                        try:
-                            parsed_file_date = pd.to_datetime(raw_file_date, errors='coerce').strftime("%Y-%m-%d")
-                        except Exception:
-                            parsed_file_date = datetime.now().strftime("%Y-%m-%d")
-
+                        # Parse and sort dates chronologically for true multi-day learning
+                        df_sales_raw["Parsed_Date"] = pd.to_datetime(df_sales_raw[match_date], errors='coerce').dt.strftime('%Y-%m-%d')
+                        df_sales_raw = df_sales_raw.dropna(subset=["Parsed_Date"]).sort_values("Parsed_Date")
+                        
+                        unique_dates = sorted(df_sales_raw["Parsed_Date"].unique())
+                        
                         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                        clean_sales_records = []
-                        for _, row in df_sales_raw.iterrows():
-                            clean_sales_records.append({
-                                "Item_Code": str(row[match_code]).strip(),
-                                "Item_Name": str(row[match_name]).strip(),
-                                "Qty_Sold": float(row[match_qty]),
-                                "Branch": str(row[match_branch]).strip(),
-                                "Voucher_Type": str(row[match_voucher_type]).strip()
-                            })
-                        
-                        df_clean_sales = pd.DataFrame(clean_sales_records)
-                        updated_stock = process_daily_sales_intelligence(df_stock, df_clean_sales, parsed_file_date)
-                        
+                        updated_stock = df_stock.copy()
+
+                        # Clean string formats on Item Codes to prevent mismatch
+                        updated_stock["Item_Code"] = updated_stock["Item_Code"].astype(str).str.split('.').str[0].str.strip()
+
+                        progress_bar = st.progress(0)
+                        st.info(f"⏳ Processing history across {len(unique_dates)} distinct date(s)...")
+
+                        for idx_d, d_str in enumerate(unique_dates):
+                            day_sales = df_sales_raw[df_sales_raw["Parsed_Date"] == d_str]
+                            
+                            clean_sales_records = []
+                            for _, row in day_sales.iterrows():
+                                clean_code = str(row[match_code]).split('.')[0].strip()
+                                clean_sales_records.append({
+                                    "Item_Code": clean_code,
+                                    "Item_Name": str(row[match_name]).strip(),
+                                    "Qty_Sold": float(row[match_qty]),
+                                    "Branch": str(row[match_branch]).strip(),
+                                    "Voucher_Type": str(row[match_voucher_type]).strip()
+                                })
+                            
+                            df_clean_day = pd.DataFrame(clean_sales_records)
+                            updated_stock = process_daily_sales_intelligence(updated_stock, df_clean_day, d_str)
+                            progress_bar.progress((idx_d + 1) / len(unique_dates))
+
+                        # Log records to backup
                         new_log_rows = []
                         for _, row in df_sales_raw.iterrows():
+                            clean_code = str(row[match_code]).split('.')[0].strip()
                             new_log_rows.append([
-                                str(row[match_date]), str(row[match_code]).strip(), str(row[match_name]).strip(),
+                                str(row[match_date]), clean_code, str(row[match_name]).strip(),
                                 "Sales", -abs(float(row[match_qty])), str(row[match_vouch]).strip(),
                                 timestamp_str, str(row[match_branch]).strip(), str(row[match_voucher_type]).strip()
                             ])
 
+                        sales_batch_id = f"BOOTSTRAP_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
                         if fresh_ws_stock:
                             fresh_ws_stock.clear()
                             fresh_ws_stock.append_rows([TARGET_STOCK_COLS] + updated_stock[TARGET_STOCK_COLS].fillna("").astype(str).values.tolist())
-                        if fresh_ws_log: fresh_ws_log.append_rows(new_log_rows)
-                        if fresh_ws_batches: fresh_ws_batches.append_rows([[sales_batch_id, "Sales", timestamp_str]])
+                        if fresh_ws_log: 
+                            fresh_ws_log.append_rows(new_log_rows)
+                        if fresh_ws_batches: 
+                            fresh_ws_batches.append_rows([[sales_batch_id, "Sales_Bootstrap", timestamp_str]])
                         
                         st.session_state.df_stock_live = updated_stock
-                        st.success("Stateful demand intelligence successfully updated across lifespan metrics!")
+                        st.success("Stateful demand intelligence successfully updated day-by-day!")
                         st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
