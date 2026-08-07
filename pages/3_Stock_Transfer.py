@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import json
 import gspread
 from google.oauth2.service_account import Credentials
@@ -48,42 +49,33 @@ def get_google_client():
         st.error(f"🚨 Authentication Link Failed: {e}")
         return None
 
-# FIX: Added un-cached fresh connector for database write/clear operations
 def get_fresh_google_sheet_file():
     gc = get_google_client()
     if not gc: return None
-    try:
-        return gc.open_by_url(st.secrets["GSHEET_URL"])
-    except Exception:
-        return None
+    try: return gc.open_by_url(st.secrets["GSHEET_URL"])
+    except Exception: return None
 
-# FIX: Refined parsing routine to completely drop duplicate/blank ghost columns
 @st.cache_data(ttl=10)
 def pull_master_database_payload():
     gc = get_google_client()
     if not gc: return pd.DataFrame(), pd.DataFrame()
     try:
         sh = gc.open_by_url(st.secrets["GSHEET_URL"])
-        
         def safe_worksheet_to_df(ws):
             raw_grid = ws.get_all_values()
-            if not raw_grid:
-                return pd.DataFrame()
+            if not raw_grid: return pd.DataFrame()
             headers = [str(h).strip() for h in raw_grid[0]]
             rows = raw_grid[1:]
             df = pd.DataFrame(rows, columns=headers)
-            if "" in df.columns:
-                df = df.drop(columns=[""])
+            if "" in df.columns: df = df.drop(columns=[""])
             return df
 
         ws_stock = sh.get_worksheet(3) 
         df_s = safe_worksheet_to_df(ws_stock)
-        
         try:
             ws_snapshot_log = sh.worksheet("Daily_Snapshot_Log")
             df_l = safe_worksheet_to_df(ws_snapshot_log)
-        except Exception:
-            df_l = pd.DataFrame() 
+        except Exception: df_l = pd.DataFrame() 
             
         return df_s, df_l
     except Exception as e:
@@ -95,110 +87,25 @@ df_stock, df_logs = pull_master_database_payload()
 MASTER_TRACKING_COLS = [
     "Item_Code", "Item_Name", "Product_Category", "Current_Stock",
     "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi",
-    "ABC_Category", "Avg_Daily_Sales", "Last_Sold_Date", "Days_of_Coverage",
+    "ABC_Category", "Avg_Daily_Sales", "Baseline_Velocity", "Consistency_Score",
+    "Total_Lifetime_Sales", "Lifespan_Days", "Last_Sold_Date", "Last_Updated_Date",
     "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
 ]
 
 if not df_stock.empty:
     for c in MASTER_TRACKING_COLS:
         if c not in df_stock.columns: 
-            df_stock[c] = 0.0 if "Velocity" in c or "Stock" in c or c == "Avg_Daily_Sales" else ""
+            df_stock[c] = 0.0 if any(k in c for k in ["Velocity", "Stock", "Sales", "Score", "Days"]) else ""
 
-# ==========================================
-#  🧠 RUNNING MEMORY LEARNING ENGINE (DOCKING HOOKS)
-# ==========================================
-if not df_logs.empty and not df_stock.empty:
-    df_logs.columns = [str(c).strip() for c in df_logs.columns]
-    
-    col_item = next((c for c in ["Item Code", "Item_Code"] if c in df_logs.columns), None)
-    col_qty = next((c for c in ["Quantity", "Qty_Delta"] if c in df_logs.columns), None)
-    col_date = next((c for c in ["Date", "Timestamp"] if c in df_logs.columns), None)
-    col_branch = "Branch" if "Branch" in df_logs.columns else None
-    col_type = next((c for c in ["Voucher abbreviation", "Voucher No", "Document No.", "Transaction_Type"] if c in df_logs.columns), None)
-    
-    if col_item and col_qty and col_date and col_branch and col_type:
-        df_logs[col_qty] = pd.to_numeric(df_logs[col_qty], errors="coerce").fillna(0.0).abs()
-        
-        def calculate_net_sales_volume(row):
-            voucher_val = str(row[col_type]).strip().upper()
-            qty = float(row[col_qty])
-            if "SRTS" in voucher_val:
-                return -qty
-            elif "SINVS" in voucher_val or "SALES" in voucher_val:
-                return qty
-            return 0.0
-
-        df_logs["Net_Qty"] = df_logs.apply(calculate_net_sales_volume, axis=1)
-        df_sales = df_logs[df_logs["Net_Qty"] != 0.0]
-        
-        if not df_sales.empty:
-            unique_dates_in_file = pd.to_datetime(df_sales[col_date], errors='coerce').dt.date.nunique()
-            unique_dates_in_file = max(1, unique_dates_in_file)
-            
-            july_1st = datetime(2026, 7, 1).date()
-            today_date = datetime.now().date()
-            days_elapsed_total = max(1, (today_date - july_1st).days + 1)
-            
-            is_initialization = unique_dates_in_file > 2
-            
-            upload_global_totals = df_sales.groupby(col_item)["Net_Qty"].sum().to_dict()
-            
-            warehouse_selectors = {
-                "Dubai": "Velocity_Al_Quoz",
-                "Sharjah": "Velocity_Sharjah",
-                "DIP": "Velocity_DIP",
-                "Abu Dhabi": "Velocity_Abu_Dhabi"
-            }
-            
-            upload_branch_totals = {}
-            for branch_keyword, column_target in warehouse_selectors.items():
-                b_df = df_sales[df_sales[col_branch].astype(str).str.contains(branch_keyword, case=False, na=False)]
-                upload_branch_totals[branch_keyword] = b_df.groupby(col_item)["Net_Qty"].sum().to_dict() if not b_df.empty else {}
-
-            for idx, row in df_stock.iterrows():
-                sku = str(row["Item_Code"]).strip()
-                
-                file_global_net = upload_global_totals.get(sku, 0.0)
-                if is_initialization:
-                    df_stock.at[idx, "Avg_Daily_Sales"] = max(0.0, round(file_global_net / unique_dates_in_file, 2))
-                else:
-                    old_global_avg = float(row["Avg_Daily_Sales"]) if pd.notna(row["Avg_Daily_Sales"]) else 0.0
-                    df_stock.at[idx, "Avg_Daily_Sales"] = max(0.0, round(((old_global_avg * (days_elapsed_total - 1)) + file_global_net) / days_elapsed_total, 2))
-                
-                for branch_keyword, column_target in warehouse_selectors.items():
-                    file_branch_net = upload_branch_totals[branch_keyword].get(sku, 0.0)
-                    if is_initialization:
-                        df_stock.at[idx, column_target] = max(0.0, round(file_branch_net / unique_dates_in_file, 2))
-                    else:
-                        old_branch_velocity = float(row[column_target]) if pd.notna(row[column_target]) else 0.0
-                        df_stock.at[idx, column_target] = max(0.0, round(((old_branch_velocity * (days_elapsed_total - 1)) + file_branch_net) / days_elapsed_total, 2))
-
-            def serialize_cell(val):
-                return "" if pd.isna(val) or str(val).strip().lower() in ['nan', 'nat', 'inf'] else str(val).strip()
-            
-            # FIX: Open dedicated isolated stream to commit automated learning back to Cloud Core
-            fresh_sh = get_fresh_google_sheet_file()
-            if fresh_sh:
-                fresh_ws_stock = fresh_sh.get_worksheet(3)
-                clean_rows = df_stock[MASTER_TRACKING_COLS].map(serialize_cell).values.tolist()
-                fresh_ws_stock.clear()
-                fresh_ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
-                st.success("🧠 Memory Pattern Updated! The algorithm has safely processed net sales and assigned metrics. You can now clear the 'Daily_Snapshot_Log' tab.")
-
-# Recalculate runway numbers
-if not df_stock.empty:
-    # FIX: Added "Current_Stock" to the list below so it converts from text to numbers
-    for k in ["Current_Stock", "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", "Avg_Daily_Sales",
+    for k in ["Current_Stock", "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi", 
+              "Avg_Daily_Sales", "Baseline_Velocity", "Consistency_Score",
               "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"]:
         df_stock[k] = pd.to_numeric(df_stock[k], errors='coerce').fillna(0.0)
     
     df_stock["Days_of_Coverage"] = df_stock.apply(
-        lambda r: 999 if r["Avg_Daily_Sales"] <= 0 else round(r["Current_Stock"] / r["Avg_Daily_Sales"], 1), axis=1
+        lambda r: 999 if r["Baseline_Velocity"] <= 0 else round(r["Current_Stock"] / r["Baseline_Velocity"], 1), axis=1
     )
 
-# ==========================================
-#  INVENTORY MATRIX SNAPSHOT OVERWRITE
-# ==========================================
 st.subheader("📥 Reconcile Physical Warehouse Stock Snapshot")
 st.markdown("<small>Upload your clean Focus matrix file here to update the on-hand quantities across locations.</small>", unsafe_allow_html=True)
 
@@ -237,9 +144,9 @@ else:
                     q_o_aq = safe_float(erp_row.get("Online Al Quoz Trading SP", 0))
                     
                     updated_master_df.at[idx, "Stock_Sharjah"] = q_shj
-                    updated_master_df.at[idx, "Stock_Al_Quoz"] = q_aq
+                    updated_master_df.at[idx, "Stock_Al_Quoz"] = q_aq + q_o_aq
                     updated_master_df.at[idx, "Stock_DIP"] = q_dip
-                    updated_master_df.at[idx, "Stock_Abu_Dhabi"] = q_ad
+                    updated_master_df.at[idx, "Stock_Abu_Dhabi"] = q_ad + q_o_ad
                     updated_master_df.at[idx, "Current_Stock"] = float(q_shj + q_aq + q_ad + q_dip + q_o_ad + q_o_aq)
                     matched_count += 1
             
@@ -247,7 +154,6 @@ else:
                 def serialize_cell(val):
                     return "" if pd.isna(val) or str(val).strip().lower() in ['nan', 'nat', 'inf'] else str(val).strip()
                 
-                # FIX: Swapped to un-cached connection object to avoid session corruption crashes
                 fresh_sh = get_fresh_google_sheet_file()
                 if fresh_sh:
                     fresh_ws_stock = fresh_sh.get_worksheet(3)
@@ -257,13 +163,12 @@ else:
                     st.success(f"🎉 Snapshot mapped successfully for {matched_count} tracked inventory items!")
                     st.cache_data.clear()
                     st.rerun()
-                else:
-                    st.error("🚨 Cloud Connection busy. Please try executing the upload action again.")
+                else: st.error("🚨 Cloud Connection busy. Please try executing the upload action again.")
         except Exception as e:
             st.error(f"🚨 Snapshot Balance Overwrite Failure: {e}")
 
 st.markdown("---")
-st.header("🧠 Intelligent Supply Redistribution Advisor (Demand Planner)")
+st.header("🧠 Intelligent Supply Redistribution Advisor (DOI Balancing Engine)")
 
 if df_stock.empty:
     st.info("ℹ️ Processing real-time ledger distributions...")
@@ -272,7 +177,7 @@ else:
     with col_search:
         search_query = st.text_input("🔍 Search Matrix or Planner by SKU / Item Name:", value="").strip()
     with col_vel_filter:
-        min_velocity = st.number_input("📉 Minimum Global Daily Sales Velocity Filter:", min_value=0.0, value=0.0)
+        min_velocity = st.number_input("📉 Minimum Baseline Velocity Filter:", min_value=0.0, value=0.0)
 
     df_filtered = df_stock.copy()
     if search_query:
@@ -280,7 +185,7 @@ else:
             df_filtered["Item_Code"].astype(str).str.contains(search_query, case=False, na=False) |
             df_filtered["Item_Name"].astype(str).str.contains(search_query, case=False, na=False)
         ]
-    df_filtered = df_filtered[df_filtered["Avg_Daily_Sales"] >= min_velocity]
+    df_filtered = df_filtered[df_filtered["Baseline_Velocity"] >= min_velocity]
 
     st.subheader("📊 Dynamic Global Stock Allocation Matrix")
     st.dataframe(
@@ -293,15 +198,10 @@ else:
         }
     )
 
-    st.markdown("### 💡 Recommended Optimization Routes")
+    st.markdown("### 💡 Recommended Optimization Routes (Proportional Base-Stock Equalization)")
     
-    # NEW: Added interactive dropdown filter for individual Warehouse Supervisors
     wh_options = ["All Warehouses", "Al Quoz", "Sharjah", "DIP", "Abu Dhabi"]
-    selected_wh = st.selectbox(
-        "📍 Filter Optimization Feed by Supervisor Location:", 
-        options=wh_options,
-        index=0
-    )
+    selected_wh = st.selectbox("📍 Filter Optimization Feed by Supervisor Location:", options=wh_options, index=0)
     
     advisor_routes_found = False
     
@@ -315,66 +215,85 @@ else:
     for idx, row in df_filtered.iterrows():
         sku = row["Item_Code"]
         name = row["Item_Name"]
+        total_system_stock = float(row["Current_Stock"])
         
-        for dest in warehouse_mappings:
-            dest_qty = row[dest["stock_col"]]
-            dest_vel = row[dest["vel_col"]]
-            
-            if dest_vel > 0:
-                dest_coverage = dest_qty / dest_vel
-                trigger_routing = (dest_coverage <= 10.0)
-            else:
-                dest_coverage = 999
-                trigger_routing = False
-                
-            if trigger_routing:
-                for src in warehouse_mappings:
-                    if src["stock_col"] == dest["stock_col"]: 
-                        continue
-                        
-                    src_qty = row[src["stock_col"]]
-                    src_vel = row[src["vel_col"]]
-                    
-                    if src_vel > 0:
-                        src_coverage = src_qty / src_vel
-                        is_eligible_donor = (src_coverage > 25.0 and src_qty > 5)
-                        donor_status_msg = f"holds safety cushions (~{src_coverage:.1f} days runway)"
-                        badge_style = "surplus-badge"
-                    else:
-                        src_coverage = 999
-                        is_eligible_donor = (src_qty >= 1)
-                        donor_status_msg = "holds completely IDLE inventory (0 local sales this month)"
-                        badge_style = "idle-badge"
-                        
-                    if is_eligible_donor:
-                        # NEW: Route selection skip check to serve supervisor-isolated feeds
-                        if selected_wh != "All Warehouses":
-                            if dest["label"] != selected_wh and src["label"] != selected_wh:
-                                continue
+        # Calculate Total Network Velocity across all locations
+        total_net_vel = sum(float(row[w["vel_col"]]) for w in warehouse_mappings)
+        
+        if total_net_vel <= 0 or total_system_stock <= 0:
+            continue
 
-                        target_replenish_qty = int((20 * dest_vel) - dest_qty)
-                        donor_safe_limit = int(src_qty - (15 * src_vel)) if src_vel > 0 else int(src_qty)
-                        optimal_transfer = min(target_replenish_qty, donor_safe_limit)
-                        
-                        if optimal_transfer >= 1:
-                            advisor_routes_found = True
-                            
-                            st.markdown(f"<div class='route-container'>", unsafe_allow_html=True)
-                            st.markdown(f"**🌐 Balancing Optimization Route Matched: `{sku}` — {name}**")
-                            c1, c2, c3 = st.columns([2, 1, 1])
-                            with c1:
-                                st.markdown(f"""
-                                    ⚠️ Deficit Area: <span class='critical-badge'>{dest['label']}</span> runs hot ({int(dest_qty)} units left | local demand consumes **{dest_vel:.2f} units/day** &rarr; **{dest_coverage:.1f} days runway**).<br/>
-                                    📦 Surplus Area: <span class='{badge_style}'>{src['label']}</span> {donor_status_msg} ({int(src_qty)} units on hand).
-                                """, unsafe_allow_html=True)
-                            with c2:
-                                final_qty = st.number_input(f"Confirm Transfer Quantity ({sku})", min_value=1, max_value=int(src_qty), value=int(optimal_transfer), key=f"tr_{sku}_{dest['label']}")
-                            with c3:
-                                erp_string = f"SRTS: Move {final_qty} units of SKU {sku} from {src['label']} to {dest['label']}"
-                                st.text_input("📋 Focus ERP Direct Command Output:", value=erp_string, disabled=True, key=f"cmd_{sku}_{dest['label']}")
-                            st.markdown("</div>", unsafe_allow_html=True)
-                            break 
-                            
+        # Proportional Target Stock Equalization
+        branch_needs = []
+        for w in warehouse_mappings:
+            b_vel = float(row[w["vel_col"]])
+            b_stock = float(row[w["stock_col"]])
+            
+            demand_share = b_vel / total_net_vel if total_net_vel > 0 else 0.25
+            target_stock = total_system_stock * demand_share
+            net_need = target_stock - b_stock
+            
+            b_runway = (b_stock / b_vel) if b_vel > 0 else 999.0
+            
+            branch_needs.append({
+                "label": w["label"],
+                "stock_col": w["stock_col"],
+                "vel_col": w["vel_col"],
+                "stock": b_stock,
+                "vel": b_vel,
+                "runway": b_runway,
+                "net_need": net_need
+            })
+
+        # Identify Deficit (Recipients) and Surplus (Donors)
+        deficits = [b for b in branch_needs if b["net_need"] > 1.0 and b["runway"] < 12.0]
+        surpluses = [b for b in branch_needs if b["net_need"] < -1.0 or (b["vel"] == 0 and b["stock"] >= 1)]
+
+        for dest in deficits:
+            for src in surpluses:
+                if dest["label"] == src["label"]: continue
+                
+                if selected_wh != "All Warehouses":
+                    if dest["label"] != selected_wh and src["label"] != selected_wh:
+                        continue
+
+                # Donor safety cushion protection rule
+                if src["vel"] > 0:
+                    src_safe_donor_limit = max(0, int(src["stock"] - (10.0 * src["vel"])))
+                    donor_status_msg = f"holds surplus runway (~{src['runway']:.1f} days)"
+                    badge_style = "surplus-badge"
+                else:
+                    src_safe_donor_limit = int(src["stock"])
+                    donor_status_msg = "holds IDLE inventory (0 local sales)"
+                    badge_style = "idle-badge"
+
+                optimal_transfer = min(int(dest["net_need"]), src_safe_donor_limit)
+                
+                if optimal_transfer >= 1:
+                    advisor_routes_found = True
+                    
+                    st.markdown(f"<div class='route-container'>", unsafe_allow_html=True)
+                    st.markdown(f"**🌐 Proportional Optimization Route: `{sku}` — {name}**")
+                    c1, c2, c3 = st.columns([2, 1, 1])
+                    with c1:
+                        st.markdown(f"""
+                            ⚠️ Deficit Area: <span class='critical-badge'>{dest['label']}</span> runs low ({int(dest['stock'])} units | run-rate **{dest['vel']:.2f}/day** &rarr; **{dest['runway']:.1f} days runway**).<br/>
+                            📦 Donor Area: <span class='{badge_style}'>{src['label']}</span> {donor_status_msg} ({int(src['stock'])} units on hand).
+                        """, unsafe_allow_html=True)
+                    with c2:
+                        final_qty = st.number_input(
+                            f"Confirm Transfer Quantity ({sku})", 
+                            min_value=1, 
+                            max_value=max(1, int(src["stock"])), 
+                            value=int(optimal_transfer), 
+                            key=f"tr_{sku}_{dest['label']}_{src['label']}"
+                        )
+                    with c3:
+                        erp_string = f"SRTS: Move {final_qty} units of SKU {sku} from {src['label']} to {dest['label']}"
+                        st.text_input("📋 Focus ERP Direct Command Output:", value=erp_string, disabled=True, key=f"cmd_{sku}_{dest['label']}_{src['label']}")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    break 
+
     if not advisor_routes_found:
         if selected_wh != "All Warehouses":
             st.success(f"✅ Smart Supply Chains Aligned: **{selected_wh}** does not require any replenishment or stock-shifting operations right now.")
