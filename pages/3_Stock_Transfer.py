@@ -120,7 +120,6 @@ else:
             df_snap = pd.read_csv(uploaded_snap) if uploaded_snap.name.endswith(".csv") else pd.read_excel(uploaded_snap)
             df_snap.columns = [str(c).strip() for c in df_snap.columns]
             
-            # Smart Column Detector for Focus Matrix
             cols = df_snap.columns.tolist()
             
             def find_smart_col(keywords):
@@ -152,7 +151,6 @@ else:
             def clean_name_str(val):
                 return str(val).strip().upper()
 
-            # Create lookup map using composite key (Code + Description) for accuracy
             snap_map_composite = {}
             snap_map_code_only = {}
 
@@ -330,11 +328,11 @@ else:
                             min_value=1, 
                             max_value=max(1, int(src["stock"])), 
                             value=int(optimal_transfer), 
-                            key=f"tr_{sku}_{dest['label']}_{src['label']}"
+                            key=f"tr_{idx}_{sku}_{dest['label']}_{src['label']}"
                         )
                     with c3:
                         erp_string = f"SRTS: Move {final_qty} units of SKU {sku} from {src['label']} to {dest['label']}"
-                        st.text_input("📋 Focus ERP Direct Command Output:", value=erp_string, disabled=True, key=f"cmd_{sku}_{dest['label']}_{src['label']}")
+                        st.text_input("📋 Focus ERP Direct Command Output:", value=erp_string, disabled=True, key=f"cmd_{idx}_{sku}_{dest['label']}_{src['label']}")
                     st.markdown("</div>", unsafe_allow_html=True)
                     break 
 
