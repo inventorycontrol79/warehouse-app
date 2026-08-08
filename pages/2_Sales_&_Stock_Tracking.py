@@ -276,57 +276,88 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
 
 def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
     """
-    Evaluates items reaching stockout risk in Sharjah while other branches hold > 25 pcs.
+    Evaluates items reaching stockout risk in Sharjah while other branches hold surplus stock.
+    Enforces a strict 30-day cooldown per SKU to prevent duplicate WhatsApp notifications.
     Appends pending WhatsApp alerts to 'WhatsApp_Alert_Queue' in Google Sheets.
     """
-    donor_branches = [
-        ("Stock_Al_Quoz", "Al Quoz"),
-        ("Stock_DIP", "DIP"),
-        ("Stock_Abu_Dhabi", "Abu Dhabi")
-    ]
-    
-    alerts_to_send = []
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    if not fresh_sh:
+        return
 
-    for _, row in updated_stock.iterrows():
-        sku = str(row["Item_Code"]).split('.')[0].strip()
-        iname = str(row["Item_Name"]).strip()
-        shj_stock = float(row.get("Stock_Sharjah", 0.0))
-        shj_vel = float(row.get("Velocity_Sharjah", 0.0))
-        
-        shj_runway = (shj_stock / shj_vel) if shj_vel > 0 else 999.0
-        
-        if shj_vel > 0.05 and (shj_stock <= 5 or shj_runway <= 7.0):
-            eligible_donors = []
-            for stock_col, branch_name in donor_branches:
-                d_qty = float(row.get(stock_col, 0.0))
-                if d_qty > 25:
-                    eligible_donors.append(f"{branch_name} ({int(d_qty)} pcs)")
-
-            if eligible_donors:
-                donor_text = ", ".join(eligible_donors)
-                message = (
-                    f"⚠️ *SHARJAH STOCKOUT ALERT* ⚠️\n"
-                    f"• *SKU:* `{sku}` — {iname}\n"
-                    f"• *Sharjah Balance:* {int(shj_stock)} units ({shj_runway:.1f} days runway left)\n"
-                    f"• *Sharjah Run-Rate:* {shj_vel:.2f} units/day\n"
-                    f"• *Surplus Available:* {donor_text}\n"
-                    f"👉 *Action Required:* Request immediate internal stock transfer."
-                )
-                alerts_to_send.append([today_str, sku, "Krishna Bhai Sabin WH ", message, "Pending"])
-
-    if alerts_to_send and fresh_sh:
+    try:
+        # 1. Fetch existing alert history to enforce 30-day cooldown
         try:
-            try:
-                alert_ws = fresh_sh.worksheet("WhatsApp_Alert_Queue")
-            except Exception:
-                alert_ws = fresh_sh.add_worksheet(title="WhatsApp_Alert_Queue", rows=100, cols=5)
-                alert_ws.append_row(["Date", "SKU", "Recipient", "Message", "Status"])
+            ws_queue = fresh_sh.worksheet("WhatsApp_Alert_Queue")
+            existing_records = ws_queue.get_all_records()
+            df_queue = pd.DataFrame(existing_records)
+        except Exception:
+            ws_queue = fresh_sh.add_worksheet(title="WhatsApp_Alert_Queue", rows=100, cols=5)
+            ws_queue.append_row(["Date", "SKU", "Recipient", "Message", "Status"])
+            df_queue = pd.DataFrame()
 
-            alert_ws.append_rows(alerts_to_send)
-            st.warning(f"📲 Triggered {len(alerts_to_send)} automated WhatsApp transfer alert(s) for Sharjah Supervisor!")
-        except Exception as e:
-            st.error(f"Failed to queue WhatsApp alerts: {e}")
+        # 2. Identify SKUs alerted within the last 30 days
+        recently_alerted_skus = set()
+        if not df_queue.empty and "SKU" in df_queue.columns and "Date" in df_queue.columns:
+            df_queue["Date_Parsed"] = pd.to_datetime(df_queue["Date"], errors='coerce')
+            cutoff_date = datetime.now() - timedelta(days=30)
+            recent_df = df_queue[df_queue["Date_Parsed"] >= cutoff_date]
+            recently_alerted_skus = set(recent_df["SKU"].astype(str).str.strip().str.upper())
+
+        donor_branches = [
+            ("Stock_Al_Quoz", "Al Quoz"),
+            ("Stock_DIP", "DIP"),
+            ("Stock_Abu_Dhabi", "Abu Dhabi")
+        ]
+
+        alerts_to_send = []
+        today_str = datetime.now().strftime("%Y-%m-%d")
+
+        # 3. Evaluate stock levels for each SKU
+        for _, row in updated_stock.iterrows():
+            sku = str(row.get("Item_Code", "")).split('.')[0].strip().upper()
+            iname = str(row.get("Item_Name", "")).strip()
+
+            if not sku or sku in ["NAN", "NONE", ""]:
+                continue
+
+            # 4. COOLDOWN GUARD: Skip if alerted in the past 30 days
+            if sku in recently_alerted_skus:
+                continue
+
+            shj_stock = float(row.get("Stock_Sharjah", 0.0))
+            shj_vel = float(row.get("Velocity_Sharjah", 0.0))
+
+            shj_runway = (shj_stock / shj_vel) if shj_vel > 0 else 999.0
+
+            # Trigger condition: <= 5 units OR <= 7 days runway (and actively selling)
+            if shj_vel > 0.05 and (shj_stock <= 5 or shj_runway <= 7.0):
+                eligible_donors = []
+                for stock_col, branch_name in donor_branches:
+                    d_qty = float(row.get(stock_col, 0.0))
+                    if d_qty > 20:  # Threshold set to 20 pcs
+                        eligible_donors.append(f"{branch_name} ({int(d_qty)} pcs)")
+
+                if eligible_donors:
+                    donor_text = ", ".join(eligible_donors)
+                    message = (
+                        f"⚠️ *SHARJAH STOCKOUT ALERT* ⚠️\n"
+                        f"----------------------------------------------------------------\n"
+                        f"• *SKU:* `{sku}` — {iname}\n"
+                        f"• *Sharjah Balance:* {int(shj_stock)} units ({shj_runway:.1f} days runway left)\n"
+                        f"• *Sharjah Run-Rate:* {shj_vel:.2f} units/day\n"
+                        f"• *Surplus Available:* {donor_text}\n"
+                        f"👉 *Action Required:* Request immediate internal stock transfer."
+                    )
+                    alerts_to_send.append([today_str, sku, "971582577622", message, "Pending"])
+
+        # 5. Append new alerts to Google Sheets
+        if alerts_to_send:
+            ws_queue.append_rows(alerts_to_send)
+            st.warning(f"📲 Triggered {len(alerts_to_send)} automated WhatsApp transfer alert(s) for Sharjah Supervisor (skipped previously alerted SKUs)!")
+        else:
+            st.info("ℹ️ No new Sharjah stockout alerts required (all low items are either stable or already alerted this month).")
+
+    except Exception as e:
+        st.error(f"Failed to queue WhatsApp alerts: {e}")
 
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
 if not df_stock.empty:
