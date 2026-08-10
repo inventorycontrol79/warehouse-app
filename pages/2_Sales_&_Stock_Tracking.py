@@ -61,6 +61,16 @@ st.markdown("""
 
 st.markdown("<div class='premium-header'><div class='sabin-logo'>SABIN <span>PLASTIC</span></div><div class='sabin-sub'>Enterprise Warehouse Tracking System</div></div>", unsafe_allow_html=True)
 
+def clean_item_code(val):
+    """
+    Preserves raw codes with dots (e.g., 'PC2.848') while stripping '.0' 
+    created by Pandas float imports (e.g., '1002.0' -> '1002').
+    """
+    val_str = str(val).strip()
+    if val_str.endswith(".0"):
+        return val_str[:-2]
+    return val_str
+
 def get_google_client():
     try:
         raw_json = st.secrets["GCP_JSON"]
@@ -190,13 +200,13 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
     except Exception:
         current_file_date = datetime.now().date()
 
-    updated_stock["Item_Code"] = updated_stock["Item_Code"].astype(str).str.split('.').str[0].str.strip()
+    updated_stock["Item_Code"] = updated_stock["Item_Code"].apply(clean_item_code)
 
     sales_summary = {}
     branch_summary = {}
     
     for _, r in df_sales_raw.iterrows():
-        icode = str(r["Item_Code"]).split('.')[0].strip()
+        icode = clean_item_code(r["Item_Code"])
         qty = float(r["Qty_Sold"])
         vtype = str(r.get("Voucher_Type", "")).upper()
         branch = str(r.get("Branch", "")).strip()
@@ -209,7 +219,7 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
             branch_summary[icode][branch] = branch_summary[icode].get(branch, 0.0) + net_q
 
     for idx, row in updated_stock.iterrows():
-        sku = str(row["Item_Code"]).split('.')[0].strip()
+        sku = clean_item_code(row["Item_Code"])
         last_up = str(row.get("Last_Updated_Date", "")).strip()
         
         if last_up and last_up.lower() not in ["nan", "none", ""]:
@@ -300,7 +310,7 @@ def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
             df_queue["Date_Parsed"] = pd.to_datetime(df_queue["Date"], errors='coerce')
             cutoff_date = datetime.now() - timedelta(days=30)
             recent_df = df_queue[df_queue["Date_Parsed"] >= cutoff_date]
-            recently_alerted_skus = set(recent_df["SKU"].astype(str).str.strip().str.upper())
+            recently_alerted_skus = set(recent_df["SKU"].apply(clean_item_code).str.upper())
 
         donor_branches = [
             ("Stock_Al_Quoz", "Al Quoz"),
@@ -313,7 +323,7 @@ def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
 
         # 3. Evaluate stock levels for each SKU
         for _, row in updated_stock.iterrows():
-            sku = str(row.get("Item_Code", "")).split('.')[0].strip().upper()
+            sku = clean_item_code(row.get("Item_Code", "")).upper()
             iname = str(row.get("Item_Name", "")).strip()
 
             if not sku or sku in ["NAN", "NONE", ""]:
@@ -447,7 +457,7 @@ else:
                             timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             new_logs, new_stock_map = [], {}
                             for _, row in df_mrn_raw.iterrows():
-                                icode = str(row["Item.Code"]).split('.')[0].strip()
+                                icode = clean_item_code(row["Item.Code"])
                                 iname = str(row["Item.Name"]).strip()
                                 qty = float(row["Quantity"])
                                 new_logs.append([str(row["Date"]), icode, iname, "MRN", qty, unique_batch, timestamp_str, "Central Log", "MRN"])
@@ -524,7 +534,7 @@ else:
                         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         updated_stock = df_stock.copy()
 
-                        updated_stock["Item_Code"] = updated_stock["Item_Code"].astype(str).str.split('.').str[0].str.strip()
+                        updated_stock["Item_Code"] = updated_stock["Item_Code"].apply(clean_item_code)
 
                         progress_bar = st.progress(0)
                         st.info(f"⏳ Processing history across {len(unique_dates)} distinct date(s)...")
@@ -534,7 +544,7 @@ else:
                             
                             clean_sales_records = []
                             for _, row in day_sales.iterrows():
-                                clean_code = str(row[match_code]).split('.')[0].strip()
+                                clean_code = clean_item_code(row[match_code])
                                 clean_sales_records.append({
                                     "Item_Code": clean_code,
                                     "Item_Name": str(row[match_name]).strip(),
@@ -549,7 +559,7 @@ else:
 
                         new_log_rows = []
                         for _, row in df_sales_raw.iterrows():
-                            clean_code = str(row[match_code]).split('.')[0].strip()
+                            clean_code = clean_item_code(row[match_code])
                             new_log_rows.append([
                                 str(row[match_date]), clean_code, str(row[match_name]).strip(),
                                 "Sales", -abs(float(row[match_qty])), str(row[match_vouch]).strip(),
@@ -718,7 +728,7 @@ if is_admin and not df_stock.empty:
                     st.error("Please enter or choose a valid target category label before clicking update.")
                 else:
                     updated_stock = df_stock.copy()
-                    target_code = str(target_row['Item_Code']).strip()
+                    target_code = clean_item_code(target_row['Item_Code'])
                     target_description = str(target_row['Item_Name']).upper().strip()
                     potential_kw = final_cat_selection.upper().replace("SHEET", "").replace("ROD", "").strip()
                     
@@ -727,7 +737,7 @@ if is_admin and not df_stock.empty:
                         words = [w for w in target_description.split() if len(w) > 2]
                         matched_keyword = words[0] if words else ""
 
-                    updated_stock["Item_Code_Str"] = updated_stock["Item_Code"].astype(str).str.strip()
+                    updated_stock["Item_Code_Str"] = updated_stock["Item_Code"].apply(clean_item_code)
                     if matched_keyword != "":
                         updated_stock["Item_Name_Upper"] = updated_stock["Item_Name"].astype(str).str.upper()
                         mask = (updated_stock["Product_Category"].isin(["Uncategorized", "", "None", "nan"])) & \

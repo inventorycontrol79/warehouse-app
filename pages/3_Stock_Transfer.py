@@ -38,6 +38,16 @@ st.markdown("""
 
 st.markdown("<div class='premium-header'><div class='sabin-logo'>SABIN <span>PLASTIC</span></div><div class='sabin-sub'>Multi-Warehouse Stock Transfer & Demand Planner</div></div>", unsafe_allow_html=True)
 
+def clean_code_str(val):
+    """
+    Preserves raw codes with dots (e.g., 'PC2.848') while stripping '.0' 
+    created by Pandas float imports (e.g., '1002.0' -> '1002').
+    """
+    val_str = str(val).strip().upper()
+    if val_str.endswith(".0"):
+        return val_str[:-2]
+    return val_str
+
 def get_google_client():
     try:
         raw_json = st.secrets["GCP_JSON"]
@@ -144,9 +154,6 @@ else:
                 st.stop()
             
             updated_master_df = df_stock.copy()
-            
-            def clean_code_str(val):
-                return str(val).split('.')[0].strip().upper()
 
             def clean_name_str(val):
                 return str(val).strip().upper()
