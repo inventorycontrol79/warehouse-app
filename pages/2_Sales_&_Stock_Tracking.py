@@ -287,8 +287,7 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
 def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
     """
     Evaluates items reaching stockout risk in Sharjah while other branches hold surplus stock.
-    Enforces a strict 30-day cooldown per SKU to prevent duplicate WhatsApp notifications.
-    Appends pending WhatsApp alerts to 'WhatsApp_Alert_Queue' in Google Sheets.
+    Enforces a 30-day cooldown per SKU and creates alert records with status 'Draft'.
     """
     if not fresh_sh:
         return
@@ -304,7 +303,7 @@ def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
             ws_queue.append_row(["Date", "SKU", "Recipient", "Message", "Status"])
             df_queue = pd.DataFrame()
 
-        # 2. Identify SKUs alerted within the last 30 days
+        # 2. Identify SKUs alerted or drafted within the last 30 days
         recently_alerted_skus = set()
         if not df_queue.empty and "SKU" in df_queue.columns and "Date" in df_queue.columns:
             df_queue["Date_Parsed"] = pd.to_datetime(df_queue["Date"], errors='coerce')
@@ -329,7 +328,7 @@ def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
             if not sku or sku in ["NAN", "NONE", ""]:
                 continue
 
-            # 4. COOLDOWN GUARD: Skip if alerted in the past 30 days
+            # 4. COOLDOWN GUARD: Skip if alerted/drafted in the past 30 days
             if sku in recently_alerted_skus:
                 continue
 
@@ -357,17 +356,18 @@ def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
                         f"• *Surplus Available:* {donor_text}\n"
                         f"👉 *Action Required:* Request immediate internal stock transfer."
                     )
-                    alerts_to_send.append([today_str, sku, "971582577622", message, "Pending"])
+                    # Created as 'Draft' for admin approval before dispatching
+                    alerts_to_send.append([today_str, sku, "971582577622", message, "Draft"])
 
-        # 5. Append new alerts to Google Sheets
+        # 5. Append new alert drafts to Google Sheets
         if alerts_to_send:
             ws_queue.append_rows(alerts_to_send)
-            st.warning(f"📲 Triggered {len(alerts_to_send)} automated WhatsApp transfer alert(s) for Sharjah Supervisor (skipped previously alerted SKUs)!")
+            st.success(f"📝 Generated {len(alerts_to_send)} new alert draft(s) for your review below.")
         else:
-            st.info("ℹ️ No new Sharjah stockout alerts required (all low items are either stable or already alerted this month).")
+            st.info("ℹ️ No new Sharjah stockout alerts required (all low items are either stable or already alerted/drafted this month).")
 
     except Exception as e:
-        st.error(f"Failed to queue WhatsApp alerts: {e}")
+        st.error(f"Failed to scan and draft WhatsApp alerts: {e}")
 
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
 if not df_stock.empty:
@@ -576,12 +576,68 @@ else:
                         if fresh_ws_batches: 
                             fresh_ws_batches.append_rows([[sales_batch_id, "Sales_Bootstrap", timestamp_str]])
                         
-                        evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh)
-                        
                         st.session_state.df_stock_live = updated_stock
                         st.success("Stateful demand intelligence successfully updated day-by-day!")
                         st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
+
+# =====================================================
+# DEDICATED STOCK ALERT EVALUATION & APPROVAL GATEWAY
+# =====================================================
+if is_admin:
+    st.markdown("---")
+    st.markdown("### 📲 Sharjah Stockout Alert Manager")
+    
+    col_eval, col_info = st.columns([1, 2])
+    with col_eval:
+        if st.button("🔍 SCAN STOCK & GENERATE ALERT DRAFTS"):
+            fresh_sh = get_fresh_google_sheet_file()
+            if fresh_sh and st.session_state.df_stock_live is not None:
+                evaluate_and_queue_sharjah_alerts(st.session_state.df_stock_live, fresh_sh)
+                st.rerun()
+            else:
+                st.error("🚨 Cloud connection failure or stock data missing.")
+    with col_info:
+        st.caption("Clicking this button evaluates live stock levels, identifies Sharjah stockout risks, and prepares draft messages for your manual approval below before sending.")
+
+    fresh_sh = get_fresh_google_sheet_file()
+    if fresh_sh:
+        try:
+            ws_queue = fresh_sh.worksheet("WhatsApp_Alert_Queue")
+            queue_data = ws_queue.get_all_records()
+            df_queue = pd.DataFrame(queue_data)
+            
+            if not df_queue.empty and "Status" in df_queue.columns:
+                draft_alerts = df_queue[df_queue["Status"].astype(str).str.upper() == "DRAFT"]
+                
+                if draft_alerts.empty:
+                    st.info("✅ No pending alert drafts requiring approval right now.")
+                else:
+                    st.warning(f"⚠️ There are **{len(draft_alerts)}** stockout alert draft(s) waiting for your review:")
+                    
+                    for idx, row in draft_alerts.iterrows():
+                        sheet_row_num = idx + 2  # 1-based index + header row
+                        sku_code = row.get("SKU", "N/A")
+                        msg_preview = row.get("Message", "")
+                        
+                        with st.expander(f"📦 Review Alert Draft for SKU: `{sku_code}`", expanded=True):
+                            st.code(msg_preview, language="markdown")
+                            
+                            col_app, col_rej = st.columns([1, 1])
+                            
+                            with col_app:
+                                if st.button(f"✅ Approve & Queue for WhatsApp", key=f"app_{sku_code}_{sheet_row_num}"):
+                                    ws_queue.update_cell(sheet_row_num, 5, "Pending")
+                                    st.success(f"🚀 Alert for `{sku_code}` approved! Status set to Pending.")
+                                    st.rerun()
+                                    
+                            with col_rej:
+                                if st.button(f"❌ Reject / Cancel Alert", key=f"rej_{sku_code}_{sheet_row_num}"):
+                                    ws_queue.update_cell(sheet_row_num, 5, "Rejected")
+                                    st.info(f"🗑️ Alert for `{sku_code}` cancelled.")
+                                    st.rerun()
+        except Exception as e:
+            st.error(f"⚠️ Error loading WhatsApp Alert Queue: {e}")
 
 grid_header_col, download_btn_col = st.columns([3, 1])
 with grid_header_col: st.markdown("### 📜 Material Segment Tracking Ledger")
