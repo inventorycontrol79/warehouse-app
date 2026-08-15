@@ -62,13 +62,8 @@ st.markdown("""
 st.markdown("<div class='premium-header'><div class='sabin-logo'>SABIN <span>PLASTIC</span></div><div class='sabin-sub'>Enterprise Warehouse Tracking System</div></div>", unsafe_allow_html=True)
 
 def clean_item_code(val):
-    """
-    Preserves raw codes with dots (e.g., 'PC2.848') while stripping '.0' 
-    created by Pandas float imports (e.g., '1002.0' -> '1002').
-    """
     val_str = str(val).strip()
-    if val_str.endswith(".0"):
-        return val_str[:-2]
+    if val_str.endswith(".0"): return val_str[:-2]
     return val_str
 
 def get_google_client():
@@ -86,8 +81,7 @@ def get_google_client():
 def get_google_sheet_file():
     gc = get_google_client()
     if not gc: return None
-    try:
-        return gc.open_by_url(st.secrets["GSHEET_URL"])
+    try: return gc.open_by_url(st.secrets["GSHEET_URL"])
     except Exception as e:
         st.error(f"🚨 Sheet Connection Failed: {e}")
         return None
@@ -95,10 +89,8 @@ def get_google_sheet_file():
 def get_fresh_google_sheet_file():
     gc = get_google_client()
     if not gc: return None
-    try:
-        return gc.open_by_url(st.secrets["GSHEET_URL"])
-    except Exception:
-        return None
+    try: return gc.open_by_url(st.secrets["GSHEET_URL"])
+    except Exception: return None
 
 @st.cache_data(ttl=60) 
 def load_all_inventory_data():
@@ -140,10 +132,8 @@ TARGET_STOCK_COLS = [
 ]
 
 if st.session_state.df_stock_live is None:
-    if sheet_payload[3]:
-        st.session_state.df_stock_live = pd.DataFrame(sheet_payload[3])
-    else:
-        st.session_state.df_stock_live = pd.DataFrame(columns=TARGET_STOCK_COLS)
+    if sheet_payload[3]: st.session_state.df_stock_live = pd.DataFrame(sheet_payload[3])
+    else: st.session_state.df_stock_live = pd.DataFrame(columns=TARGET_STOCK_COLS)
 
 df_stock = st.session_state.df_stock_live
 df_log = pd.DataFrame(sheet_payload[4]) if sheet_payload[4] else pd.DataFrame(columns=["Date", "Item_Code", "Item_Name", "Transaction_Type", "Qty_Delta", "Voucher_Reference", "Timestamp", "Branch", "Voucher abbreviation"])
@@ -151,10 +141,8 @@ df_batches = pd.DataFrame(sheet_payload[5]) if sheet_payload[5] else pd.DataFram
 
 for col in TARGET_STOCK_COLS:
     if col not in df_stock.columns:
-        if any(k in col for k in ["Velocity", "Stock", "Sales", "Score", "Days"]):
-            df_stock[col] = 0.0
-        else:
-            df_stock[col] = ""
+        if any(k in col for k in ["Velocity", "Stock", "Sales", "Score", "Days"]): df_stock[col] = 0.0
+        else: df_stock[col] = ""
 
 for d in [df_stock, df_log, df_batches]:
     if not d.empty:
@@ -182,10 +170,6 @@ def auto_detect_category(item_name):
     return "Uncategorized"
 
 def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alpha=0.08):
-    """
-    State-Space Engine: Updates continuous lifetime demand state parameters O(1) in place.
-    Clamps bulk order spikes and tracks order consistency scores.
-    """
     updated_stock = stock_df.copy()
     
     num_cols = ["Current_Stock", "Avg_Daily_Sales", "Baseline_Velocity", "Consistency_Score", 
@@ -195,10 +179,8 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
         if c not in updated_stock.columns: updated_stock[c] = 0.0
         updated_stock[c] = pd.to_numeric(updated_stock[c], errors='coerce').fillna(0.0)
 
-    try:
-        current_file_date = datetime.strptime(file_date_str, "%Y-%m-%d").date()
-    except Exception:
-        current_file_date = datetime.now().date()
+    try: current_file_date = datetime.strptime(file_date_str, "%Y-%m-%d").date()
+    except Exception: current_file_date = datetime.now().date()
 
     updated_stock["Item_Code"] = updated_stock["Item_Code"].apply(clean_item_code)
 
@@ -234,8 +216,6 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
         
         if sku in sales_summary:
             net_daily_qty = sales_summary[sku]
-            
-            # Spike Clamping Algorithm
             spike_cap = max(old_vel * 3.0, 10.0)
             regular_qty = min(net_daily_qty, spike_cap) if net_daily_qty > 0 else net_daily_qty
             
@@ -245,14 +225,12 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
             
             updated_stock.at[idx, "Total_Lifetime_Sales"] += net_daily_qty
             updated_stock.at[idx, "Current_Stock"] -= net_daily_qty
-            if net_daily_qty > 0:
-                updated_stock.at[idx, "Last_Sold_Date"] = file_date_str
+            if net_daily_qty > 0: updated_stock.at[idx, "Last_Sold_Date"] = file_date_str
         else:
             decay = (1.0 - alpha) ** delta_days
             new_vel = old_vel * decay
             new_score = old_score * decay
 
-        # Branch Velocity EWMA Updates
         if sku in branch_summary:
             b_map = {
                 "Dubai": "Velocity_Al_Quoz", "Al Quoz": "Velocity_Al_Quoz",
@@ -284,90 +262,81 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
     updated_stock["ABC_Category"] = updated_stock.apply(categorize_sku, axis=1)
     return updated_stock
 
-def evaluate_and_queue_sharjah_alerts(updated_stock, fresh_sh):
+def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, recipient_phone):
     """
-    Evaluates items reaching stockout risk in Sharjah while other branches hold surplus stock.
-    Enforces a 30-day cooldown per SKU and creates alert records with status 'Draft'.
+    Dynamically evaluates stockout risks for ANY given branch.
     """
-    if not fresh_sh:
-        return
+    if not fresh_sh: return
+
+    branch_map = {
+        "Sharjah": ("Stock_Sharjah", "Velocity_Sharjah"),
+        "Al Quoz": ("Stock_Al_Quoz", "Velocity_Al_Quoz"),
+        "DIP": ("Stock_DIP", "Velocity_DIP"),
+        "Abu Dhabi": ("Stock_Abu_Dhabi", "Velocity_Abu_Dhabi")
+    }
+    
+    target_stock_col, target_vel_col = branch_map[target_branch]
+    donor_branches = [(v[0], k) for k, v in branch_map.items() if k != target_branch]
 
     try:
-        # 1. Fetch existing alert history to enforce 30-day cooldown
         try:
             ws_queue = fresh_sh.worksheet("WhatsApp_Alert_Queue")
-            existing_records = ws_queue.get_all_records()
-            df_queue = pd.DataFrame(existing_records)
+            df_queue = pd.DataFrame(ws_queue.get_all_records())
         except Exception:
             ws_queue = fresh_sh.add_worksheet(title="WhatsApp_Alert_Queue", rows=100, cols=5)
             ws_queue.append_row(["Date", "SKU", "Recipient", "Message", "Status"])
             df_queue = pd.DataFrame()
 
-        # 2. Identify SKUs alerted or drafted within the last 30 days
         recently_alerted_skus = set()
         if not df_queue.empty and "SKU" in df_queue.columns and "Date" in df_queue.columns:
             df_queue["Date_Parsed"] = pd.to_datetime(df_queue["Date"], errors='coerce')
             cutoff_date = datetime.now() - timedelta(days=30)
-            recent_df = df_queue[df_queue["Date_Parsed"] >= cutoff_date]
+            recent_df = df_queue[(df_queue["Date_Parsed"] >= cutoff_date) & 
+                                 (df_queue["Message"].str.contains(target_branch, case=False, na=False))]
             recently_alerted_skus = set(recent_df["SKU"].apply(clean_item_code).str.upper())
-
-        donor_branches = [
-            ("Stock_Al_Quoz", "Al Quoz"),
-            ("Stock_DIP", "DIP"),
-            ("Stock_Abu_Dhabi", "Abu Dhabi")
-        ]
 
         alerts_to_send = []
         today_str = datetime.now().strftime("%Y-%m-%d")
 
-        # 3. Evaluate stock levels for each SKU
         for _, row in updated_stock.iterrows():
             sku = clean_item_code(row.get("Item_Code", "")).upper()
             iname = str(row.get("Item_Name", "")).strip()
 
-            if not sku or sku in ["NAN", "NONE", ""]:
+            if not sku or sku in ["NAN", "NONE", ""] or sku in recently_alerted_skus:
                 continue
 
-            # 4. COOLDOWN GUARD: Skip if alerted/drafted in the past 30 days
-            if sku in recently_alerted_skus:
-                continue
+            b_stock = float(row.get(target_stock_col, 0.0))
+            b_vel = float(row.get(target_vel_col, 0.0))
+            b_runway = (b_stock / b_vel) if b_vel > 0 else 999.0
 
-            shj_stock = float(row.get("Stock_Sharjah", 0.0))
-            shj_vel = float(row.get("Velocity_Sharjah", 0.0))
-
-            shj_runway = (shj_stock / shj_vel) if shj_vel > 0 else 999.0
-
-            # Trigger condition: <= 5 units OR <= 7 days runway (and actively selling)
-            if shj_vel > 0.05 and (shj_stock <= 5 or shj_runway <= 7.0):
+            if b_vel > 0.05 and (b_stock <= 5 or b_runway <= 7.0):
                 eligible_donors = []
-                for stock_col, branch_name in donor_branches:
-                    d_qty = float(row.get(stock_col, 0.0))
-                    if d_qty > 30:  # Threshold set to 30 pcs
+                for donor_col, branch_name in donor_branches:
+                    d_qty = float(row.get(donor_col, 0.0))
+                    if d_qty > 30: 
                         eligible_donors.append(f"{branch_name} ({int(d_qty)} pcs)")
 
                 if eligible_donors:
                     donor_text = ", ".join(eligible_donors)
                     message = (
-                        f"⚠️ *SHARJAH STOCKOUT ALERT* ⚠️\n"
+                        f"⚠️ *{target_branch.upper()} STOCKOUT ALERT* ⚠️\n"
                         f"----------------------------------------------------------------\n"
                         f"• *SKU:* `{sku}` — {iname}\n"
-                        f"• *Sharjah Balance:* {int(shj_stock)} units ({shj_runway:.1f} days runway left)\n"
-                        f"• *Sharjah Run-Rate:* {shj_vel:.2f} units/day\n"
+                        f"• *{target_branch} Balance:* {int(b_stock)} units ({b_runway:.1f} days runway left)\n"
+                        f"• *{target_branch} Run-Rate:* {b_vel:.2f} units/day\n"
                         f"• *Surplus Available:* {donor_text}\n"
                         f"👉 *Action Required:* Request immediate internal stock transfer."
                     )
-                    # Created as 'Draft' for admin approval before dispatching
-                    alerts_to_send.append([today_str, sku, "971582577622", message, "Draft"])
+                    alerts_to_send.append([today_str, sku, recipient_phone, message, "Draft"])
 
-        # 5. Append new alert drafts to Google Sheets
         if alerts_to_send:
             ws_queue.append_rows(alerts_to_send)
-            st.success(f"📝 Generated {len(alerts_to_send)} new alert draft(s) for your review below.")
+            st.success(f"📝 Generated {len(alerts_to_send)} new alert draft(s) for {target_branch}.")
         else:
-            st.info("ℹ️ No new Sharjah stockout alerts required (all low items are either stable or already alerted/drafted this month).")
+            st.info(f"ℹ️ No new {target_branch} stockout alerts required (all low items are stable or alerted).")
 
     except Exception as e:
-        st.error(f"Failed to scan and draft WhatsApp alerts: {e}")
+        st.error(f"Failed to scan and draft {target_branch} WhatsApp alerts: {e}")
 
 st.sidebar.markdown("### ⚙️ INVENTORY FILTER")
 if not df_stock.empty:
@@ -586,26 +555,42 @@ else:
 # =====================================================
 if is_admin:
     st.markdown("---")
-    st.markdown("### 📲 Sharjah Stockout Alert Manager")
+    st.markdown("### 📲 Automated Stockout Alert Managers")
     
-    col_eval, col_info = st.columns([1, 2])
-    with col_eval:
-        if st.button("🔍 SCAN STOCK & GENERATE ALERT DRAFTS"):
+    # --- SHARJAH SECTION ---
+    st.markdown("#### 📍 Sharjah Operations")
+    col_shj, col_shj_info = st.columns([1, 2])
+    with col_shj:
+        if st.button("🔍 SCAN SHARJAH STOCK & DRAFT ALERTS", use_container_width=True):
             fresh_sh = get_fresh_google_sheet_file()
             if fresh_sh and st.session_state.df_stock_live is not None:
-                evaluate_and_queue_sharjah_alerts(st.session_state.df_stock_live, fresh_sh)
+                evaluate_and_queue_branch_alerts(st.session_state.df_stock_live, fresh_sh, "Sharjah", "971582577622")
                 st.rerun()
-            else:
-                st.error("🚨 Cloud connection failure or stock data missing.")
-    with col_info:
-        st.caption("Clicking this button evaluates live stock levels, identifies Sharjah stockout risks, and prepares draft messages for your manual approval below before sending.")
+            else: st.error("🚨 Cloud connection failure.")
+    with col_shj_info:
+        st.caption("Evaluates Sharjah stock against DIP, Al Quoz, and Abu Dhabi surplus.")
 
+    # --- AL QUOZ SECTION ---
+    st.markdown("#### 📍 Al Quoz Operations")
+    col_aq, col_aq_info = st.columns([1, 2])
+    with col_aq:
+        if st.button("🔍 SCAN AL QUOZ STOCK & DRAFT ALERTS", use_container_width=True):
+            fresh_sh = get_fresh_google_sheet_file()
+            if fresh_sh and st.session_state.df_stock_live is not None:
+                evaluate_and_queue_branch_alerts(st.session_state.df_stock_live, fresh_sh, "Al Quoz", "971555795246") 
+                st.rerun()
+            else: st.error("🚨 Cloud connection failure.")
+    with col_aq_info:
+        st.caption("Evaluates Al Quoz stock against Sharjah, DIP, and Abu Dhabi surplus.")
+
+    # --- UNIFIED MASTER APPROVAL QUEUE ---
+    st.markdown("---")
+    st.markdown("#### 📋 Pending Alert Approvals (All Branches)")
     fresh_sh = get_fresh_google_sheet_file()
     if fresh_sh:
         try:
             ws_queue = fresh_sh.worksheet("WhatsApp_Alert_Queue")
-            queue_data = ws_queue.get_all_records()
-            df_queue = pd.DataFrame(queue_data)
+            df_queue = pd.DataFrame(ws_queue.get_all_records())
             
             if not df_queue.empty and "Status" in df_queue.columns:
                 draft_alerts = df_queue[df_queue["Status"].astype(str).str.upper() == "DRAFT"]
@@ -613,26 +598,35 @@ if is_admin:
                 if draft_alerts.empty:
                     st.info("✅ No pending alert drafts requiring approval right now.")
                 else:
-                    st.warning(f"⚠️ There are **{len(draft_alerts)}** stockout alert draft(s) waiting for your review:")
+                    st.warning(f"⚠️ There are **{len(draft_alerts)}** alert draft(s) across your network waiting for review.")
+                    
+                    col_bulk, col_pad = st.columns([1, 2])
+                    with col_bulk:
+                        if st.button("🚀 BULK APPROVE ALL PENDING DRAFTS", use_container_width=True):
+                            df_queue.loc[df_queue["Status"].astype(str).str.upper() == "DRAFT", "Status"] = "Pending"
+                            ws_queue.clear()
+                            ws_queue.append_rows([df_queue.columns.tolist()] + df_queue.fillna("").astype(str).values.tolist())
+                            st.success("✅ All drafts approved and queued for dispatch!")
+                            st.rerun()
+                            
+                    st.markdown(" ") # Spacer
                     
                     for idx, row in draft_alerts.iterrows():
-                        sheet_row_num = idx + 2  # 1-based index + header row
+                        sheet_row_num = idx + 2  
                         sku_code = row.get("SKU", "N/A")
                         msg_preview = row.get("Message", "")
                         
-                        with st.expander(f"📦 Review Alert Draft for SKU: `{sku_code}`", expanded=True):
+                        with st.expander(f"📦 Review Alert Draft for SKU: `{sku_code}`", expanded=False):
                             st.code(msg_preview, language="markdown")
                             
                             col_app, col_rej = st.columns([1, 1])
-                            
                             with col_app:
-                                if st.button(f"✅ Approve & Queue for WhatsApp", key=f"app_{sku_code}_{sheet_row_num}"):
+                                if st.button(f"✅ Approve & Queue", key=f"app_{sku_code}_{sheet_row_num}"):
                                     ws_queue.update_cell(sheet_row_num, 5, "Pending")
                                     st.success(f"🚀 Alert for `{sku_code}` approved! Status set to Pending.")
                                     st.rerun()
-                                    
                             with col_rej:
-                                if st.button(f"❌ Reject / Cancel Alert", key=f"rej_{sku_code}_{sheet_row_num}"):
+                                if st.button(f"❌ Reject / Cancel", key=f"rej_{sku_code}_{sheet_row_num}"):
                                     ws_queue.update_cell(sheet_row_num, 5, "Rejected")
                                     st.info(f"🗑️ Alert for `{sku_code}` cancelled.")
                                     st.rerun()
