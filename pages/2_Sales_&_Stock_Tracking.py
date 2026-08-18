@@ -262,9 +262,13 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
     updated_stock["ABC_Category"] = updated_stock.apply(categorize_sku, axis=1)
     return updated_stock
 
-def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, recipient_phone):
+# =====================================================
+# INTELLIGENT ALERT DRAFTER (WITH DYNAMIC MRN COOLDOWN BREAKER)
+# =====================================================
+def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, recipient_phone, current_log_df):
     """
-    Dynamically evaluates stockout risks for ANY given branch.
+    Evaluates stockout risks, enforces a 30-day cooldown, and uniquely resets 
+    the cooldown if an MRN/Inbound transaction breaks the cycle.
     """
     if not fresh_sh: return
 
@@ -287,13 +291,36 @@ def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, rec
             ws_queue.append_row(["Date", "SKU", "Recipient", "Message", "Status"])
             df_queue = pd.DataFrame()
 
-        recently_alerted_skus = set()
+        recently_alerted_skus = {}
+        active_skus = set()
+
         if not df_queue.empty and "SKU" in df_queue.columns and "Date" in df_queue.columns:
-            df_queue["Date_Parsed"] = pd.to_datetime(df_queue["Date"], errors='coerce')
-            cutoff_date = datetime.now() - timedelta(days=30)
-            recent_df = df_queue[(df_queue["Date_Parsed"] >= cutoff_date) & 
-                                 (df_queue["Message"].str.contains(target_branch, case=False, na=False))]
-            recently_alerted_skus = set(recent_df["SKU"].apply(clean_item_code).str.upper())
+            # Filter queue for this specific branch
+            branch_alerts = df_queue[df_queue["Message"].astype(str).str.contains(target_branch, case=False, na=False)].copy()
+
+            # Parse dates strictly to avoid format mismatches breaking the math
+            branch_alerts["Date_Parsed"] = pd.to_datetime(branch_alerts["Date"], errors='coerce')
+
+            # Identify alerts sitting in Draft/Pending to prevent double queueing
+            if "Status" in branch_alerts.columns:
+                active_alerts = branch_alerts[branch_alerts["Status"].astype(str).str.upper().isin(["DRAFT", "PENDING"])]
+                active_skus = set(active_alerts["SKU"].astype(str).apply(clean_item_code).str.upper())
+
+            # Find the most recent alert date per SKU
+            for _, r in branch_alerts.iterrows():
+                s = clean_item_code(str(r["SKU"])).upper()
+                d = r["Date_Parsed"]
+                if pd.notnull(d):
+                    if s not in recently_alerted_skus or d > recently_alerted_skus[s]:
+                        recently_alerted_skus[s] = d
+
+        # Prepare log data to detect MRNs (Replenishment Breaker)
+        if not current_log_df.empty:
+            df_log_copy = current_log_df.copy()
+            df_log_copy["Date_Parsed"] = pd.to_datetime(df_log_copy.get("Timestamp", df_log_copy.get("Date")), errors='coerce')
+            df_log_copy["Qty_Delta"] = pd.to_numeric(df_log_copy["Qty_Delta"], errors='coerce').fillna(0.0)
+        else:
+            df_log_copy = pd.DataFrame()
 
         alerts_to_send = []
         today_str = datetime.now().strftime("%Y-%m-%d")
@@ -302,8 +329,33 @@ def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, rec
             sku = clean_item_code(row.get("Item_Code", "")).upper()
             iname = str(row.get("Item_Name", "")).strip()
 
-            if not sku or sku in ["NAN", "NONE", ""] or sku in recently_alerted_skus:
+            if not sku or sku in ["NAN", "NONE", ""]:
                 continue
+
+            # 1. Block: Ignore if currently pending or draft
+            if sku in active_skus:
+                continue
+
+            # 2. Block: Enforce Cooldown UNLESS MRN replenished it recently
+            if sku in recently_alerted_skus:
+                last_alert_date = recently_alerted_skus[sku]
+                days_since = (pd.Timestamp(datetime.now()) - last_alert_date).days
+
+                if days_since < 30:
+                    cooldown_broken = False
+                    
+                    if not df_log_copy.empty:
+                        # Check if a positive inbound (MRN) arrived AFTER the last alert date
+                        recent_inbounds = df_log_copy[
+                            (df_log_copy["Item_Code"].astype(str).apply(clean_item_code).str.upper() == sku) &
+                            (df_log_copy["Date_Parsed"] > last_alert_date) &
+                            (df_log_copy["Qty_Delta"] > 0)
+                        ]
+                        if not recent_inbounds.empty:
+                            cooldown_broken = True  # It was restocked and now emptied again!
+                            
+                    if not cooldown_broken:
+                        continue  # Cooldown holds, skip
 
             b_stock = float(row.get(target_stock_col, 0.0))
             b_vel = float(row.get(target_vel_col, 0.0))
@@ -333,7 +385,7 @@ def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, rec
             ws_queue.append_rows(alerts_to_send)
             st.success(f"📝 Generated {len(alerts_to_send)} new alert draft(s) for {target_branch}.")
         else:
-            st.info(f"ℹ️ No new {target_branch} stockout alerts required (all low items are stable or alerted).")
+            st.info(f"ℹ️ No new {target_branch} stockout alerts required (items stable, cooling down, or already queued).")
 
     except Exception as e:
         st.error(f"Failed to scan and draft {target_branch} WhatsApp alerts: {e}")
@@ -564,7 +616,8 @@ if is_admin:
         if st.button("🔍 SCAN SHARJAH STOCK & DRAFT ALERTS", use_container_width=True):
             fresh_sh = get_fresh_google_sheet_file()
             if fresh_sh and st.session_state.df_stock_live is not None:
-                evaluate_and_queue_branch_alerts(st.session_state.df_stock_live, fresh_sh, "Sharjah", "971582577622")
+                # Pass df_log into the queue evaluator for MRN detection
+                evaluate_and_queue_branch_alerts(st.session_state.df_stock_live, fresh_sh, "Sharjah", "971582577622", df_log)
                 st.rerun()
             else: st.error("🚨 Cloud connection failure.")
     with col_shj_info:
@@ -577,7 +630,8 @@ if is_admin:
         if st.button("🔍 SCAN AL QUOZ STOCK & DRAFT ALERTS", use_container_width=True):
             fresh_sh = get_fresh_google_sheet_file()
             if fresh_sh and st.session_state.df_stock_live is not None:
-                evaluate_and_queue_branch_alerts(st.session_state.df_stock_live, fresh_sh, "Al Quoz", "971555795246") 
+                # Pass df_log into the queue evaluator for MRN detection
+                evaluate_and_queue_branch_alerts(st.session_state.df_stock_live, fresh_sh, "Al Quoz", "971555795246", df_log) 
                 st.rerun()
             else: st.error("🚨 Cloud connection failure.")
     with col_aq_info:
