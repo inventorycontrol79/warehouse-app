@@ -263,12 +263,13 @@ def process_daily_sales_intelligence(stock_df, df_sales_raw, file_date_str, alph
     return updated_stock
 
 # =====================================================
-# INTELLIGENT ALERT DRAFTER (WITH DYNAMIC MRN COOLDOWN BREAKER)
+# INTELLIGENT ALERT DRAFTER (STRICT DATE NORMALIZATION)
 # =====================================================
 def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, recipient_phone, current_log_df):
     """
-    Evaluates stockout risks, enforces a 30-day cooldown, and uniquely resets 
-    the cooldown if an MRN/Inbound transaction breaks the cycle.
+    Evaluates stockout risks, strictly parses mixed Google Sheet dates to 
+    enforce the 30-day cooldown, and normalizes timestamps so MRNs correctly
+    break the cycle only on subsequent days.
     """
     if not fresh_sh: return
 
@@ -298,8 +299,11 @@ def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, rec
             # Filter queue for this specific branch
             branch_alerts = df_queue[df_queue["Message"].astype(str).str.contains(target_branch, case=False, na=False)].copy()
 
-            # Parse dates strictly to avoid format mismatches breaking the math
-            branch_alerts["Date_Parsed"] = pd.to_datetime(branch_alerts["Date"], errors='coerce')
+            # Safely parse dates, accommodating YYYY-MM-DD or DD/MM/YYYY formatting by Sheets
+            branch_alerts["Date_Parsed"] = pd.to_datetime(branch_alerts["Date"], format="%Y-%m-%d", errors='coerce')
+            branch_alerts["Date_Parsed"] = branch_alerts["Date_Parsed"].fillna(pd.to_datetime(branch_alerts["Date"], errors='coerce', dayfirst=True))
+            # Normalize to 00:00:00 midnight for clean calendar-day comparison
+            branch_alerts["Date_Parsed"] = branch_alerts["Date_Parsed"].dt.normalize()
 
             # Identify alerts sitting in Draft/Pending to prevent double queueing
             if "Status" in branch_alerts.columns:
@@ -317,13 +321,15 @@ def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, rec
         # Prepare log data to detect MRNs (Replenishment Breaker)
         if not current_log_df.empty:
             df_log_copy = current_log_df.copy()
-            df_log_copy["Date_Parsed"] = pd.to_datetime(df_log_copy.get("Timestamp", df_log_copy.get("Date")), errors='coerce')
+            # Normalize log dates so same-day MRNs don't falsely evaluate as ">" the alert
+            df_log_copy["Date_Parsed"] = pd.to_datetime(df_log_copy.get("Timestamp", df_log_copy.get("Date")), errors='coerce').dt.normalize()
             df_log_copy["Qty_Delta"] = pd.to_numeric(df_log_copy["Qty_Delta"], errors='coerce').fillna(0.0)
         else:
             df_log_copy = pd.DataFrame()
 
         alerts_to_send = []
         today_str = datetime.now().strftime("%Y-%m-%d")
+        today_normalized = pd.Timestamp(datetime.now().date())
 
         for _, row in updated_stock.iterrows():
             sku = clean_item_code(row.get("Item_Code", "")).upper()
@@ -336,16 +342,16 @@ def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, rec
             if sku in active_skus:
                 continue
 
-            # 2. Block: Enforce Cooldown UNLESS MRN replenished it recently
+            # 2. Block: Enforce Cooldown UNLESS MRN replenished it strictly AFTER the alert day
             if sku in recently_alerted_skus:
                 last_alert_date = recently_alerted_skus[sku]
-                days_since = (pd.Timestamp(datetime.now()) - last_alert_date).days
+                days_since = (today_normalized - last_alert_date).days
 
                 if days_since < 30:
                     cooldown_broken = False
                     
                     if not df_log_copy.empty:
-                        # Check if a positive inbound (MRN) arrived AFTER the last alert date
+                        # Check if a positive inbound (MRN) arrived strictly AFTER the last alert date
                         recent_inbounds = df_log_copy[
                             (df_log_copy["Item_Code"].astype(str).apply(clean_item_code).str.upper() == sku) &
                             (df_log_copy["Date_Parsed"] > last_alert_date) &
