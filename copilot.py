@@ -198,7 +198,7 @@ Core Directives:
 """
 
 # =====================================================
-# UI INJECTION & MODAL LOGIC (FIXED DARK CONTRAST & TOOLS)
+# UI INJECTION & MODAL LOGIC (FIXED DARK CONTRAST & DYNAMIC ENDPOINT)
 # =====================================================
 @st.dialog("🤖 Sabin Intelligence Copilot", width="large")
 def render_copilot_modal():
@@ -328,11 +328,17 @@ def render_copilot_modal():
         try:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # Auto-detect available generative model on current project key
+            # Dynamic auto-detection of current generative model on active API key
             chosen_model = None
             try:
                 available_models = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                priority_list = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-pro"]
+                priority_list = [
+                    "gemini-3.6-flash",
+                    "gemini-3-flash-preview",
+                    "gemini-2.5-flash",
+                    "gemini-2.0-flash",
+                    "gemini-1.5-flash"
+                ]
                 for cand in priority_list:
                     if cand in available_models:
                         chosen_model = cand
@@ -340,10 +346,10 @@ def render_copilot_modal():
                 if not chosen_model and available_models:
                     chosen_model = available_models[0]
             except Exception:
-                chosen_model = "gemini-2.0-flash"
+                chosen_model = "gemini-3.6-flash"
 
             model = genai.GenerativeModel(
-                model_name=chosen_model,
+                model_name=chosen_model or "gemini-3.6-flash",
                 system_instruction=SYSTEM_PROMPT,
                 tools=[query_sku_intelligence, query_reorder_recommendations, query_delivery_orders, get_global_kpis]
             )
