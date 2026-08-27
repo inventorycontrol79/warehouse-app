@@ -173,23 +173,19 @@ def render_copilot_modal():
     # Force dark background and explicit text colors inside the dialog
     st.markdown("""
         <style>
-        /* Dialog background & container */
         div[data-testid="stDialog"] div[role="dialog"] {
             background-color: #0F172A !important;
             border: 1px solid #1E293B !important;
             border-radius: 12px !important;
         }
-        /* Dialog header text */
         div[data-testid="stDialog"] h2, 
         div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] {
             color: #38BDF8 !important;
             font-weight: 800 !important;
         }
-        /* Dialog close button */
         div[data-testid="stDialog"] button[aria-label="Close"] {
             color: #94A3B8 !important;
         }
-        /* Chat messages text styling */
         div[data-testid="stChatMessage"] {
             background-color: #1E293B !important;
             border: 1px solid #334155 !important;
@@ -208,7 +204,6 @@ def render_copilot_modal():
             background-color: #0B0F19 !important;
             border: 1px solid #1E293B !important;
         }
-        /* Chat Input container */
         div[data-testid="stChatInput"] {
             background-color: #0B0F19 !important;
             border-color: #334155 !important;
@@ -235,32 +230,20 @@ def render_copilot_modal():
         try:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # Robust model fallback sequence
-            model_names = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest", "gemini-pro"]
-            chat_session = None
-            last_err = None
-
-            for m_name in model_names:
-                try:
-                    model = genai.GenerativeModel(
-                        model_name=m_name,
-                        system_instruction=SYSTEM_PROMPT,
-                        tools=[query_sku_intelligence, query_delivery_orders, get_global_kpis]
-                    )
-                    chat_session = model.start_chat(enable_automatic_function_calling=True)
-                    break
-                except Exception as e:
-                    last_err = e
-
-            if not chat_session:
-                raise last_err
+            # Exact supported Google Generative AI model endpoints
+            model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash",
+                system_instruction=SYSTEM_PROMPT,
+                tools=[query_sku_intelligence, query_delivery_orders, get_global_kpis]
+            )
+            chat_session = model.start_chat(enable_automatic_function_calling=True)
 
             with st.spinner("Analyzing live inventory & velocity metrics..."):
                 response = chat_session.send_message(user_query)
                 answer = response.text
 
         except Exception as err:
-            answer = f"⚠️ **Copilot System Notice:** Unable to reach model endpoint. ({err})"
+            answer = f"⚠️ **Copilot System Notice:** {err}"
 
         st.session_state.copilot_history.append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
@@ -268,63 +251,38 @@ def render_copilot_modal():
 
 
 def inject_floating_copilot():
-    """Renders a fixed floating glassmorphism AI Copilot button in the bottom-right corner."""
+    """Renders a floating glassmorphism AI Copilot button pinned to the bottom-right viewport."""
     st.markdown("""
-        <div id="copilot-floating-wrapper"></div>
         <style>
-        /* Base styling for the Copilot trigger button */
-        button[key="floating_copilot_btn"] {
-            background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 50%, #4F46E5 100%) !important;
-            color: #FFFFFF !important;
-            font-family: 'Plus Jakarta Sans', sans-serif !important;
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            letter-spacing: 0.5px !important;
-            border-radius: 50px !important;
-            padding: 12px 24px !important;
-            border: 1px solid rgba(255, 255, 255, 0.3) !important;
-            box-shadow: 0 8px 30px rgba(14, 165, 233, 0.5), 0 0 15px rgba(99, 102, 241, 0.4) !important;
-            cursor: pointer !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            animation: copilot-pulse 3s infinite alternate !important;
+        /* Pin button container to bottom right */
+        .st-key-floating_copilot_btn {
+            position: fixed !important;
+            bottom: 25px !important;
+            right: 30px !important;
+            z-index: 999999 !important;
+            width: auto !important;
         }
 
-        button[key="floating_copilot_btn"]:hover {
-            transform: translateY(-3px) scale(1.05) !important;
-            box-shadow: 0 12px 40px rgba(14, 165, 233, 0.7), 0 0 25px rgba(99, 102, 241, 0.6) !important;
+        .st-key-floating_copilot_btn > button {
+            background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 50%, #4F46E5 100%) !important;
+            color: #FFFFFF !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            border-radius: 50px !important;
+            padding: 10px 24px !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 8px 30px rgba(14, 165, 233, 0.5) !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .st-key-floating_copilot_btn > button:hover {
+            transform: scale(1.05) !important;
+            box-shadow: 0 12px 38px rgba(14, 165, 233, 0.7) !important;
             border-color: rgba(255, 255, 255, 0.6) !important;
             color: #FFFFFF !important;
         }
-
-        @keyframes copilot-pulse {
-            0% {
-                box-shadow: 0 8px 30px rgba(14, 165, 233, 0.4), 0 0 10px rgba(99, 102, 241, 0.3);
-            }
-            100% {
-                box-shadow: 0 10px 40px rgba(14, 165, 233, 0.65), 0 0 22px rgba(99, 102, 241, 0.55);
-            }
-        }
         </style>
-        <script>
-        // Move the button container directly to the browser viewport body
-        (function() {
-            function pinCopilot() {
-                var btn = window.parent.document.querySelector('button[key="floating_copilot_btn"]');
-                if (btn) {
-                    var container = btn.closest('div[data-testid="stButton"]') || btn.parentElement;
-                    if (container) {
-                        container.style.position = 'fixed';
-                        container.style.bottom = '25px';
-                        container.style.right = '30px';
-                        container.style.zIndex = '99999999';
-                        container.style.width = 'auto';
-                    }
-                }
-            }
-            setTimeout(pinCopilot, 300);
-            setTimeout(pinCopilot, 1000);
-        })();
-        </script>
     """, unsafe_allow_html=True)
 
     if st.button("✨ Copilot AI", key="floating_copilot_btn"):
