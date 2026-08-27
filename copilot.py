@@ -9,14 +9,10 @@ import google.generativeai as genai
 # INDEPENDENT CLOUD FALLBACK & DATA INGESTION ENGINE
 # =====================================================
 def get_or_fetch_stock_data():
-    """
-    Ensures the Copilot has immediate access to live inventory data across
-    all pages without requiring the user to visit the Tracking page first.
-    """
+    """Ensures the Copilot has immediate access to live inventory data across all pages."""
     if "df_stock_live" in st.session_state and st.session_state.df_stock_live is not None and not st.session_state.df_stock_live.empty:
         return st.session_state.df_stock_live
 
-    # Auto-load Worksheet 3 if uninitialized
     try:
         raw_json = st.secrets["GCP_JSON"]
         creds_dict = json.loads(raw_json)
@@ -63,9 +59,7 @@ def get_or_fetch_do_ledger():
 # AGENT TOOLS (TOKEN OPTIMIZED)
 # =====================================================
 def query_sku_intelligence(search_query: str) -> str:
-    """
-    Looks up stock, facility distribution, daily velocities, and runway for specific SKUs.
-    """
+    """Looks up stock, facility distribution, daily velocities, and runway for specific SKUs."""
     df = get_or_fetch_stock_data()
     if df.empty:
         return "Error: Live stock data is currently unreachable."
@@ -116,9 +110,7 @@ def query_sku_intelligence(search_query: str) -> str:
 
 
 def query_delivery_orders(do_or_status_query: str) -> str:
-    """
-    Looks up DO numbers, customer statuses, and warehouse backlogs.
-    """
+    """Looks up DO numbers, customer statuses, and warehouse backlogs."""
     df = get_or_fetch_do_ledger()
     if df.empty:
         return "Error: Delivery Orders ledger is unreachable."
@@ -141,9 +133,7 @@ def query_delivery_orders(do_or_status_query: str) -> str:
 
 
 def get_global_kpis() -> str:
-    """
-    Returns global operational KPIs across inventory and dispatch queues.
-    """
+    """Returns global operational KPIs across inventory and dispatch queues."""
     df_s = get_or_fetch_stock_data()
     df_do = get_or_fetch_do_ledger()
 
@@ -176,10 +166,59 @@ Core Directives:
 """
 
 # =====================================================
-# UI INJECTION & MODAL LOGIC
+# UI INJECTION & MODAL LOGIC (FIXED DARK MODE & STYLES)
 # =====================================================
 @st.dialog("🤖 Sabin Intelligence Copilot", width="large")
 def render_copilot_modal():
+    # Force dark background and explicit text colors inside the dialog
+    st.markdown("""
+        <style>
+        /* Dialog background & container */
+        div[data-testid="stDialog"] div[role="dialog"] {
+            background-color: #0F172A !important;
+            border: 1px solid #1E293B !important;
+            border-radius: 12px !important;
+        }
+        /* Dialog header text */
+        div[data-testid="stDialog"] h2, 
+        div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] {
+            color: #38BDF8 !important;
+            font-weight: 800 !important;
+        }
+        /* Dialog close button */
+        div[data-testid="stDialog"] button[aria-label="Close"] {
+            color: #94A3B8 !important;
+        }
+        /* Chat messages text styling */
+        div[data-testid="stChatMessage"] {
+            background-color: #1E293B !important;
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
+            margin-bottom: 10px !important;
+        }
+        div[data-testid="stChatMessage"] p, 
+        div[data-testid="stChatMessage"] li, 
+        div[data-testid="stChatMessage"] span {
+            color: #F8FAFC !important;
+            font-size: 14px !important;
+            line-height: 1.6 !important;
+        }
+        div[data-testid="stChatMessage"] code {
+            color: #38BDF8 !important;
+            background-color: #0B0F19 !important;
+            border: 1px solid #1E293B !important;
+        }
+        /* Chat Input container */
+        div[data-testid="stChatInput"] {
+            background-color: #0B0F19 !important;
+            border-color: #334155 !important;
+        }
+        div[data-testid="stChatInput"] textarea {
+            color: #F8FAFC !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     if "copilot_history" not in st.session_state:
         st.session_state.copilot_history = []
 
@@ -195,17 +234,33 @@ def render_copilot_modal():
 
         try:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            model = genai.GenerativeModel(
-                model_name="gemini-1.5-flash",
-                system_instruction=SYSTEM_PROMPT,
-                tools=[query_sku_intelligence, query_delivery_orders, get_global_kpis]
-            )
-            chat = model.start_chat(enable_automatic_function_calling=True)
+            
+            # Robust model fallback sequence
+            model_names = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest", "gemini-pro"]
+            chat_session = None
+            last_err = None
+
+            for m_name in model_names:
+                try:
+                    model = genai.GenerativeModel(
+                        model_name=m_name,
+                        system_instruction=SYSTEM_PROMPT,
+                        tools=[query_sku_intelligence, query_delivery_orders, get_global_kpis]
+                    )
+                    chat_session = model.start_chat(enable_automatic_function_calling=True)
+                    break
+                except Exception as e:
+                    last_err = e
+
+            if not chat_session:
+                raise last_err
+
             with st.spinner("Analyzing live inventory & velocity metrics..."):
-                response = chat.send_message(user_query)
+                response = chat_session.send_message(user_query)
                 answer = response.text
+
         except Exception as err:
-            answer = f"🚨 Copilot Communication Issue: {err}"
+            answer = f"⚠️ **Copilot System Notice:** Unable to reach model endpoint. ({err})"
 
         st.session_state.copilot_history.append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
@@ -215,20 +270,9 @@ def render_copilot_modal():
 def inject_floating_copilot():
     """Renders a fixed floating glassmorphism AI Copilot button in the bottom-right corner."""
     st.markdown("""
+        <div id="copilot-floating-wrapper"></div>
         <style>
-        /* 1. Target the floating container and pin it strictly to the viewport bottom right */
-        div[data-testid="stVerticalBlock"] > div:has(#floating-copilot-anchor),
-        div.element-container:has(#floating-copilot-anchor) {
-            position: fixed !important;
-            bottom: 25px !important;
-            right: 30px !important;
-            z-index: 99999999 !important;
-            width: auto !important;
-            height: auto !important;
-        }
-
-        /* 2. Glassmorphism styling for the button */
-        #floating-copilot-anchor + div button,
+        /* Base styling for the Copilot trigger button */
         button[key="floating_copilot_btn"] {
             background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 50%, #4F46E5 100%) !important;
             color: #FFFFFF !important;
@@ -237,16 +281,14 @@ def inject_floating_copilot():
             font-weight: 700 !important;
             letter-spacing: 0.5px !important;
             border-radius: 50px !important;
-            padding: 12px 26px !important;
+            padding: 12px 24px !important;
             border: 1px solid rgba(255, 255, 255, 0.3) !important;
-            box-shadow: 0 8px 32px rgba(14, 165, 233, 0.5), 0 0 15px rgba(99, 102, 241, 0.4) !important;
+            box-shadow: 0 8px 30px rgba(14, 165, 233, 0.5), 0 0 15px rgba(99, 102, 241, 0.4) !important;
             cursor: pointer !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
             animation: copilot-pulse 3s infinite alternate !important;
         }
 
-        /* 3. Hover state */
-        #floating-copilot-anchor + div button:hover,
         button[key="floating_copilot_btn"]:hover {
             transform: translateY(-3px) scale(1.05) !important;
             box-shadow: 0 12px 40px rgba(14, 165, 233, 0.7), 0 0 25px rgba(99, 102, 241, 0.6) !important;
@@ -254,17 +296,35 @@ def inject_floating_copilot():
             color: #FFFFFF !important;
         }
 
-        /* 4. Subtle ambient glow animation */
         @keyframes copilot-pulse {
             0% {
-                box-shadow: 0 8px 32px rgba(14, 165, 233, 0.4), 0 0 10px rgba(99, 102, 241, 0.3);
+                box-shadow: 0 8px 30px rgba(14, 165, 233, 0.4), 0 0 10px rgba(99, 102, 241, 0.3);
             }
             100% {
                 box-shadow: 0 10px 40px rgba(14, 165, 233, 0.65), 0 0 22px rgba(99, 102, 241, 0.55);
             }
         }
         </style>
-        <div id="floating-copilot-anchor"></div>
+        <script>
+        // Move the button container directly to the browser viewport body
+        (function() {
+            function pinCopilot() {
+                var btn = window.parent.document.querySelector('button[key="floating_copilot_btn"]');
+                if (btn) {
+                    var container = btn.closest('div[data-testid="stButton"]') || btn.parentElement;
+                    if (container) {
+                        container.style.position = 'fixed';
+                        container.style.bottom = '25px';
+                        container.style.right = '30px';
+                        container.style.zIndex = '99999999';
+                        container.style.width = 'auto';
+                    }
+                }
+            }
+            setTimeout(pinCopilot, 300);
+            setTimeout(pinCopilot, 1000);
+        })();
+        </script>
     """, unsafe_allow_html=True)
 
     if st.button("✨ Copilot AI", key="floating_copilot_btn"):
