@@ -4,6 +4,7 @@ import numpy as np
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+from copilot import inject_floating_copilot
 from datetime import datetime
 
 st.set_page_config(page_title="SABIN PLASTIC // Stock Transfer Hub", layout="wide")
@@ -344,3 +345,5 @@ else:
             st.success(f"✅ Smart Supply Chains Aligned: **{selected_wh}** does not require any replenishment or stock-shifting operations right now.")
         else:
             st.success("✅ Smart Supply Chains Aligned: All location inventory metrics balance accurately against their respective sales trends.")
+# --- Floating Copilot Engine ---
+inject_floating_copilot()

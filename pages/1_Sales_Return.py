@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+from copilot import inject_floating_copilot
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="SABIN PLASTIC // Returns Engine", layout="wide")
@@ -244,3 +245,5 @@ else:
             "Timestamp": st.column_config.TextColumn("Database Commit Time")
         }
     )
+# --- Floating Copilot Engine ---
+inject_floating_copilot()

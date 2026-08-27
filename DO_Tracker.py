@@ -6,6 +6,7 @@ import os
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+from copilot import inject_floating_copilot
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
@@ -399,3 +400,5 @@ else:
         
     st.markdown("###")
     st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx")
+# --- Floating Copilot Engine ---
+inject_floating_copilot()

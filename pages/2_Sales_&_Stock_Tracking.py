@@ -5,6 +5,7 @@ import json
 import gspread
 import io  
 from google.oauth2.service_account import Credentials
+from copilot import inject_floating_copilot
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="SABIN PLASTIC // Inventory Intelligence", layout="wide")
@@ -869,3 +870,5 @@ if is_admin and not df_stock.empty:
                             st.rerun()
                         except Exception as cloud_err: st.error(f"Write operation failed via cloud API: {cloud_err}")
         st.markdown("</div>", unsafe_allow_html=True)
+# --- Floating Copilot Engine ---
+inject_floating_copilot()
