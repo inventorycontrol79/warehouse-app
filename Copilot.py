@@ -213,32 +213,67 @@ def render_copilot_modal():
 
 
 def inject_floating_copilot():
-    """Renders the fixed bottom-right bubble button on any page."""
+    """Renders an animated, floating glassmorphism AI Copilot button in the bottom-right corner."""
     st.markdown("""
         <style>
-        div[data-testid="stHorizontalBlock"]:has(button[key="floating_copilot_btn"]) {
-            position: fixed;
-            bottom: 25px;
-            right: 30px;
-            z-index: 999999;
+        /* 1. Target the floating container and pin it strictly to the bottom-right viewport */
+        div.element-container:has(button[key="floating_copilot_btn"]),
+        div.stButton:has(button[key="floating_copilot_btn"]) {
+            position: fixed !important;
+            bottom: 24px !important;
+            right: 28px !important;
+            z-index: 9999999 !important;
             width: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
+
+        /* 2. Premium Gradient & Glow Styling */
         button[key="floating_copilot_btn"] {
-            background: linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%) !important;
-            color: #0B0F19 !important;
-            font-weight: 800 !important;
+            background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 50%, #4F46E5 100%) !important;
+            color: #FFFFFF !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px !important;
             border-radius: 50px !important;
-            padding: 10px 22px !important;
-            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.45) !important;
-            border: 1px solid #38BDF8 !important;
-            transition: all 0.2s ease-in-out !important;
+            padding: 12px 26px !important;
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            box-shadow: 0 8px 32px rgba(14, 165, 233, 0.45), 0 0 15px rgba(99, 102, 241, 0.35) !important;
+            backdrop-filter: blur(8px) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            animation: pulse-glow 3s infinite alternate !important;
         }
+
+        /* 3. Interactive Hover State */
         button[key="floating_copilot_btn"]:hover {
-            transform: scale(1.06) !important;
-            box-shadow: 0 8px 24px rgba(14, 165, 233, 0.6) !important;
+            transform: translateY(-3px) scale(1.04) !important;
+            background: linear-gradient(135deg, #38BDF8 0%, #3B82F6 50%, #6366F1 100%) !important;
+            box-shadow: 0 12px 40px rgba(14, 165, 233, 0.65), 0 0 25px rgba(99, 102, 241, 0.55) !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
+            color: #FFFFFF !important;
+        }
+
+        /* 4. Active Click State */
+        button[key="floating_copilot_btn"]:active {
+            transform: translateY(1px) scale(0.98) !important;
+        }
+
+        /* 5. Subtle Ambient Glow Animation */
+        @keyframes pulse-glow {
+            0% {
+                box-shadow: 0 8px 32px rgba(14, 165, 233, 0.35), 0 0 10px rgba(99, 102, 241, 0.25);
+            }
+            100% {
+                box-shadow: 0 10px 38px rgba(14, 165, 233, 0.55), 0 0 22px rgba(99, 102, 241, 0.45);
+            }
         }
         </style>
     """, unsafe_allow_html=True)
 
-    if st.button("💬 Ask Copilot", key="floating_copilot_btn"):
+    if st.button("✨ Copilot AI", key="floating_copilot_btn"):
         render_copilot_modal()
