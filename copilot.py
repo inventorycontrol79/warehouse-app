@@ -202,28 +202,56 @@ Core Directives:
 # =====================================================
 @st.dialog("🤖 Sabin Intelligence Copilot", width="large")
 def render_copilot_modal():
-    # Force dark background, bright sky-blue title, and legible text
+    # Force dark background, high-contrast title, visible buttons, and clear text
     st.markdown("""
         <style>
-        /* Dialog Window */
+        /* 1. Modal Dialog Outer Surface */
         div[data-testid="stDialog"] div[role="dialog"] {
             background-color: #0B0F19 !important;
             border: 1px solid #1E293B !important;
             border-radius: 12px !important;
         }
-        /* Header Title */
+        div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
+            background-color: transparent !important;
+        }
+
+        /* 2. Modal Header Title & Close Icon */
         div[data-testid="stDialog"] h2, 
         div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"],
-        div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] span {
+        div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] * {
             color: #38BDF8 !important;
             font-weight: 800 !important;
             font-size: 22px !important;
         }
-        /* Dialog close icon */
         div[data-testid="stDialog"] button[aria-label="Close"] svg {
             fill: #94A3B8 !important;
         }
-        /* Chat Bubble Cards */
+
+        /* 3. Action Buttons & Quick Query Chips */
+        div[data-testid="stDialog"] div[data-testid="stButton"] button {
+            background-color: #1E293B !important;
+            color: #F8FAFC !important;
+            border: 1px solid #334155 !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-testid="stDialog"] div[data-testid="stButton"] button:hover {
+            background-color: #0EA5E9 !important;
+            color: #0B0F19 !important;
+            border-color: #38BDF8 !important;
+        }
+        div[data-testid="stDialog"] div[data-testid="stButton"] button p {
+            color: inherit !important;
+        }
+
+        /* 4. Subtitles, Labels & Captions */
+        div[data-testid="stDialog"] small,
+        div[data-testid="stDialog"] [data-testid="stCaptionContainer"] p {
+            color: #94A3B8 !important;
+        }
+
+        /* 5. Chat History Message Cards */
         div[data-testid="stChatMessage"] {
             background-color: #111827 !important;
             border: 1px solid #1E293B !important;
@@ -246,10 +274,11 @@ def render_copilot_modal():
             background-color: #020617 !important;
             border: 1px solid #1E293B !important;
         }
-        /* Input Box */
+
+        /* 6. Chat Input Container */
         div[data-testid="stChatInput"] {
             background-color: #020617 !important;
-            border: 1px solid #1E293B !important;
+            border: 1px solid #334155 !important;
             border-radius: 8px !important;
         }
         div[data-testid="stChatInput"] textarea {
