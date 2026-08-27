@@ -123,7 +123,6 @@ def query_transfer_recommendations(destination_branch: str = "All") -> str:
             d_runway = (d_stock / d_vel) if d_vel > 0 else 999.0
 
             if d_vel > 0.05 and d_runway <= 7.0:
-                # Find best donor branch
                 for donor_name, (s_stock_col, s_vel_col) in branch_map.items():
                     if donor_name == dest_name:
                         continue
@@ -329,9 +328,9 @@ def render_copilot_modal():
         try:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # Direct model assignment to remove round-trip network discovery delays
+            # Use gemini-3.6-flash
             model = genai.GenerativeModel(
-                model_name="gemini-2.5-flash",
+                model_name="gemini-3.6-flash",
                 system_instruction=SYSTEM_PROMPT,
                 tools=[query_sku_intelligence, query_transfer_recommendations, query_reorder_recommendations, query_delivery_orders, get_global_kpis]
             )
