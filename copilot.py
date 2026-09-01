@@ -59,7 +59,6 @@ def build_live_context(query: str) -> str:
     query_upper = query.upper()
     context_lines = []
 
-    # 1. Look for specific SKU matches in the prompt
     sku_matches = df_s[
         df_s['Item_Code'].astype(str).str.upper().apply(lambda x: x in query_upper if x else False) |
         df_s['Item_Name'].astype(str).str.upper().apply(lambda x: any(word in query_upper for word in str(x).split() if len(word) > 3))
@@ -72,11 +71,9 @@ def build_live_context(query: str) -> str:
                 f"Velocity: {r.get('Baseline_Velocity')}/day [SHJ: {r.get('Stock_Sharjah')}, AQ: {r.get('Stock_Al_Quoz')}, DIP: {r.get('Stock_DIP')}, AD: {r.get('Stock_Abu_Dhabi')}]"
             )
 
-    # Convert numeric fields for accurate analytics
     df_s['Numeric_Stock'] = pd.to_numeric(df_s.get('Current_Stock', 0), errors='coerce').fillna(0)
     df_s['Numeric_Vel'] = pd.to_numeric(df_s.get('Baseline_Velocity', 0), errors='coerce').fillna(0)
 
-    # 2. Warehouse Best Movers Analysis
     warehouse_cols = {
         "DIP": "Velocity_DIP",
         "SHARJAH": "Velocity_Sharjah",
@@ -95,7 +92,6 @@ def build_live_context(query: str) -> str:
                         f"SKU {r.get('Item_Code')} ({r.get('Item_Name')}): Velocity = {r.get(f'Num_{vel_col}')} units/day | Warehouse Stock = {r.get(f'Stock_{vel_col.replace('Velocity_', '')}')}"
                     )
 
-    # 3. Critical Runway & Transfer Logic (< 7 days)
     if any(k in query_upper for k in ["REORDER", "TRANSFER", "RUNWAY", "DEFICIT", "STOCK OUT"]):
         context_lines.append("\n--- CRITICAL RUNWAY (< 7 DAYS) & TRANSFER DEFICITS ---")
         urgent = df_s[(df_s['Numeric_Vel'] > 0.05) & ((df_s['Numeric_Stock'] / df_s['Numeric_Vel']) <= 7.0)]
@@ -106,7 +102,6 @@ def build_live_context(query: str) -> str:
                 f"[Total: {r['Numeric_Stock']}, SHJ: {r.get('Stock_Sharjah', 0)}, AQ: {r.get('Stock_Al_Quoz', 0)}, DIP: {r.get('Stock_DIP', 0)}, AD: {r.get('Stock_Abu_Dhabi', 0)}]"
             )
 
-    # 4. Delivery Orders Overview
     if any(k in query_upper for k in ["DO", "PENDING", "DISPATCH", "ORDER"]):
         context_lines.append("\n--- ACTIVE DELIVERY ORDER TELEMETRY ---")
         if not df_do.empty and "Status" in df_do.columns:
@@ -134,46 +129,105 @@ Core Rules:
 """
 
 # =====================================================
-# UI INJECTION & MODAL LOGIC
+# UI INJECTION & STATE-MANAGED MODAL LOGIC
 # =====================================================
 @st.dialog("🤖 Sabin Intelligence Copilot", width="large")
 def render_copilot_modal():
     st.markdown("""
         <style>
-        /* Dialog Modal Surface */
-        div[data-testid="stDialog"] div[role="dialog"] { 
-            background-color: #0B0F19 !important; 
-            border: 1px solid #1E293B !important; 
-            border-radius: 16px !important; 
+        /* 1. Hide the native Streamlit dialog close (X) button to prevent state desync */
+        div[data-testid="stDialog"] button[aria-label="Close"] {
+            display: none !important;
         }
-        div[data-testid="stDialog"] header { 
-            background-color: #0B0F19 !important; 
+
+        /* 2. Glassmorphism Modal Surface — force Streamlit's own theme variables
+           so every child component (headings, captions, markdown) that reads
+           var(--text-color)/var(--background-color) internally inherits the
+           correct dark-mode values regardless of Streamlit version/DOM changes. */
+        div[role="dialog"] {
+            --text-color: #F8FAFC;
+            --background-color: #0B0F19;
+            --secondary-background-color: #1E293B;
+            background-color: #0B0F19 !important;
+            color: #F8FAFC !important;
+            border: 1px solid #38BDF8 !important; 
+            border-radius: 16px !important; 
+            box-shadow: 0 10px 40px rgba(56, 189, 248, 0.15) !important;
         }
 
         /* SAFETY NET: force every text node inside the dialog to a readable
-           light color first, so nothing can silently inherit white-on-white
-           from Streamlit's base theme. More specific rules below override this. */
-        div[data-testid="stDialog"] * {
+           light color, so nothing can silently fall back to white-on-white. */
+        div[role="dialog"] * {
             color: #F8FAFC !important;
         }
 
-        /* Modal Title (covers the actual header text node across Streamlit versions) */
-        div[data-testid="stDialog"] h2,
-        div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] *,
-        div[data-testid="stDialog"] [data-testid="stMarkdownContainer"] h2 { 
-            color: #38BDF8 !important; 
-            font-weight: 800 !important; 
-            font-size: 20px !important;
+        /* 2b. Header strip — MUST stay dark. Leaving this transparent lets the
+           white page behind the dialog show through and makes the title
+           unreadable, so it is pinned to the same navy as the modal surface. */
+        div[data-testid="stDialog"] header,
+        div[role="dialog"] > div:first-child { 
+            background-color: #0B0F19 !important; 
         }
 
-        /* Caption row ("⚡ Direct Engine: ...") */
-        div[data-testid="stDialog"] [data-testid="stCaptionContainer"],
-        div[data-testid="stDialog"] [data-testid="stCaptionContainer"] * {
+        /* Modal Title — multiple fallback selectors across Streamlit versions */
+        div[data-testid="stDialog"] h2, 
+        div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] *,
+        div[role="dialog"] h2,
+        div[role="dialog"] [data-testid="stMarkdownContainer"] h2 { 
+            color: #38BDF8 !important; 
+            font-weight: 800 !important; 
+            font-size: 22px !important;
+        }
+
+        /* Caption row */
+        div[role="dialog"] [data-testid="stCaptionContainer"],
+        div[role="dialog"] [data-testid="stCaptionContainer"] * {
             color: #94A3B8 !important;
             font-weight: 500 !important;
         }
         
-        /* Action Buttons & Quick Filter Chips */
+        /* 3. Bulletproof Chat Input Text Color (Fixes White-on-White) */
+        div[data-testid="stChatInput"], 
+        div[data-testid="stChatInput"] > div,
+        div[data-testid="stChatInput"] div[data-baseweb="textarea"] { 
+            background-color: #0F172A !important; 
+        }
+        div[data-testid="stChatInput"] textarea,
+        div[data-testid="stChatInput"] [contenteditable="true"] { 
+            color: #FFFFFF !important; 
+            -webkit-text-fill-color: #FFFFFF !important; 
+            background-color: #0F172A !important; 
+            caret-color: #38BDF8 !important; 
+        }
+        div[data-testid="stChatInput"] textarea::placeholder,
+        div[data-testid="stChatInput"] [contenteditable="true"]:empty::before { 
+            color: #94A3B8 !important; 
+            -webkit-text-fill-color: #94A3B8 !important; 
+        }
+        div[data-testid="stChatInput"] button { 
+            color: #38BDF8 !important; 
+        }
+        
+        /* 4. Chat Bubbles */
+        div[data-testid="stChatMessage"] { 
+            background-color: #1E293B !important; 
+            border-radius: 12px !important; 
+            padding: 15px !important; 
+            border: 1px solid #334155 !important;
+        }
+        div[data-testid="stChatMessage"] * { 
+            color: #F8FAFC !important; 
+        }
+        div[data-testid="stChatMessage"] strong { 
+            color: #38BDF8 !important; 
+        }
+        div[data-testid="stChatMessage"] code { 
+            color: #38BDF8 !important; 
+            background-color: #020617 !important; 
+            border: 1px solid #1E293B !important; 
+        }
+        
+        /* 5. Custom Standard Buttons */
         div[data-testid="stDialog"] div[data-testid="stButton"] button { 
             background-color: #1E293B !important; 
             color: #F8FAFC !important; 
@@ -187,80 +241,44 @@ def render_copilot_modal():
             color: #020617 !important; 
             border-color: #38BDF8 !important; 
         }
-        div[data-testid="stDialog"] div[data-testid="stButton"] button p { 
-            color: inherit !important; 
-        }
         
-        /* Chat History Bubbles */
-        div[data-testid="stChatMessage"] { 
-            background-color: #111827 !important; 
-            border: 1px solid #1E293B !important; 
-            border-radius: 12px !important; 
-            margin-bottom: 12px !important; 
-            padding: 14px !important; 
+        /* 6. Custom Red Close Button */
+        .custom-close-btn button {
+            background-color: #EF4444 !important;
+            color: #FFFFFF !important;
+            border-color: #EF4444 !important;
         }
-        div[data-testid="stChatMessage"] p, 
-        div[data-testid="stChatMessage"] li, 
-        div[data-testid="stChatMessage"] span { 
-            color: #F8FAFC !important; 
-            font-size: 14px !important; 
-            line-height: 1.6 !important; 
-        }
-        div[data-testid="stChatMessage"] strong { 
-            color: #38BDF8 !important; 
-        }
-        div[data-testid="stChatMessage"] code { 
-            color: #38BDF8 !important; 
-            background-color: #020617 !important; 
-            border: 1px solid #1E293B !important; 
-        }
-        
-        /* High-Contrast Chat Input (covers the wrapper div, the textarea itself,
-           and any contenteditable/base-web layer Streamlit renders the typed
-           value through) */
-        div[data-testid="stChatInput"],
-        div[data-testid="stChatInput"] > div { 
-            background-color: #0F172A !important; 
-            border: 1px solid #334155 !important; 
-            border-radius: 12px !important; 
-        }
-        div[data-testid="stChatInput"] textarea,
-        div[data-testid="stChatInput"] [contenteditable="true"],
-        div[data-testid="stChatInput"] [data-baseweb="textarea"],
-        div[data-testid="stChatInput"] [data-baseweb="textarea"] * { 
-            color: #FFFFFF !important; 
-            -webkit-text-fill-color: #FFFFFF !important; 
-            background-color: transparent !important; 
-            caret-color: #38BDF8 !important; 
-        }
-        div[data-testid="stChatInput"] textarea::placeholder,
-        div[data-testid="stChatInput"] [contenteditable="true"]:empty::before { 
-            color: #64748B !important; 
-            -webkit-text-fill-color: #64748B !important; 
-        }
-        div[data-testid="stChatInput"] button svg { 
-            fill: #38BDF8 !important; 
-            color: #38BDF8 !important; 
+        .custom-close-btn button:hover {
+            background-color: #DC2626 !important;
+            color: #FFFFFF !important;
+            border-color: #B91C1C !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    col_hdr, col_clear = st.columns([3, 1])
-    with col_hdr:
-        st.caption("⚡ Direct Engine: Active Inventory, Demand Velocities & Dispatch Queues")
-    with col_clear:
-        if st.button("🗑️ Reset & Sync", use_container_width=True, help="Clear history and reload latest Google Sheets records"):
+    # Custom Header Control Bar
+    col_title, col_reset, col_close = st.columns([4, 2, 2])
+    with col_title:
+        st.caption("⚡ Groq Engine: Ultra-Fast Data Processing")
+    with col_reset:
+        if st.button("🗑️ Reset", use_container_width=True):
             st.session_state.copilot_history = []
             get_or_fetch_stock_data(force_reload=True)
             get_or_fetch_do_ledger(force_reload=True)
             st.rerun()
+    with col_close:
+        st.markdown('<div class="custom-close-btn">', unsafe_allow_html=True)
+        if st.button("❌ Close", use_container_width=True):
+            st.session_state.copilot_open = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
     quick_query = None
     if c1.button("🚨 Reorder in 1 Week", use_container_width=True): 
-        quick_query = "Which items do we need to reorder within 1 week based on current burn rate?"
+        quick_query = "Which items do we need to reorder within 1 week?"
     if c2.button("📦 Pending DO Status", use_container_width=True): 
-        quick_query = "Summarize our current pending Delivery Orders and backlog."
+        quick_query = "Summarize our current pending Delivery Orders."
     if c3.button("🔄 DIP Best Movers", use_container_width=True): 
         quick_query = "Which are the best moving items in the DIP warehouse?"
 
@@ -287,23 +305,19 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Fetch EXACT list of models currently online and assigned to your key
+                # Fetch EXACT list of active models directly from Groq to prevent 404s
                 live_models = client.models.list().data
-                
-                # Filter out audio/whisper/guardrail models to get pure text LLMs
                 valid_model_ids = [m.id for m in live_models if "whisper" not in m.id.lower() and "guard" not in m.id.lower()]
                 
                 if not valid_model_ids:
                     raise ValueError("No active text models found for this Groq API Key.")
 
-                # Pick the best model from the actual live list
-                target_model = valid_model_ids[0] # Default to whatever is online
+                target_model = valid_model_ids[0]
                 for pref in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
                     if pref in valid_model_ids:
                         target_model = pref
                         break
 
-                # Execute exactly ONE call to expose the true error (like Rate Limits) if it fails
                 chat_completion = client.chat.completions.create(
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
@@ -327,100 +341,52 @@ def render_copilot_modal():
 
 
 def inject_floating_copilot():
-    """Renders a premium animated glassmorphism Copilot orb above the Streamlit footer.
-    Idles as a breathing, softly pulsing circular orb with an orbiting sparkle.
-    On hover it blooms into a full pill, revealing the 'Ask Copilot' label."""
+    """Renders the AI Copilot button and manages its open/closed state safely."""
+    
+    # Initialize state
+    if "copilot_open" not in st.session_state:
+        st.session_state.copilot_open = False
+
+    # Premium Expressive Corporate UI with Glassmorphism
     st.markdown("""
         <style>
         .st-key-floating_copilot_btn { 
             position: fixed !important; 
-            bottom: 85px !important; 
+            bottom: 100px !important; /* Elevated safely above the Manage App logo */
             right: 30px !important; 
             z-index: 2147483647 !important; 
-            width: auto !important; 
         }
-
-        /* Outer pulse ring, sits behind the button and breathes independently */
-        .st-key-floating_copilot_btn::before {
-            content: "";
-            position: absolute;
-            inset: -6px;
-            border-radius: 50px;
-            background: linear-gradient(135deg, rgba(56,189,248,0.55), rgba(14,165,233,0.15));
-            filter: blur(10px);
-            z-index: -1;
-            animation: copilotPulseRing 2.6s ease-in-out infinite;
-            pointer-events: none;
-        }
-
         .st-key-floating_copilot_btn > button { 
-            position: relative;
-            background: linear-gradient(160deg, rgba(15,23,42,0.94), rgba(11,15,25,0.98)) !important; 
-            backdrop-filter: blur(14px) !important;
-            -webkit-backdrop-filter: blur(14px) !important;
-            color: #E0F2FE !important; 
-            font-family: 'Inter', sans-serif !important;
-            font-size: 14px !important; 
-            font-weight: 700 !important; 
-            letter-spacing: 0.5px !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            border-radius: 50px !important; 
-            width: 58px !important;
-            height: 58px !important;
-            padding: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            border: 1px solid rgba(56, 189, 248, 0.45) !important; 
-            box-shadow: 0 0 18px rgba(56, 189, 248, 0.28), inset 0 0 18px rgba(56, 189, 248, 0.08) !important; 
-            transition: width 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                        padding 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                        transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                        box-shadow 0.35s ease,
-                        border-color 0.35s ease !important; 
-            animation: copilotFloat 3.4s ease-in-out infinite !important;
-        }
-
-        /* Sparkle + label are one text node from st.button; this keeps the
-           whole thing centered and lets width do the reveal/hide work */
-        .st-key-floating_copilot_btn > button p {
-            display: flex !important;
-            align-items: center !important;
-            gap: 8px !important;
-            margin: 0 !important;
-            white-space: nowrap !important;
-        }
-
-        .st-key-floating_copilot_btn > button:hover { 
-            width: 190px !important;
-            padding: 12px 24px !important;
-            transform: translateY(-6px) scale(1.04) !important; 
-            background: linear-gradient(160deg, rgba(15,23,42,0.99), rgba(2,6,23,1)) !important; 
-            border: 1px solid rgba(56, 189, 248, 0.95) !important;
-            box-shadow: 0 14px 34px rgba(56, 189, 248, 0.4), 0 0 26px rgba(56, 189, 248, 0.4) !important; 
+            background: linear-gradient(135deg, #0EA5E9 0%, #3B82F6 100%) !important;
             color: #FFFFFF !important; 
-            animation-play-state: paused !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 16px !important; 
+            font-weight: 800 !important; 
+            border-radius: 50px !important; 
+            padding: 16px 32px !important; 
+            border: 2px solid rgba(255, 255, 255, 0.2) !important; 
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.3) !important; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important; 
+            animation: premiumPulse 2.5s infinite alternate !important;
         }
-
-        .st-key-floating_copilot_btn > button:active {
-            transform: translateY(-2px) scale(0.98) !important;
+        .st-key-floating_copilot_btn > button:hover { 
+            transform: translateY(-8px) scale(1.05) !important; 
+            box-shadow: 0 15px 40px rgba(14, 165, 233, 0.6), inset 0 2px 5px rgba(255, 255, 255, 0.4) !important; 
+            border-color: rgba(255, 255, 255, 0.5) !important;
         }
-
-        /* Gentle breathing float while idle */
-        @keyframes copilotFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
-
-        /* Outer glow ring breathing, offset timing from the float for a
-           layered "alive" premium feel */
-        @keyframes copilotPulseRing {
-            0%, 100% { opacity: 0.55; transform: scale(1); }
-            50% { opacity: 0.15; transform: scale(1.18); }
+        
+        @keyframes premiumPulse {
+            0% { filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.4)); }
+            100% { filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.8)); }
         }
         </style>
     """, unsafe_allow_html=True)
 
+    # When clicked, update state and trigger a rerun
     if st.button("✨ Ask Copilot", key="floating_copilot_btn"):
+        st.session_state.copilot_open = True
+        st.rerun()
+
+    # The dialog is exclusively driven by state. It will survive background auto-refreshes.
+    if st.session_state.copilot_open:
         render_copilot_modal()
