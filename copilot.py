@@ -168,13 +168,20 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Dynamic Model Discovery to prevent 404s forever
+                # 100% Bulletproof Dynamic Model Selection
                 active_models = [m.id for m in client.models.list().data]
-                target_model = "llama3-8b-8192" # The absolute legacy fail-safe
-                for preferred in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"]:
+                target_model = None
+                
+                # Try preferred models first
+                for preferred in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
                     if preferred in active_models:
                         target_model = preferred
                         break
+                
+                # Ultimate Fail-Safe: If preferred are offline, pick the very first Llama model running on Groq's servers
+                if not target_model:
+                    llama_models = [m for m in active_models if "llama" in m.lower()]
+                    target_model = llama_models[0] if llama_models else active_models[0]
                 
                 chat_completion = client.chat.completions.create(
                     messages=[
