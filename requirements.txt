@@ -5,4 +5,4 @@ gspread
 streamlit-autorefresh
 openpyxl
 xlsxwriter
-google-generativeai>=0.8.0
+groq
