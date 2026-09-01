@@ -48,105 +48,102 @@ def get_or_fetch_do_ledger(force_reload=False):
         return pd.DataFrame()
 
 # =====================================================
-# LOCAL ANALYTICS CONTEXT BUILDER
+# HIGH-PRECISION TELEMETRY ENGINE (ALWAYS INJECTED)
 # =====================================================
 def build_live_context(query: str) -> str:
-    """Pre-calculates warehouse analytics locally using Pandas."""
+    """Pre-calculates logistics analytics locally to ensure comprehensive telemetry is always present."""
     df_s = get_or_fetch_stock_data()
     df_do = get_or_fetch_do_ledger()
     if df_s.empty:
         return "System Notice: Live inventory dataset is unreachable."
 
     query_upper = query.upper()
-    context_lines = []
+    context_sections = []
 
-    # 1. Targeted SKU search
+    # Clean numeric columns across the entire inventory
+    df_s['Numeric_Stock'] = pd.to_numeric(df_s.get('Current_Stock', 0), errors='coerce').fillna(0)
+    df_s['Numeric_Vel'] = pd.to_numeric(df_s.get('Baseline_Velocity', 0), errors='coerce').fillna(0)
+    
+    for wh in ["Sharjah", "Al_Quoz", "DIP", "Abu_Dhabi"]:
+        if f"Stock_{wh}" in df_s.columns:
+            df_s[f'Num_Stock_{wh}'] = pd.to_numeric(df_s[f"Stock_{wh}"], errors='coerce').fillna(0)
+        if f"Velocity_{wh}" in df_s.columns:
+            df_s[f'Num_Vel_{wh}'] = pd.to_numeric(df_s[f"Velocity_{wh}"], errors='coerce').fillna(0)
+
+    # 1. SPECIFIC SKU MATCHES (If mentioned in prompt)
     sku_matches = df_s[
         df_s['Item_Code'].astype(str).str.upper().apply(lambda x: x in query_upper if x else False) |
         df_s['Item_Name'].astype(str).str.upper().apply(lambda x: any(word in query_upper for word in str(x).split() if len(word) > 3))
     ]
     if not sku_matches.empty:
-        context_lines.append("--- SPECIFIC SKU TELEMETRY ---")
-        for _, r in sku_matches.head(4).iterrows():
-            context_lines.append(
-                f"SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Total Stock: {r.get('Current_Stock')} | "
-                f"Velocity: {r.get('Baseline_Velocity')}/day [SHJ: {r.get('Stock_Sharjah')}, AQ: {r.get('Stock_Al_Quoz')}, DIP: {r.get('Stock_DIP')}, AD: {r.get('Stock_Abu_Dhabi')}]"
+        sku_lines = []
+        for _, r in sku_matches.head(5).iterrows():
+            sku_lines.append(
+                f"- SKU: {r.get('Item_Code')} | Description: {r.get('Item_Name')} | Total Stock: {int(r['Numeric_Stock'])} | "
+                f"Daily Burn: {r['Numeric_Vel']:.2f}/day | SHJ: {int(r.get('Num_Stock_Sharjah',0))}, AQ: {int(r.get('Num_Stock_Al_Quoz',0))}, "
+                f"DIP: {int(r.get('Num_Stock_DIP',0))}, AD: {int(r.get('Num_Stock_Abu_Dhabi',0))}"
             )
+        context_sections.append("=== TARGETED SKU LOOKUP ===\n" + "\n".join(sku_lines))
 
-    df_s['Numeric_Stock'] = pd.to_numeric(df_s.get('Current_Stock', 0), errors='coerce').fillna(0)
-    df_s['Numeric_Vel'] = pd.to_numeric(df_s.get('Baseline_Velocity', 0), errors='coerce').fillna(0)
+    # 2. CRITICAL NETWORK REORDER CANDIDATES (Runway <= 10 Days)
+    urgent_reorders = df_s[
+        (df_s['Numeric_Vel'] > 0.05) & 
+        ((df_s['Numeric_Stock'] / df_s['Numeric_Vel']) <= 10.0)
+    ].copy()
+    urgent_reorders['Runway'] = urgent_reorders['Numeric_Stock'] / urgent_reorders['Numeric_Vel']
+    urgent_reorders = urgent_reorders.sort_values(by='Runway').head(12)
 
-    # 2. Inter-Branch Transfer Deficits & Surplus
-    warehouse_cols = {
-        "DIP": ("Stock_DIP", "Velocity_DIP"),
-        "SHARJAH": ("Stock_Sharjah", "Velocity_Sharjah"),
-        "AL QUOZ": ("Stock_Al_Quoz", "Velocity_Al_Quoz"),
-        "ABU DHABI": ("Stock_Abu_Dhabi", "Velocity_Abu_Dhabi")
-    }
+    reorder_lines = []
+    for _, r in urgent_reorders.iterrows():
+        reorder_lines.append(
+            f"- SKU: {r.get('Item_Code')} ({r.get('Item_Name')}) | Stock: {int(r['Numeric_Stock'])} units | "
+            f"Daily Burn: {r['Numeric_Vel']:.2f}/day | Runway: {r['Runway']:.1f} days left"
+        )
+    context_sections.append("=== CRITICAL REORDER CANDIDATES (RUNWAY <= 10 DAYS) ===\n" + "\n".join(reorder_lines))
 
-    if any(k in query_upper for k in ["TRANSFER", "SHARJAH", "ABU DHABI", "AL QUOZ", "DIP", "MOVE"]):
-        context_lines.append("\n--- NETWORK TRANSFER AUDIT ---")
-        for wh, (stock_col, vel_col) in warehouse_cols.items():
-            if stock_col in df_s.columns and vel_col in df_s.columns:
-                df_s[f'Num_{stock_col}'] = pd.to_numeric(df_s[stock_col], errors='coerce').fillna(0)
-                df_s[f'Num_{vel_col}'] = pd.to_numeric(df_s[vel_col], errors='coerce').fillna(0)
+    # 3. INTER-BRANCH TRANSFER DEFICIT & DONOR MATRIX
+    transfer_lines = []
+    branches = [("Sharjah", "Num_Stock_Sharjah", "Num_Vel_Sharjah"),
+                ("Abu_Dhabi", "Num_Stock_Abu_Dhabi", "Num_Vel_Abu_Dhabi"),
+                ("Al_Quoz", "Num_Stock_Al_Quoz", "Num_Vel_Al_Quoz"),
+                ("DIP", "Num_Stock_DIP", "Num_Vel_DIP")]
 
-        # Evaluate Abu Dhabi deficits vs Sharjah surplus
-        if "ABU DHABI" in query_upper or "SHARJAH" in query_upper:
-            ad_critical = df_s[
-                (df_s['Num_Velocity_Abu_Dhabi'] > 0.05) & 
-                ((df_s['Num_Stock_Abu_Dhabi'] / df_s['Num_Velocity_Abu_Dhabi']) <= 7.0)
-            ]
-            for _, r in ad_critical.head(8).iterrows():
-                ad_runway = round(r['Num_Stock_Abu_Dhabi'] / r['Num_Velocity_Abu_Dhabi'], 1) if r['Num_Velocity_Abu_Dhabi'] > 0 else 0
-                shj_stock = r.get('Num_Stock_Sharjah', 0)
-                shj_vel = r.get('Num_Velocity_Sharjah', 0)
-                shj_safe = int(shj_stock - (14.0 * shj_vel)) if shj_vel > 0 else int(shj_stock)
-
-                context_lines.append(
-                    f"SKU {r.get('Item_Code')} ({r.get('Item_Name')}): "
-                    f"Abu Dhabi Stock={r.get('Num_Stock_Abu_Dhabi')} (Runway: {ad_runway}d, Burn: {r.get('Num_Velocity_Abu_Dhabi')}/d) | "
-                    f"Sharjah Stock={shj_stock} (Safe Donor Capacity: {max(0, shj_safe)} units)"
+    for b_name, s_col, v_col in branches:
+        if s_col in df_s.columns and v_col in df_s.columns:
+            deficits = df_s[(df_s[v_col] > 0.05) & ((df_s[s_col] / df_s[v_col]) <= 7.0)].copy()
+            for _, r in deficits.head(3).iterrows():
+                b_runway = round(r[s_col] / r[v_col], 1) if r[v_col] > 0 else 0
+                transfer_lines.append(
+                    f"- {b_name.replace('_',' ')} Deficit: SKU {r.get('Item_Code')} ({r.get('Item_Name')}) has {int(r[s_col])} units "
+                    f"(Runway: {b_runway}d). Sharjah Stock={int(r.get('Num_Stock_Sharjah',0))}, Al Quoz Stock={int(r.get('Num_Stock_Al_Quoz',0))}"
                 )
+    if transfer_lines:
+        context_sections.append("=== INTER-BRANCH TRANSFER DEFICITS ===\n" + "\n".join(transfer_lines[:10]))
 
-    # 3. Critical Runway Items (< 7 days network-wide)
-    if any(k in query_upper for k in ["REORDER", "RUNWAY", "DEFICIT", "STOCK OUT", "CRITICAL"]):
-        context_lines.append("\n--- NETWORK CRITICAL RUNWAY (< 7 DAYS) ---")
-        urgent = df_s[(df_s['Numeric_Vel'] > 0.05) & ((df_s['Numeric_Stock'] / df_s['Numeric_Vel']) <= 7.0)]
-        for _, r in urgent.head(8).iterrows():
-            runway = round(r['Numeric_Stock'] / r['Numeric_Vel'], 1) if r['Numeric_Vel'] > 0 else 999
-            context_lines.append(
-                f"ALERT: SKU {r.get('Item_Code')} ({r.get('Item_Name')}) -> Total Stock {r['Numeric_Stock']} units | Runway {runway} days"
-            )
+    # 4. ACTIVE DELIVERY ORDERS BACKLOG
+    if not df_do.empty and "Status" in df_do.columns:
+        pending = df_do[df_do['Status'].astype(str).str.upper() == 'PENDING']
+        do_lines = [f"Total Pending DO Backlog Count: {len(pending)} orders"]
+        for _, d in pending.head(5).iterrows():
+            do_lines.append(f"- DO #{d.get('DO_Number')} | Facility: {d.get('Warehouse_Name')} | Date: {d.get('Date_Issued')}")
+        context_sections.append("=== DISPATCH & DO STATUS ===\n" + "\n".join(do_lines))
 
-    # 4. Delivery Orders Overview
-    if any(k in query_upper for k in ["DO", "PENDING", "DISPATCH", "ORDER", "BACKLOG"]):
-        context_lines.append("\n--- ACTIVE DELIVERY ORDER TELEMETRY ---")
-        if not df_do.empty and "Status" in df_do.columns:
-            pending = df_do[df_do['Status'].astype(str).str.upper() == 'PENDING']
-            context_lines.append(f"Total Pending DO Backlog: {len(pending)} orders")
-            for _, d in pending.head(5).iterrows():
-                context_lines.append(f"DO #{d.get('DO_Number')} | Facility: {d.get('Warehouse_Name')} | Date: {d.get('Date_Issued')}")
-
-    return "\n".join(context_lines)
+    return "\n\n".join(context_sections)
 
 # =====================================================
 # AGENT SYSTEM INSTRUCTIONS
 # =====================================================
 SYSTEM_PROMPT = """
 You are the Chief Inventory Intelligence Officer & Senior Logistics Analyst for Sabin Plastic.
-You analyze inventory distribution across Sharjah, Al Quoz, DIP, and Abu Dhabi.
+You have direct access to live inventory telemetry across Sharjah, Al Quoz, DIP, and Abu Dhabi.
 
 Directives:
-1. Grounding: Answer strictly using data inside 'LOCAL CONTEXT'. Do not invent SKUs or numbers.
-2. Inter-Branch Stock Transfers:
-   - Identify deficit branches (<= 7 days runway) and donor branches with surplus stock.
-   - For every transfer, provide the exact Focus ERP execution command:
+1. Grounding: Answer strictly using data inside 'LOCAL CONTEXT'. Never invent SKUs or quantities.
+2. Structure:
+   - When asked for items to order/reorder, present a clean Markdown Table with columns: `SKU`, `Item Name`, `Current Stock`, `Daily Burn Rate`, `Runway (Days)`, and `Suggested Reorder Urgency`.
+   - When suggesting stock movements to balance deficits, provide the exact Focus ERP command:
      `SRTS: Move [Qty] units of SKU [SKU] from [Donor Warehouse] to [Destination Warehouse]`
-3. Presentation:
-   - Present transfer plans and runway analyses using clean Markdown Tables.
-   - Use bold highlights for SKUs, quantities, and urgency levels.
-   - Never output internal monologue, thought tags, or meta-commentary.
+3. Formatting: Executive, structured, clean Markdown tables, bullet points, and bold SKU codes. Never print raw internal monologues or reasoning tags.
 """
 
 # =====================================================
@@ -238,7 +235,7 @@ def render_copilot_modal():
             color: #38BDF8 !important; 
         }
 
-        /* 7. CHAT MESSAGE CARDS & SCOPED TYPOGRAPHY (Fixes Broken Icons) */
+        /* 7. CHAT MESSAGE CARDS */
         div[data-testid="stChatMessage"] { 
             background-color: #0F172A !important; 
             border-radius: 12px !important; 
@@ -334,17 +331,16 @@ def render_copilot_modal():
     # Action Chips
     c1, c2, c3 = st.columns(3)
     quick_query = None
-    if c1.button("🚨 Reorder in 1 Week", use_container_width=True): 
-        quick_query = "Which items do we need to reorder within 1 week?"
+    if c1.button("🚨 Urgent Reorder Needs", use_container_width=True): 
+        quick_query = "Which are the items I need to order in the coming week based on current burn rate?"
     if c2.button("📦 Pending DO Status", use_container_width=True): 
-        quick_query = "Summarize our current pending Delivery Orders."
-    if c3.button("🔄 Sharjah → Abu Dhabi Transfers", use_container_width=True): 
-        quick_query = "Which are the SKUs I need to transfer from Sharjah to Abu Dhabi?"
+        quick_query = "Summarize our current pending Delivery Orders and backlog."
+    if c3.button("🔄 Branch Transfer Plan", use_container_width=True): 
+        quick_query = "Check all warehouse positions and suggest immediate inter-branch stock transfers."
 
     if "copilot_history" not in st.session_state: 
         st.session_state.copilot_history = []
 
-    # Render History with Explicit Avatars (Prevents Text Ligature Artifacts)
     for msg in st.session_state.copilot_history:
         avatar_icon = "👤" if msg["role"] == "user" else "🤖"
         with st.chat_message(msg["role"], avatar=avatar_icon):
@@ -361,6 +357,7 @@ def render_copilot_modal():
     font-size: 13px;
     font-weight: 600;
     color: #38BDF8;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     ">
     ⚡ AI Inventory Intelligence • Real-Time Warehouse Analytics • Powered by Groq
     </div>
@@ -381,16 +378,19 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Fetch active model list
+                # Filter out reasoning/thinking models (deepseek, r1, qwen-qwq) to prevent thought leaks
                 live_models = client.models.list().data
-                valid_model_ids = [m.id for m in live_models if "whisper" not in m.id.lower() and "guard" not in m.id.lower()]
+                non_reasoning_models = [
+                    m.id for m in live_models 
+                    if not any(k in m.id.lower() for k in ["whisper", "guard", "deepseek", "r1", "qwq"])
+                ]
                 
-                if not valid_model_ids:
-                    raise ValueError("No active text models found for this Groq API Key.")
+                if not non_reasoning_models:
+                    non_reasoning_models = [m.id for m in live_models if "whisper" not in m.id.lower() and "guard" not in m.id.lower()]
 
-                target_model = valid_model_ids[0]
+                target_model = non_reasoning_models[0]
                 for pref in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
-                    if pref in valid_model_ids:
+                    if pref in non_reasoning_models:
                         target_model = pref
                         break
 
@@ -401,12 +401,12 @@ def render_copilot_modal():
                     ],
                     model=target_model,
                     temperature=0.1,
-                    max_tokens=1024
+                    max_tokens=2048
                 )
                 raw_response = chat_completion.choices[0].message.content
 
-                # Regex Thought-Sanitization Pipeline: Strips any <think> scratchpad
-                cleaned_answer = re.sub(r"<think>.*?</think>", "", raw_response, flags=re.DOTALL).strip()
+                # Regex Thought-Sanitization Pipeline (Matches closed or unclosed think tags)
+                cleaned_answer = re.sub(r"<think>.*?(?:</think>|$)", "", raw_response, flags=re.DOTALL).strip()
                 if not cleaned_answer:
                     cleaned_answer = raw_response.strip()
 
