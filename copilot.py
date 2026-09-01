@@ -9,6 +9,7 @@ from groq import Groq
 # FAST CLOUD CACHE & INGESTION ENGINE
 # =====================================================
 def get_or_fetch_stock_data(force_reload=False):
+    """Retrieves live stock data with session cache to eliminate round-trip latency."""
     if not force_reload and "df_stock_live" in st.session_state and not st.session_state.df_stock_live.empty:
         return st.session_state.df_stock_live
     try:
@@ -29,6 +30,7 @@ def get_or_fetch_stock_data(force_reload=False):
 
 
 def get_or_fetch_do_ledger(force_reload=False):
+    """Retrieves DO records with session-level caching."""
     if not force_reload and "master_data" in st.session_state and not st.session_state.master_data.empty:
         return st.session_state.master_data
     try:
@@ -48,6 +50,7 @@ def get_or_fetch_do_ledger(force_reload=False):
 # HIGH-SPEED LOCAL CONTEXT BUILDER
 # =====================================================
 def build_live_context(query: str) -> str:
+    """Pre-calculates warehouse analytics locally using Pandas to minimize token load and API latency."""
     df_s = get_or_fetch_stock_data()
     df_do = get_or_fetch_do_ledger()
     if df_s.empty:
@@ -113,12 +116,16 @@ def build_live_context(query: str) -> str:
 # AGENT SYSTEM INSTRUCTIONS
 # =====================================================
 SYSTEM_PROMPT = """
-You are the Chief Inventory Intelligence Officer.
-You are provided with a pre-calculated 'Local Context' block. Base your answers strictly on this block.
-If transferring stock to a branch, draft this exact ERP command format: 
-`SRTS: Move [Qty] units of SKU [SKU] from [Donor] to [Destination]`
+You are the Chief Inventory Intelligence Officer & Senior Logistics Analyst for Sabin Plastic.
+You have direct access to live inventory positions across Sharjah, Al Quoz, DIP, and Abu Dhabi facilities.
 
-Style: Crisp, analytical, use bullet points and bold text.
+Core Rules:
+1. Grounding: Answer strictly using the provided 'LOCAL CONTEXT' telemetry.
+2. Inter-Branch Stock Transfers:
+   - When suggesting stock movements to balance deficits, provide the exact Focus ERP command:
+     `SRTS: Move [Qty] units of SKU [SKU] from [Donor Warehouse] to [Destination Warehouse]`
+3. Reorders: Rank urgency based on shortest runway (Days of Coverage = Current Stock / Daily Velocity).
+4. Tone & Presentation: Crisp, corporate, structured with bold highlights, bullet points, and concise numbers.
 """
 
 # =====================================================
@@ -128,66 +135,89 @@ Style: Crisp, analytical, use bullet points and bold text.
 def render_copilot_modal():
     st.markdown("""
         <style>
-        /* 1. Hide the native Streamlit dialog close (X) button */
-        div[data-testid="stDialog"] button[aria-label="Close"] {
+        /* 1. HIDE NATIVE STREAMLIT CLOSE BUTTON */
+        div[data-testid="stDialog"] button[aria-label="Close"],
+        div[data-baseweb="modal"] button[aria-label="Close"] {
             display: none !important;
         }
-        
-        /* 2. THE FIX: Force Entire Modal to Midnight Slate (Overrides White Background) */
-        div[data-testid="stDialog"] > div[role="dialog"],
-        div[data-testid="stModal"] > div[role="dialog"] { 
-            background: linear-gradient(145deg, #0F172A 0%, #020617 100%) !important; 
-            background-color: #0F172A !important;
-            border: 1px solid rgba(56, 189, 248, 0.3) !important; 
-            border-radius: 16px !important; 
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.1) !important;
+
+        /* 2. OVERRIDE ALL BASEWEB AND STREAMLIT MODAL LAYERS (Fixes White Background) */
+        div[data-baseweb="modal"],
+        div[data-baseweb="modal"] > div,
+        div[data-baseweb="modal"] [role="dialog"],
+        div[data-baseweb="modal"] [role="dialog"] > div,
+        div[data-testid="stDialog"],
+        div[data-testid="stDialog"] > div,
+        div[data-testid="stDialog"] [role="dialog"],
+        div[data-testid="stDialog"] section,
+        div[data-testid="stModal"],
+        div[data-testid="stModal"] > div,
+        section[role="dialog"],
+        section[role="dialog"] > div {
+            background-color: #0B0F19 !important;
+            background: linear-gradient(145deg, #0F172A 0%, #020617 100%) !important;
+            color: #F8FAFC !important;
         }
-        
-        /* Ensure inner layers don't block the dark background */
-        div[data-testid="stDialog"] [data-testid="stVerticalBlock"] {
+
+        /* 3. MODAL BORDER & SHADOW */
+        div[data-baseweb="modal"] [role="dialog"],
+        div[data-testid="stDialog"] [role="dialog"],
+        section[role="dialog"] {
+            border: 1px solid rgba(56, 189, 248, 0.4) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.2) !important;
+            overflow: hidden !important;
+        }
+
+        /* 4. TRANSPARENT INNER STRUCTURAL BLOCKS */
+        div[data-testid="stDialog"] [data-testid="stVerticalBlock"],
+        div[data-testid="stDialog"] [data-testid="stVerticalBlock"] > div,
+        div[data-baseweb="modal"] [data-testid="stVerticalBlock"] {
+            background-color: transparent !important;
             background: transparent !important;
         }
-        
-        /* EXECUTIVE HEADER BAR */
-        div[data-testid="stDialog"] header {
+
+        /* 5. EXECUTIVE HEADER & SANS-SERIF TYPOGRAPHY */
+        div[data-testid="stDialog"] header,
+        div[data-baseweb="modal"] header {
             background: transparent !important;
-            border-bottom: 1px solid rgba(56,189,248,0.2) !important;
-            min-height: 50px !important;
-            margin-bottom: 15px !important;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.25) !important;
+            min-height: 45px !important;
+            margin-bottom: 12px !important;
         }
-        
-        /* TITLE - Premium Sans-Serif Font */
-        div[data-testid="stDialog"] h2 {
-            font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', sans-serif !important;
+
+        div[data-testid="stDialog"] h2,
+        div[data-baseweb="modal"] h2 {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
             color: #FFFFFF !important;
-            font-size: 26px !important;
+            font-size: 24px !important;
             font-weight: 800 !important;
-            letter-spacing: 1px !important;
+            letter-spacing: 0.8px !important;
             text-transform: uppercase !important;
-            text-shadow:
-                0 0 15px rgba(56,189,248,0.6),
-                0 0 30px rgba(56,189,248,0.3) !important;
+            text-shadow: 0 0 16px rgba(56, 189, 248, 0.6), 0 0 32px rgba(56, 189, 248, 0.3) !important;
         }
-        
-        /* AI ICON GLOW */
-        div[data-testid="stDialog"] h2::before {
+
+        div[data-testid="stDialog"] h2::before,
+        div[data-baseweb="modal"] h2::before {
             content: "✦ ";
-            color: #38BDF8;
+            color: #38BDF8 !important;
             text-shadow: 0 0 20px #38BDF8 !important;
         }
-        
-        /* 3. Chat Input Container Styling */
+
+        /* 6. CHAT INPUT BAR (Deep Slate Layer) */
         div[data-testid="stChatInput"], 
         div[data-testid="stChatInput"] > div,
         div[data-testid="stChatInput"] div[data-baseweb="textarea"] { 
-            background-color: #111827 !important; 
-            border-color: rgba(56, 189, 248, 0.2) !important;
+            background-color: #0F172A !important; 
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-radius: 12px !important;
         }
         div[data-testid="stChatInput"] textarea { 
             color: #FFFFFF !important; 
             -webkit-text-fill-color: #FFFFFF !important; 
             background-color: transparent !important; 
             caret-color: #38BDF8 !important; 
+            font-family: 'Inter', sans-serif !important;
         }
         div[data-testid="stChatInput"] textarea::placeholder { 
             color: #94A3B8 !important; 
@@ -196,16 +226,18 @@ def render_copilot_modal():
         div[data-testid="stChatInput"] button { 
             color: #38BDF8 !important; 
         }
-        
-        /* 4. Chat Bubbles */
+
+        /* 7. CHAT MESSAGE CARDS */
         div[data-testid="stChatMessage"] { 
-            background-color: #1E293B !important; 
+            background-color: #111827 !important; 
             border-radius: 12px !important; 
-            padding: 15px !important; 
-            border: 1px solid #334155 !important;
+            padding: 14px !important; 
+            border: 1px solid #1E293B !important;
+            margin-bottom: 12px !important;
         }
         div[data-testid="stChatMessage"] * { 
             color: #F8FAFC !important; 
+            font-family: 'Inter', sans-serif !important;
         }
         div[data-testid="stChatMessage"] strong { 
             color: #38BDF8 !important; 
@@ -215,8 +247,8 @@ def render_copilot_modal():
             background-color: #020617 !important; 
             border: 1px solid #1E293B !important; 
         }
-        
-        /* 5. Custom Standard Buttons */
+
+        /* 8. ACTION BUTTONS & CHIPS */
         div[data-testid="stDialog"] div[data-testid="stButton"] button { 
             background-color: #1E293B !important; 
             color: #F8FAFC !important; 
@@ -230,8 +262,8 @@ def render_copilot_modal():
             color: #020617 !important; 
             border-color: #38BDF8 !important; 
         }
-        
-        /* 6. Custom Red Close Button */
+
+        /* 9. RED CLOSE BUTTON */
         .custom-close-btn button {
             background-color: #EF4444 !important;
             color: #FFFFFF !important;
@@ -276,17 +308,18 @@ def render_copilot_modal():
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Executive Badge injected right above the input
+    # Executive Badge injected above the input
     st.markdown("""
     <div style="
-    background: linear-gradient(90deg,#0F172A,#1E293B);
-    padding:12px 18px;
-    border-radius:12px;
-    border:1px solid rgba(56,189,248,0.25);
-    margin-bottom:12px;
-    font-size:14px;
-    font-weight:600;
-    color:#38BDF8;
+    background: linear-gradient(90deg, #0F172A, #1E293B);
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #38BDF8;
+    font-family: 'Inter', sans-serif;
     ">
     ⚡ AI Inventory Intelligence • Real-Time Warehouse Analytics • Powered by Groq
     </div>
@@ -364,18 +397,19 @@ def inject_floating_copilot():
             color: white !important;
             border: none !important;
             border-radius: 60px !important;
-            font-size: 17px !important;
+            font-size: 16px !important;
             font-weight: 800 !important;
-            padding: 18px 34px !important;
+            padding: 16px 32px !important;
             box-shadow: 
                 0 12px 30px rgba(37,99,235,0.35),
                 0 0 25px rgba(56,189,248,0.25) !important;
             transition: all 0.35s ease !important;
             position: relative !important;
             overflow: hidden !important;
+            font-family: 'Inter', sans-serif !important;
         }
 
-        /* Premium Light Sweep */
+        /* Light Sweep Animation */
         .st-key-floating_copilot_btn > button::before {
             content: "";
             position: absolute;
