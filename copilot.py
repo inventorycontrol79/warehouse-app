@@ -9,6 +9,7 @@ from groq import Groq
 # FAST CLOUD CACHE & INGESTION ENGINE
 # =====================================================
 def get_or_fetch_stock_data(force_reload=False):
+    """Retrieves live stock data with session cache to eliminate round-trip latency."""
     if not force_reload and "df_stock_live" in st.session_state and not st.session_state.df_stock_live.empty:
         return st.session_state.df_stock_live
     try:
@@ -29,6 +30,7 @@ def get_or_fetch_stock_data(force_reload=False):
 
 
 def get_or_fetch_do_ledger(force_reload=False):
+    """Retrieves DO records with session-level caching."""
     if not force_reload and "master_data" in st.session_state and not st.session_state.master_data.empty:
         return st.session_state.master_data
     try:
@@ -48,44 +50,70 @@ def get_or_fetch_do_ledger(force_reload=False):
 # HIGH-SPEED LOCAL CONTEXT BUILDER
 # =====================================================
 def build_live_context(query: str) -> str:
-    """Pre-calculates warehouse math locally using Pandas to save API calls."""
+    """Pre-calculates warehouse analytics locally using Pandas to minimize token load and API latency."""
     df_s = get_or_fetch_stock_data()
     df_do = get_or_fetch_do_ledger()
     if df_s.empty:
-        return "System Notice: Live stock data is unreachable."
+        return "System Notice: Live inventory dataset is unreachable."
 
     query_upper = query.upper()
     context_lines = []
 
+    # 1. Look for specific SKU matches in the prompt
     sku_matches = df_s[
-        df_s['Item_Code'].astype(str).str.upper().apply(lambda x: x in query_upper) |
-        df_s['Item_Name'].astype(str).str.upper().apply(lambda x: any(word in query_upper for word in x.split() if len(word)>3))
+        df_s['Item_Code'].astype(str).str.upper().apply(lambda x: x in query_upper if x else False) |
+        df_s['Item_Name'].astype(str).str.upper().apply(lambda x: any(word in query_upper for word in str(x).split() if len(word) > 3))
     ]
     if not sku_matches.empty:
         context_lines.append("--- SPECIFIC SKU MATCHES ---")
-        for _, r in sku_matches.head(3).iterrows():
-            context_lines.append(f"SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Total Stock: {r.get('Current_Stock')} | Velocity: {r.get('Baseline_Velocity')}/day")
+        for _, r in sku_matches.head(4).iterrows():
+            context_lines.append(
+                f"SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Total Stock: {r.get('Current_Stock')} | "
+                f"Velocity: {r.get('Baseline_Velocity')}/day [SHJ: {r.get('Stock_Sharjah')}, AQ: {r.get('Stock_Al_Quoz')}, DIP: {r.get('Stock_DIP')}, AD: {r.get('Stock_Abu_Dhabi')}]"
+            )
 
-    if "REORDER" in query_upper or "TRANSFER" in query_upper or "ABU DHABI" in query_upper or "DIP" in query_upper:
-        context_lines.append("\n--- CRITICAL RUNWAY (< 7 DAYS) & TRANSFER RECS ---")
-        df_s['Numeric_Stock'] = pd.to_numeric(df_s.get('Current_Stock', 0), errors='coerce').fillna(0)
-        df_s['Numeric_Vel'] = pd.to_numeric(df_s.get('Baseline_Velocity', 0), errors='coerce').fillna(0)
-        
+    # Convert numeric fields for accurate analytics
+    df_s['Numeric_Stock'] = pd.to_numeric(df_s.get('Current_Stock', 0), errors='coerce').fillna(0)
+    df_s['Numeric_Vel'] = pd.to_numeric(df_s.get('Baseline_Velocity', 0), errors='coerce').fillna(0)
+
+    # 2. Warehouse Best Movers Analysis
+    warehouse_cols = {
+        "DIP": "Velocity_DIP",
+        "SHARJAH": "Velocity_Sharjah",
+        "AL QUOZ": "Velocity_Al_Quoz",
+        "ABU DHABI": "Velocity_Abu_Dhabi"
+    }
+    
+    for wh_name, vel_col in warehouse_cols.items():
+        if wh_name in query_upper or "MOVER" in query_upper or "BEST" in query_upper:
+            if vel_col in df_s.columns:
+                df_s[f'Num_{vel_col}'] = pd.to_numeric(df_s[vel_col], errors='coerce').fillna(0)
+                top_movers = df_s.sort_values(by=f'Num_{vel_col}', ascending=False).head(5)
+                context_lines.append(f"\n--- TOP MOVING ITEMS IN {wh_name} ---")
+                for _, r in top_movers.iterrows():
+                    context_lines.append(
+                        f"SKU {r.get('Item_Code')} ({r.get('Item_Name')}): Velocity = {r.get(f'Num_{vel_col}')} units/day | Warehouse Stock = {r.get(f'Stock_{vel_col.replace('Velocity_', '')}')}"
+                    )
+
+    # 3. Critical Runway & Transfer Logic (< 7 days)
+    if any(k in query_upper for k in ["REORDER", "TRANSFER", "RUNWAY", "DEFICIT", "STOCK OUT"]):
+        context_lines.append("\n--- CRITICAL RUNWAY (< 7 DAYS) & TRANSFER DEFICITS ---")
         urgent = df_s[(df_s['Numeric_Vel'] > 0.05) & ((df_s['Numeric_Stock'] / df_s['Numeric_Vel']) <= 7.0)]
         for _, r in urgent.head(10).iterrows():
             runway = round(r['Numeric_Stock'] / r['Numeric_Vel'], 1) if r['Numeric_Vel'] > 0 else 999
             context_lines.append(
-                f"ALERT: {r.get('Item_Code')} ({r.get('Item_Name')}) has {runway} days left. "
-                f"(Stock: {r['Numeric_Stock']}, AQ: {r.get('Stock_Al_Quoz', 0)}, AD: {r.get('Stock_Abu_Dhabi', 0)}, SHJ: {r.get('Stock_Sharjah', 0)}, DIP: {r.get('Stock_DIP', 0)})"
+                f"CRITICAL: {r.get('Item_Code')} ({r.get('Item_Name')}) -> {runway} days runway. "
+                f"[Total: {r['Numeric_Stock']}, SHJ: {r.get('Stock_Sharjah', 0)}, AQ: {r.get('Stock_Al_Quoz', 0)}, DIP: {r.get('Stock_DIP', 0)}, AD: {r.get('Stock_Abu_Dhabi', 0)}]"
             )
 
-    if "DO" in query_upper or "PENDING" in query_upper:
-        context_lines.append("\n--- PENDING DELIVERY ORDERS ---")
+    # 4. Delivery Orders Overview
+    if any(k in query_upper for k in ["DO", "PENDING", "DISPATCH", "ORDER"]):
+        context_lines.append("\n--- ACTIVE DELIVERY ORDER TELEMETRY ---")
         if not df_do.empty and "Status" in df_do.columns:
             pending = df_do[df_do['Status'].astype(str).str.upper() == 'PENDING']
-            context_lines.append(f"Total Pending Count: {len(pending)}")
-            for _, d in pending.head(5).iterrows():
-                context_lines.append(f"DO#{d.get('DO_Number')} - {d.get('Warehouse_Name')} ({d.get('Date_Issued')})")
+            context_lines.append(f"Total Pending DOs in Backlog: {len(pending)}")
+            for _, d in pending.head(6).iterrows():
+                context_lines.append(f"DO #{d.get('DO_Number')} | Facility: {d.get('Warehouse_Name')} | Date: {d.get('Date_Issued')} | Remarks: {d.get('Remarks', 'None')}")
 
     return "\n".join(context_lines)
 
@@ -93,49 +121,111 @@ def build_live_context(query: str) -> str:
 # AGENT SYSTEM INSTRUCTIONS
 # =====================================================
 SYSTEM_PROMPT = """
-You are the Chief Inventory Intelligence Officer.
-You are provided with a pre-calculated 'Local Context' block. Base your answers strictly on this block.
-If transferring stock to a branch, draft this exact ERP command format: 
-`SRTS: Move [Qty] units of SKU [SKU] from [Donor] to [Destination]`
+You are the Chief Inventory Intelligence Officer & Senior Logistics Analyst for Sabin Plastic.
+You have direct access to live inventory positions across Sharjah, Al Quoz, DIP, and Abu Dhabi facilities.
 
-Style: Crisp, analytical, use bullet points and bold text.
+Core Rules:
+1. Grounding: Answer strictly using the provided 'LOCAL CONTEXT' telemetry.
+2. Inter-Branch Stock Transfers:
+   - When suggesting stock movements to balance deficits, provide the exact Focus ERP command:
+     `SRTS: Move [Qty] units of SKU [SKU] from [Donor Warehouse] to [Destination Warehouse]`
+3. Reorders: Rank urgency based on shortest runway (Days of Coverage = Current Stock / Daily Velocity).
+4. Tone & Presentation: Crisp, corporate, structured with bold highlights, bullet points, and concise numbers.
 """
 
 # =====================================================
 # UI INJECTION & MODAL LOGIC
 # =====================================================
-@st.dialog("🤖 Intelligence Copilot", width="large")
+@st.dialog("🤖 Sabin Intelligence Copilot", width="large")
 def render_copilot_modal():
+    # Force dark glassmorphism styling, crisp sky-blue accents, and visible input text
     st.markdown("""
         <style>
-        /* Dialog Background & Headers */
-        div[data-testid="stDialog"] div[role="dialog"] { background-color: #0B0F19 !important; border: 1px solid #1E293B !important; border-radius: 16px !important; }
-        div[data-testid="stDialog"] header { background-color: #0B0F19 !important; }
-        div[data-testid="stDialog"] h2, div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] * { color: #38BDF8 !important; font-weight: 800 !important; }
+        /* Dialog Modal Surface */
+        div[data-testid="stDialog"] div[role="dialog"] { 
+            background-color: #0B0F19 !important; 
+            border: 1px solid #1E293B !important; 
+            border-radius: 16px !important; 
+        }
+        div[data-testid="stDialog"] header { 
+            background-color: #0B0F19 !important; 
+        }
+        div[data-testid="stDialog"] h2, 
+        div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] * { 
+            color: #38BDF8 !important; 
+            font-weight: 800 !important; 
+            font-size: 20px !important;
+        }
         
-        /* Quick Query Buttons */
-        div[data-testid="stDialog"] div[data-testid="stButton"] button { background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #334155 !important; font-weight: 600 !important; border-radius: 8px !important; transition: all 0.3s ease !important; }
-        div[data-testid="stDialog"] div[data-testid="stButton"] button:hover { background-color: #38BDF8 !important; color: #020617 !important; border-color: #38BDF8 !important; }
-        div[data-testid="stDialog"] div[data-testid="stButton"] button p { color: inherit !important; }
+        /* Action Buttons & Quick Filter Chips */
+        div[data-testid="stDialog"] div[data-testid="stButton"] button { 
+            background-color: #1E293B !important; 
+            color: #F8FAFC !important; 
+            border: 1px solid #334155 !important; 
+            font-weight: 600 !important; 
+            border-radius: 8px !important; 
+            transition: all 0.25s ease !important; 
+        }
+        div[data-testid="stDialog"] div[data-testid="stButton"] button:hover { 
+            background-color: #0EA5E9 !important; 
+            color: #020617 !important; 
+            border-color: #38BDF8 !important; 
+        }
+        div[data-testid="stDialog"] div[data-testid="stButton"] button p { 
+            color: inherit !important; 
+        }
         
         /* Chat History Bubbles */
-        div[data-testid="stChatMessage"] { background-color: #111827 !important; border: 1px solid #1E293B !important; border-radius: 12px !important; margin-bottom: 12px !important; padding: 14px !important; }
-        div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] span { color: #F8FAFC !important; font-size: 14px !important; line-height: 1.6 !important; }
-        div[data-testid="stChatMessage"] strong { color: #38BDF8 !important; }
+        div[data-testid="stChatMessage"] { 
+            background-color: #111827 !important; 
+            border: 1px solid #1E293B !important; 
+            border-radius: 12px !important; 
+            margin-bottom: 12px !important; 
+            padding: 14px !important; 
+        }
+        div[data-testid="stChatMessage"] p, 
+        div[data-testid="stChatMessage"] li, 
+        div[data-testid="stChatMessage"] span { 
+            color: #F8FAFC !important; 
+            font-size: 14px !important; 
+            line-height: 1.6 !important; 
+        }
+        div[data-testid="stChatMessage"] strong { 
+            color: #38BDF8 !important; 
+        }
+        div[data-testid="stChatMessage"] code { 
+            color: #38BDF8 !important; 
+            background-color: #020617 !important; 
+            border: 1px solid #1E293B !important; 
+        }
         
-        /* Chat Input Field (Fixed White-on-White Issue) */
-        div[data-testid="stChatInput"] { background-color: #0F172A !important; border: 1px solid #334155 !important; border-radius: 12px !important; }
-        div[data-testid="stChatInput"] textarea { color: #FFFFFF !important; -webkit-text-fill-color: #FFFFFF !important; background-color: transparent !important; caret-color: #38BDF8 !important; }
-        div[data-testid="stChatInput"] textarea::placeholder { color: #64748B !important; -webkit-text-fill-color: #64748B !important; }
-        div[data-testid="stChatInput"] button { color: #38BDF8 !important; }
+        /* High-Contrast Chat Input */
+        div[data-testid="stChatInput"] { 
+            background-color: #0F172A !important; 
+            border: 1px solid #334155 !important; 
+            border-radius: 12px !important; 
+        }
+        div[data-testid="stChatInput"] textarea { 
+            color: #FFFFFF !important; 
+            -webkit-text-fill-color: #FFFFFF !important; 
+            background-color: transparent !important; 
+            caret-color: #38BDF8 !important; 
+        }
+        div[data-testid="stChatInput"] textarea::placeholder { 
+            color: #64748B !important; 
+            -webkit-text-fill-color: #64748B !important; 
+        }
+        div[data-testid="stChatInput"] button { 
+            color: #38BDF8 !important; 
+        }
         </style>
     """, unsafe_allow_html=True)
 
     col_hdr, col_clear = st.columns([3, 1])
     with col_hdr:
-        st.caption("⚡ Groq Engine: Ultra-Fast Data Processing")
+        st.caption("⚡ Direct Engine: Active Inventory, Demand Velocities & Dispatch Queues")
     with col_clear:
-        if st.button("🗑️ Reset & Sync", use_container_width=True):
+        if st.button("🗑️ Reset & Sync", use_container_width=True, help="Clear history and reload latest Google Sheets records"):
             st.session_state.copilot_history = []
             get_or_fetch_stock_data(force_reload=True)
             get_or_fetch_do_ledger(force_reload=True)
@@ -143,12 +233,17 @@ def render_copilot_modal():
 
     c1, c2, c3 = st.columns(3)
     quick_query = None
-    if c1.button("🚨 Reorder in 1 Week", use_container_width=True): quick_query = "Which items do we need to reorder within 1 week?"
-    if c2.button("📦 Pending DO Status", use_container_width=True): quick_query = "Summarize our current pending Delivery Orders."
-    if c3.button("🔄 DIP Best Movers", use_container_width=True): quick_query = "Which is the best moving item in DIP warehouse?"
+    if c1.button("🚨 Reorder in 1 Week", use_container_width=True): 
+        quick_query = "Which items do we need to reorder within 1 week based on current burn rate?"
+    if c2.button("📦 Pending DO Status", use_container_width=True): 
+        quick_query = "Summarize our current pending Delivery Orders and backlog."
+    if c3.button("🔄 DIP Best Movers", use_container_width=True): 
+        quick_query = "Which are the best moving items in the DIP warehouse?"
 
-    if "copilot_history" not in st.session_state: st.session_state.copilot_history = []
+    if "copilot_history" not in st.session_state: 
+        st.session_state.copilot_history = []
 
+    # Display Conversation History
     for msg in st.session_state.copilot_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -164,83 +259,81 @@ def render_copilot_modal():
         try:
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
             
-            with st.spinner("Extracting local telemetry..."):
+            with st.spinner("Analyzing warehouse telemetry..."):
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # 100% Bulletproof Dynamic Model Selection
-                active_models = [m.id for m in client.models.list().data]
-                target_model = None
-                
-                # Try preferred models first
-                for preferred in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
-                    if preferred in active_models:
-                        target_model = preferred
+                # Resilient Chat Completion with Auto-Fallback across production endpoints
+                target_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+                answer = None
+                last_error = None
+
+                for model_candidate in target_models:
+                    try:
+                        chat_completion = client.chat.completions.create(
+                            messages=[
+                                {"role": "system", "content": SYSTEM_PROMPT},
+                                {"role": "user", "content": final_prompt}
+                            ],
+                            model=model_candidate,
+                            temperature=0.1,
+                            max_tokens=1024
+                        )
+                        answer = chat_completion.choices[0].message.content
                         break
-                
-                # Ultimate Fail-Safe: If preferred are offline, pick the very first Llama model running on Groq's servers
-                if not target_model:
-                    llama_models = [m for m in active_models if "llama" in m.lower()]
-                    target_model = llama_models[0] if llama_models else active_models[0]
-                
-                chat_completion = client.chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": final_prompt}
-                    ],
-                    model=target_model,
-                    temperature=0.1,
-                )
-                
-                answer = chat_completion.choices[0].message.content
+                    except Exception as err:
+                        last_error = err
+                        continue
+
+                if not answer:
+                    raise last_error
 
         except Exception as err:
-            answer = f"⚠️ **System Error:** {err}"
+            answer = f"⚠️ **System Notice:** {err}"
 
         st.session_state.copilot_history.append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
             st.markdown(answer)
-            st.rerun()
 
 
 def inject_floating_copilot():
-    # Premium Expressive Corporate UI with Glassmorphism
+    """Renders an elevated glassmorphism Copilot button above the Streamlit footer."""
     st.markdown("""
         <style>
         .st-key-floating_copilot_btn { 
             position: fixed !important; 
-            bottom: 85px !important; /* Elevated above the Manage App logo */
+            bottom: 85px !important; 
             right: 30px !important; 
-            z-index: 2147483647 !important; /* Maximum z-index */
+            z-index: 2147483647 !important; 
             width: auto !important; 
         }
         .st-key-floating_copilot_btn > button { 
-            background: rgba(15, 23, 42, 0.85) !important; 
+            background: rgba(15, 23, 42, 0.90) !important; 
             backdrop-filter: blur(12px) !important;
             -webkit-backdrop-filter: blur(12px) !important;
             color: #E0F2FE !important; 
             font-family: 'Inter', sans-serif !important;
-            font-size: 15px !important; 
-            font-weight: 600 !important; 
+            font-size: 14px !important; 
+            font-weight: 700 !important; 
             letter-spacing: 0.5px !important;
             border-radius: 50px !important; 
-            padding: 14px 28px !important; 
+            padding: 12px 26px !important; 
             border: 1px solid rgba(56, 189, 248, 0.4) !important; 
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2), inset 0 0 20px rgba(56, 189, 248, 0.1) !important; 
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
-            animation: premiumPulse 3.5s infinite alternate !important;
+            box-shadow: 0 0 18px rgba(56, 189, 248, 0.25), inset 0 0 20px rgba(56, 189, 248, 0.1) !important; 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
+            animation: copilotGlow 3s infinite alternate !important;
         }
         .st-key-floating_copilot_btn > button:hover { 
-            transform: translateY(-6px) scale(1.04) !important; 
+            transform: translateY(-5px) scale(1.05) !important; 
             background: rgba(15, 23, 42, 0.98) !important; 
             border: 1px solid rgba(56, 189, 248, 0.9) !important;
-            box-shadow: 0 12px 30px rgba(56, 189, 248, 0.4), 0 0 20px rgba(56, 189, 248, 0.3) !important; 
+            box-shadow: 0 12px 32px rgba(56, 189, 248, 0.45), 0 0 22px rgba(56, 189, 248, 0.35) !important; 
             color: #FFFFFF !important; 
         }
         
-        @keyframes premiumPulse {
+        @keyframes copilotGlow {
             0% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.2), inset 0 0 20px rgba(56, 189, 248, 0.1); }
-            100% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.5), inset 0 0 25px rgba(56, 189, 248, 0.2); }
+            100% { box-shadow: 0 0 26px rgba(56, 189, 248, 0.5), inset 0 0 24px rgba(56, 189, 248, 0.2); }
         }
         </style>
     """, unsafe_allow_html=True)
