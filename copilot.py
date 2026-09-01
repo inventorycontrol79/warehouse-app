@@ -155,22 +155,32 @@ def render_copilot_modal():
             st.markdown(query_to_process)
 
         try:
-            # Initialize Groq Client
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
             
             with st.spinner("Extracting local telemetry..."):
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Single, fast API call to Llama 3.3 70B
-                chat_completion = client.chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": final_prompt}
-                    ],
-                    model="llama-3.3-70b-versatile",
-                    temperature=0.1,
-                )
+                # Active supported Groq model
+                try:
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": final_prompt}
+                        ],
+                        model="llama-3.1-70b-versatile",
+                        temperature=0.1,
+                    )
+                except Exception:
+                    # Instant fallback to 8b if 70b is rate-saturated
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": final_prompt}
+                        ],
+                        model="llama-3.1-8b-instant",
+                        temperature=0.1,
+                    )
                 
                 answer = chat_completion.choices[0].message.content
 
