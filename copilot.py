@@ -9,7 +9,6 @@ from groq import Groq
 # FAST CLOUD CACHE & INGESTION ENGINE
 # =====================================================
 def get_or_fetch_stock_data(force_reload=False):
-    """Retrieves live stock data with session cache to eliminate round-trip latency."""
     if not force_reload and "df_stock_live" in st.session_state and not st.session_state.df_stock_live.empty:
         return st.session_state.df_stock_live
     try:
@@ -30,7 +29,6 @@ def get_or_fetch_stock_data(force_reload=False):
 
 
 def get_or_fetch_do_ledger(force_reload=False):
-    """Retrieves DO records with session-level caching."""
     if not force_reload and "master_data" in st.session_state and not st.session_state.master_data.empty:
         return st.session_state.master_data
     try:
@@ -50,7 +48,6 @@ def get_or_fetch_do_ledger(force_reload=False):
 # HIGH-SPEED LOCAL CONTEXT BUILDER
 # =====================================================
 def build_live_context(query: str) -> str:
-    """Pre-calculates warehouse analytics locally using Pandas to minimize token load and API latency."""
     df_s = get_or_fetch_stock_data()
     df_do = get_or_fetch_do_ledger()
     if df_s.empty:
@@ -116,16 +113,12 @@ def build_live_context(query: str) -> str:
 # AGENT SYSTEM INSTRUCTIONS
 # =====================================================
 SYSTEM_PROMPT = """
-You are the Chief Inventory Intelligence Officer & Senior Logistics Analyst for Sabin Plastic.
-You have direct access to live inventory positions across Sharjah, Al Quoz, DIP, and Abu Dhabi facilities.
+You are the Chief Inventory Intelligence Officer.
+You are provided with a pre-calculated 'Local Context' block. Base your answers strictly on this block.
+If transferring stock to a branch, draft this exact ERP command format: 
+`SRTS: Move [Qty] units of SKU [SKU] from [Donor] to [Destination]`
 
-Core Rules:
-1. Grounding: Answer strictly using the provided 'LOCAL CONTEXT' telemetry.
-2. Inter-Branch Stock Transfers:
-   - When suggesting stock movements to balance deficits, provide the exact Focus ERP command:
-     `SRTS: Move [Qty] units of SKU [SKU] from [Donor Warehouse] to [Destination Warehouse]`
-3. Reorders: Rank urgency based on shortest runway (Days of Coverage = Current Stock / Daily Velocity).
-4. Tone & Presentation: Crisp, corporate, structured with bold highlights, bullet points, and concise numbers.
+Style: Crisp, analytical, use bullet points and bold text.
 """
 
 # =====================================================
@@ -135,59 +128,65 @@ Core Rules:
 def render_copilot_modal():
     st.markdown("""
         <style>
-        /* 1. Hide the native Streamlit dialog close (X) button to prevent state desync */
+        /* 1. Hide the native Streamlit dialog close (X) button */
         div[data-testid="stDialog"] button[aria-label="Close"] {
             display: none !important;
         }
         
-        /* 2. Glassmorphism Modal Surface */
-        div[data-testid="stDialog"] div[role="dialog"] { 
-            background-color: #0B0F19 !important; 
-            border: 1px solid #38BDF8 !important; 
+        /* 2. THE FIX: Force Entire Modal to Midnight Slate (Overrides White Background) */
+        div[data-testid="stDialog"] > div[role="dialog"],
+        div[data-testid="stModal"] > div[role="dialog"] { 
+            background: linear-gradient(145deg, #0F172A 0%, #020617 100%) !important; 
+            background-color: #0F172A !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important; 
             border-radius: 16px !important; 
-            box-shadow: 0 10px 40px rgba(56, 189, 248, 0.15) !important;
-            overflow: hidden !important;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.1) !important;
+        }
+        
+        /* Ensure inner layers don't block the dark background */
+        div[data-testid="stDialog"] [data-testid="stVerticalBlock"] {
+            background: transparent !important;
         }
         
         /* EXECUTIVE HEADER BAR */
         div[data-testid="stDialog"] header {
-            background: linear-gradient(
-                135deg,
-                #020617 0%,
-                #0F172A 40%,
-                #111827 100%
-            ) !important;
-            border-bottom: 1px solid rgba(56,189,248,0.25) !important;
-            min-height: 70px !important;
+            background: transparent !important;
+            border-bottom: 1px solid rgba(56,189,248,0.2) !important;
+            min-height: 50px !important;
+            margin-bottom: 15px !important;
         }
         
-        /* TITLE */
+        /* TITLE - Premium Sans-Serif Font */
         div[data-testid="stDialog"] h2 {
+            font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', sans-serif !important;
             color: #FFFFFF !important;
             font-size: 26px !important;
-            font-weight: 900 !important;
-            letter-spacing: 0.5px !important;
+            font-weight: 800 !important;
+            letter-spacing: 1px !important;
+            text-transform: uppercase !important;
             text-shadow:
-                0 0 15px rgba(56,189,248,0.5),
-                0 0 30px rgba(56,189,248,0.2) !important;
+                0 0 15px rgba(56,189,248,0.6),
+                0 0 30px rgba(56,189,248,0.3) !important;
         }
         
         /* AI ICON GLOW */
         div[data-testid="stDialog"] h2::before {
             content: "✦ ";
             color: #38BDF8;
+            text-shadow: 0 0 20px #38BDF8 !important;
         }
         
-        /* 3. Bulletproof Chat Input Text Color (Fixes White-on-White) */
+        /* 3. Chat Input Container Styling */
         div[data-testid="stChatInput"], 
         div[data-testid="stChatInput"] > div,
         div[data-testid="stChatInput"] div[data-baseweb="textarea"] { 
-            background-color: #0F172A !important; 
+            background-color: #111827 !important; 
+            border-color: rgba(56, 189, 248, 0.2) !important;
         }
         div[data-testid="stChatInput"] textarea { 
             color: #FFFFFF !important; 
             -webkit-text-fill-color: #FFFFFF !important; 
-            background-color: #0F172A !important; 
+            background-color: transparent !important; 
             caret-color: #38BDF8 !important; 
         }
         div[data-testid="stChatInput"] textarea::placeholder { 
@@ -273,7 +272,6 @@ def render_copilot_modal():
     if "copilot_history" not in st.session_state: 
         st.session_state.copilot_history = []
 
-    # Display Conversation History
     for msg in st.session_state.copilot_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -309,7 +307,6 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Fetch EXACT list of active models directly from Groq to prevent 404s
                 live_models = client.models.list().data
                 valid_model_ids = [m.id for m in live_models if "whisper" not in m.id.lower() and "guard" not in m.id.lower()]
                 
@@ -345,13 +342,9 @@ def render_copilot_modal():
 
 
 def inject_floating_copilot():
-    """Renders the AI Copilot button and manages its open/closed state safely."""
-    
-    # Initialize state
     if "copilot_open" not in st.session_state:
         st.session_state.copilot_open = False
 
-    # Premium Palantir/Bloomberg Style Floating Button
     st.markdown("""
         <style>
         .st-key-floating_copilot_btn {
@@ -414,11 +407,9 @@ def inject_floating_copilot():
         </style>
     """, unsafe_allow_html=True)
 
-    # When clicked, update state and trigger a rerun
     if st.button("✨ Ask Copilot", key="floating_copilot_btn"):
         st.session_state.copilot_open = True
         st.rerun()
 
-    # The dialog is exclusively driven by state. It will survive background auto-refreshes.
     if st.session_state.copilot_open:
         render_copilot_modal()
