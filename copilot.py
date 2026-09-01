@@ -138,7 +138,6 @@ Core Rules:
 # =====================================================
 @st.dialog("🤖 Sabin Intelligence Copilot", width="large")
 def render_copilot_modal():
-    # Force dark glassmorphism styling, crisp sky-blue accents, and visible input text
     st.markdown("""
         <style>
         /* Dialog Modal Surface */
@@ -263,33 +262,39 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Resilient Chat Completion with Auto-Fallback across production endpoints
-                target_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
-                answer = None
-                last_error = None
+                # Fetch EXACT list of models currently online and assigned to your key
+                live_models = client.models.list().data
+                
+                # Filter out audio/whisper/guardrail models to get pure text LLMs
+                valid_model_ids = [m.id for m in live_models if "whisper" not in m.id.lower() and "guard" not in m.id.lower()]
+                
+                if not valid_model_ids:
+                    raise ValueError("No active text models found for this Groq API Key.")
 
-                for model_candidate in target_models:
-                    try:
-                        chat_completion = client.chat.completions.create(
-                            messages=[
-                                {"role": "system", "content": SYSTEM_PROMPT},
-                                {"role": "user", "content": final_prompt}
-                            ],
-                            model=model_candidate,
-                            temperature=0.1,
-                            max_tokens=1024
-                        )
-                        answer = chat_completion.choices[0].message.content
+                # Pick the best model from the actual live list
+                target_model = valid_model_ids[0] # Default to whatever is online
+                for pref in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
+                    if pref in valid_model_ids:
+                        target_model = pref
                         break
-                    except Exception as err:
-                        last_error = err
-                        continue
 
-                if not answer:
-                    raise last_error
+                # Execute exactly ONE call to expose the true error (like Rate Limits) if it fails
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": final_prompt}
+                    ],
+                    model=target_model,
+                    temperature=0.1,
+                    max_tokens=1024
+                )
+                answer = chat_completion.choices[0].message.content
 
         except Exception as err:
-            answer = f"⚠️ **System Notice:** {err}"
+            if "429" in str(err):
+                answer = "⏳ **API Rate Limit Notice:** You've reached your free Groq limit. Please wait 10-30 seconds before asking another question."
+            else:
+                answer = f"⚠️ **System Notice:** {err}"
 
         st.session_state.copilot_history.append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
