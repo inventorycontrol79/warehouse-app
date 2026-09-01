@@ -131,7 +131,7 @@ Core Rules:
 # =====================================================
 # UI INJECTION & STATE-MANAGED MODAL LOGIC
 # =====================================================
-@st.dialog("🤖 Sabin Intelligence Copilot", width="large")
+@st.dialog("Sabin Intelligence Copilot", width="large")
 def render_copilot_modal():
     st.markdown("""
         <style>
@@ -139,51 +139,43 @@ def render_copilot_modal():
         div[data-testid="stDialog"] button[aria-label="Close"] {
             display: none !important;
         }
-
-        /* 2. Glassmorphism Modal Surface — force Streamlit's own theme variables
-           so every child component (headings, captions, markdown) that reads
-           var(--text-color)/var(--background-color) internally inherits the
-           correct dark-mode values regardless of Streamlit version/DOM changes. */
-        div[role="dialog"] {
-            --text-color: #F8FAFC;
-            --background-color: #0B0F19;
-            --secondary-background-color: #1E293B;
-            background-color: #0B0F19 !important;
-            color: #F8FAFC !important;
+        
+        /* 2. Glassmorphism Modal Surface */
+        div[data-testid="stDialog"] div[role="dialog"] { 
+            background-color: #0B0F19 !important; 
             border: 1px solid #38BDF8 !important; 
             border-radius: 16px !important; 
             box-shadow: 0 10px 40px rgba(56, 189, 248, 0.15) !important;
+            overflow: hidden !important;
         }
-
-        /* SAFETY NET: force every text node inside the dialog to a readable
-           light color, so nothing can silently fall back to white-on-white. */
-        div[role="dialog"] * {
-            color: #F8FAFC !important;
+        
+        /* EXECUTIVE HEADER BAR */
+        div[data-testid="stDialog"] header {
+            background: linear-gradient(
+                135deg,
+                #020617 0%,
+                #0F172A 40%,
+                #111827 100%
+            ) !important;
+            border-bottom: 1px solid rgba(56,189,248,0.25) !important;
+            min-height: 70px !important;
         }
-
-        /* 2b. Header strip — MUST stay dark. Leaving this transparent lets the
-           white page behind the dialog show through and makes the title
-           unreadable, so it is pinned to the same navy as the modal surface. */
-        div[data-testid="stDialog"] header,
-        div[role="dialog"] > div:first-child { 
-            background-color: #0B0F19 !important; 
+        
+        /* TITLE */
+        div[data-testid="stDialog"] h2 {
+            color: #FFFFFF !important;
+            font-size: 26px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.5px !important;
+            text-shadow:
+                0 0 15px rgba(56,189,248,0.5),
+                0 0 30px rgba(56,189,248,0.2) !important;
         }
-
-        /* Modal Title — multiple fallback selectors across Streamlit versions */
-        div[data-testid="stDialog"] h2, 
-        div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] *,
-        div[role="dialog"] h2,
-        div[role="dialog"] [data-testid="stMarkdownContainer"] h2 { 
-            color: #38BDF8 !important; 
-            font-weight: 800 !important; 
-            font-size: 22px !important;
-        }
-
-        /* Caption row */
-        div[role="dialog"] [data-testid="stCaptionContainer"],
-        div[role="dialog"] [data-testid="stCaptionContainer"] * {
-            color: #94A3B8 !important;
-            font-weight: 500 !important;
+        
+        /* AI ICON GLOW */
+        div[data-testid="stDialog"] h2::before {
+            content: "✦ ";
+            color: #38BDF8;
         }
         
         /* 3. Bulletproof Chat Input Text Color (Fixes White-on-White) */
@@ -192,15 +184,13 @@ def render_copilot_modal():
         div[data-testid="stChatInput"] div[data-baseweb="textarea"] { 
             background-color: #0F172A !important; 
         }
-        div[data-testid="stChatInput"] textarea,
-        div[data-testid="stChatInput"] [contenteditable="true"] { 
+        div[data-testid="stChatInput"] textarea { 
             color: #FFFFFF !important; 
             -webkit-text-fill-color: #FFFFFF !important; 
             background-color: #0F172A !important; 
             caret-color: #38BDF8 !important; 
         }
-        div[data-testid="stChatInput"] textarea::placeholder,
-        div[data-testid="stChatInput"] [contenteditable="true"]:empty::before { 
+        div[data-testid="stChatInput"] textarea::placeholder { 
             color: #94A3B8 !important; 
             -webkit-text-fill-color: #94A3B8 !important; 
         }
@@ -257,11 +247,9 @@ def render_copilot_modal():
     """, unsafe_allow_html=True)
 
     # Custom Header Control Bar
-    col_title, col_reset, col_close = st.columns([4, 2, 2])
-    with col_title:
-        st.caption("⚡ Groq Engine: Ultra-Fast Data Processing")
+    col_reset, col_close = st.columns([8, 2])
     with col_reset:
-        if st.button("🗑️ Reset", use_container_width=True):
+        if st.button("🗑️ Reset Engine & Sync Database", use_container_width=True):
             st.session_state.copilot_history = []
             get_or_fetch_stock_data(force_reload=True)
             get_or_fetch_do_ledger(force_reload=True)
@@ -289,6 +277,22 @@ def render_copilot_modal():
     for msg in st.session_state.copilot_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
+
+    # Executive Badge injected right above the input
+    st.markdown("""
+    <div style="
+    background: linear-gradient(90deg,#0F172A,#1E293B);
+    padding:12px 18px;
+    border-radius:12px;
+    border:1px solid rgba(56,189,248,0.25);
+    margin-bottom:12px;
+    font-size:14px;
+    font-weight:600;
+    color:#38BDF8;
+    ">
+    ⚡ AI Inventory Intelligence • Real-Time Warehouse Analytics • Powered by Groq
+    </div>
+    """, unsafe_allow_html=True)
 
     user_input = st.chat_input("Ask about stock levels, reorders, DO status, or branch transfers...")
     query_to_process = quick_query if quick_query else user_input
@@ -347,37 +351,65 @@ def inject_floating_copilot():
     if "copilot_open" not in st.session_state:
         st.session_state.copilot_open = False
 
-    # Premium Expressive Corporate UI with Glassmorphism
+    # Premium Palantir/Bloomberg Style Floating Button
     st.markdown("""
         <style>
-        .st-key-floating_copilot_btn { 
-            position: fixed !important; 
-            bottom: 100px !important; /* Elevated safely above the Manage App logo */
-            right: 30px !important; 
-            z-index: 2147483647 !important; 
+        .st-key-floating_copilot_btn {
+            position: fixed !important;
+            bottom: 95px !important;
+            right: 30px !important;
+            z-index: 2147483647 !important;
         }
-        .st-key-floating_copilot_btn > button { 
-            background: linear-gradient(135deg, #0EA5E9 0%, #3B82F6 100%) !important;
-            color: #FFFFFF !important; 
-            font-family: 'Inter', sans-serif !important;
-            font-size: 16px !important; 
-            font-weight: 800 !important; 
-            border-radius: 50px !important; 
-            padding: 16px 32px !important; 
-            border: 2px solid rgba(255, 255, 255, 0.2) !important; 
-            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.3) !important; 
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important; 
-            animation: premiumPulse 2.5s infinite alternate !important;
+
+        .st-key-floating_copilot_btn > button {
+            background: linear-gradient(
+                135deg,
+                #0EA5E9 0%,
+                #2563EB 45%,
+                #4F46E5 100%
+            ) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 60px !important;
+            font-size: 17px !important;
+            font-weight: 800 !important;
+            padding: 18px 34px !important;
+            box-shadow: 
+                0 12px 30px rgba(37,99,235,0.35),
+                0 0 25px rgba(56,189,248,0.25) !important;
+            transition: all 0.35s ease !important;
+            position: relative !important;
+            overflow: hidden !important;
         }
-        .st-key-floating_copilot_btn > button:hover { 
-            transform: translateY(-8px) scale(1.05) !important; 
-            box-shadow: 0 15px 40px rgba(14, 165, 233, 0.6), inset 0 2px 5px rgba(255, 255, 255, 0.4) !important; 
-            border-color: rgba(255, 255, 255, 0.5) !important;
+
+        /* Premium Light Sweep */
+        .st-key-floating_copilot_btn > button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -120%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255,255,255,0.4),
+                transparent
+            );
+            transform: skewX(-20deg);
+            animation: sweep 4s infinite;
         }
-        
-        @keyframes premiumPulse {
-            0% { filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.4)); }
-            100% { filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.8)); }
+
+        @keyframes sweep {
+            0% { left: -120%; }
+            100% { left: 140%; }
+        }
+
+        .st-key-floating_copilot_btn > button:hover {
+            transform: translateY(-5px) scale(1.04) !important;
+            box-shadow: 
+                0 18px 40px rgba(37,99,235,0.45),
+                0 0 40px rgba(56,189,248,0.4) !important;
         }
         </style>
     """, unsafe_allow_html=True)
