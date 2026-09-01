@@ -57,7 +57,6 @@ def build_live_context(query: str) -> str:
     query_upper = query.upper()
     context_lines = []
 
-    # 1. Look for specific SKU matches in the prompt
     sku_matches = df_s[
         df_s['Item_Code'].astype(str).str.upper().apply(lambda x: x in query_upper) |
         df_s['Item_Name'].astype(str).str.upper().apply(lambda x: any(word in query_upper for word in x.split() if len(word)>3))
@@ -67,21 +66,19 @@ def build_live_context(query: str) -> str:
         for _, r in sku_matches.head(3).iterrows():
             context_lines.append(f"SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Total Stock: {r.get('Current_Stock')} | Velocity: {r.get('Baseline_Velocity')}/day")
 
-    # 2. Reorder / Deficit logic (Runway <= 7 days)
-    if "REORDER" in query_upper or "TRANSFER" in query_upper or "ABU DHABI" in query_upper:
+    if "REORDER" in query_upper or "TRANSFER" in query_upper or "ABU DHABI" in query_upper or "DIP" in query_upper:
         context_lines.append("\n--- CRITICAL RUNWAY (< 7 DAYS) & TRANSFER RECS ---")
         df_s['Numeric_Stock'] = pd.to_numeric(df_s.get('Current_Stock', 0), errors='coerce').fillna(0)
         df_s['Numeric_Vel'] = pd.to_numeric(df_s.get('Baseline_Velocity', 0), errors='coerce').fillna(0)
         
         urgent = df_s[(df_s['Numeric_Vel'] > 0.05) & ((df_s['Numeric_Stock'] / df_s['Numeric_Vel']) <= 7.0)]
         for _, r in urgent.head(10).iterrows():
-            runway = round(r['Numeric_Stock'] / r['Numeric_Vel'], 1)
+            runway = round(r['Numeric_Stock'] / r['Numeric_Vel'], 1) if r['Numeric_Vel'] > 0 else 999
             context_lines.append(
                 f"ALERT: {r.get('Item_Code')} ({r.get('Item_Name')}) has {runway} days left. "
-                f"(Stock: {r['Numeric_Stock']}, AQ: {r.get('Stock_Al_Quoz', 0)}, AD: {r.get('Stock_Abu_Dhabi', 0)}, SHJ: {r.get('Stock_Sharjah', 0)})"
+                f"(Stock: {r['Numeric_Stock']}, AQ: {r.get('Stock_Al_Quoz', 0)}, AD: {r.get('Stock_Abu_Dhabi', 0)}, SHJ: {r.get('Stock_Sharjah', 0)}, DIP: {r.get('Stock_DIP', 0)})"
             )
 
-    # 3. DO Ledger summary
     if "DO" in query_upper or "PENDING" in query_upper:
         context_lines.append("\n--- PENDING DELIVERY ORDERS ---")
         if not df_do.empty and "Status" in df_do.columns:
@@ -96,9 +93,9 @@ def build_live_context(query: str) -> str:
 # AGENT SYSTEM INSTRUCTIONS
 # =====================================================
 SYSTEM_PROMPT = """
-You are the Chief Inventory Intelligence Officer for Sabin Plastic.
+You are the Chief Inventory Intelligence Officer.
 You are provided with a pre-calculated 'Local Context' block. Base your answers strictly on this block.
-If transferring stock to Abu Dhabi or elsewhere, draft this exact ERP command format: 
+If transferring stock to a branch, draft this exact ERP command format: 
 `SRTS: Move [Qty] units of SKU [SKU] from [Donor] to [Destination]`
 
 Style: Crisp, analytical, use bullet points and bold text.
@@ -107,20 +104,30 @@ Style: Crisp, analytical, use bullet points and bold text.
 # =====================================================
 # UI INJECTION & MODAL LOGIC
 # =====================================================
-@st.dialog("🤖 Sabin Intelligence Copilot", width="large")
+@st.dialog("🤖 Intelligence Copilot", width="large")
 def render_copilot_modal():
     st.markdown("""
         <style>
-        div[data-testid="stDialog"] div[role="dialog"] { background-color: #0B0F19 !important; border: 1px solid #1E293B !important; border-radius: 12px !important; }
+        /* Dialog Background & Headers */
+        div[data-testid="stDialog"] div[role="dialog"] { background-color: #0B0F19 !important; border: 1px solid #1E293B !important; border-radius: 16px !important; }
+        div[data-testid="stDialog"] header { background-color: #0B0F19 !important; }
         div[data-testid="stDialog"] h2, div[data-testid="stDialog"] [data-testid="stHeadingWithActionElements"] * { color: #38BDF8 !important; font-weight: 800 !important; }
-        div[data-testid="stDialog"] div[data-testid="stButton"] button { background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #334155 !important; font-weight: 600 !important; border-radius: 8px !important; }
-        div[data-testid="stDialog"] div[data-testid="stButton"] button:hover { background-color: #0EA5E9 !important; color: #0B0F19 !important; }
+        
+        /* Quick Query Buttons */
+        div[data-testid="stDialog"] div[data-testid="stButton"] button { background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #334155 !important; font-weight: 600 !important; border-radius: 8px !important; transition: all 0.3s ease !important; }
+        div[data-testid="stDialog"] div[data-testid="stButton"] button:hover { background-color: #38BDF8 !important; color: #020617 !important; border-color: #38BDF8 !important; }
         div[data-testid="stDialog"] div[data-testid="stButton"] button p { color: inherit !important; }
-        div[data-testid="stChatMessage"] { background-color: #111827 !important; border: 1px solid #1E293B !important; border-radius: 8px !important; margin-bottom: 12px !important; padding: 12px !important; }
+        
+        /* Chat History Bubbles */
+        div[data-testid="stChatMessage"] { background-color: #111827 !important; border: 1px solid #1E293B !important; border-radius: 12px !important; margin-bottom: 12px !important; padding: 14px !important; }
         div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] span { color: #F8FAFC !important; font-size: 14px !important; line-height: 1.6 !important; }
         div[data-testid="stChatMessage"] strong { color: #38BDF8 !important; }
-        div[data-testid="stChatInput"] { background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 8px !important; }
-        div[data-testid="stChatInput"] textarea { color: #F8FAFC !important; }
+        
+        /* Chat Input Field (Fixed White-on-White Issue) */
+        div[data-testid="stChatInput"] { background-color: #0F172A !important; border: 1px solid #334155 !important; border-radius: 12px !important; }
+        div[data-testid="stChatInput"] textarea { color: #FFFFFF !important; -webkit-text-fill-color: #FFFFFF !important; background-color: transparent !important; caret-color: #38BDF8 !important; }
+        div[data-testid="stChatInput"] textarea::placeholder { color: #64748B !important; -webkit-text-fill-color: #64748B !important; }
+        div[data-testid="stChatInput"] button { color: #38BDF8 !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -138,7 +145,7 @@ def render_copilot_modal():
     quick_query = None
     if c1.button("🚨 Reorder in 1 Week", use_container_width=True): quick_query = "Which items do we need to reorder within 1 week?"
     if c2.button("📦 Pending DO Status", use_container_width=True): quick_query = "Summarize our current pending Delivery Orders."
-    if c3.button("🔄 Abu Dhabi Transfers", use_container_width=True): quick_query = "Which items do I need to transfer to Abu Dhabi?"
+    if c3.button("🔄 DIP Best Movers", use_container_width=True): quick_query = "Which is the best moving item in DIP warehouse?"
 
     if "copilot_history" not in st.session_state: st.session_state.copilot_history = []
 
@@ -161,34 +168,27 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Active supported Groq model
-                try:
-                    chat_completion = client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": final_prompt}
-                        ],
-                        model="llama-3.1-70b-versatile",
-                        temperature=0.1,
-                    )
-                except Exception:
-                    # Instant fallback to 8b if 70b is rate-saturated
-                    chat_completion = client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": final_prompt}
-                        ],
-                        model="llama-3.1-8b-instant",
-                        temperature=0.1,
-                    )
+                # Dynamic Model Discovery to prevent 404s forever
+                active_models = [m.id for m in client.models.list().data]
+                target_model = "llama3-8b-8192" # The absolute legacy fail-safe
+                for preferred in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"]:
+                    if preferred in active_models:
+                        target_model = preferred
+                        break
+                
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": final_prompt}
+                    ],
+                    model=target_model,
+                    temperature=0.1,
+                )
                 
                 answer = chat_completion.choices[0].message.content
 
         except Exception as err:
-            if "429" in str(err):
-                answer = "⏳ **API Quota Exceeded:** Please wait a moment before issuing another command."
-            else:
-                answer = f"⚠️ **System Error:** {err}"
+            answer = f"⚠️ **System Error:** {err}"
 
         st.session_state.copilot_history.append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
@@ -197,13 +197,46 @@ def render_copilot_modal():
 
 
 def inject_floating_copilot():
+    # Premium Expressive Corporate UI with Glassmorphism
     st.markdown("""
         <style>
-        .st-key-floating_copilot_btn { position: fixed !important; bottom: 25px !important; right: 30px !important; z-index: 999999 !important; width: auto !important; }
-        .st-key-floating_copilot_btn > button { background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 50%, #4F46E5 100%) !important; color: #FFFFFF !important; font-weight: 700 !important; border-radius: 50px !important; padding: 10px 24px !important; box-shadow: 0 8px 30px rgba(14, 165, 233, 0.5) !important; transition: all 0.3s ease !important; }
-        .st-key-floating_copilot_btn > button:hover { transform: scale(1.05) !important; }
+        .st-key-floating_copilot_btn { 
+            position: fixed !important; 
+            bottom: 85px !important; /* Elevated above the Manage App logo */
+            right: 30px !important; 
+            z-index: 2147483647 !important; /* Maximum z-index */
+            width: auto !important; 
+        }
+        .st-key-floating_copilot_btn > button { 
+            background: rgba(15, 23, 42, 0.85) !important; 
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            color: #E0F2FE !important; 
+            font-family: 'Inter', sans-serif !important;
+            font-size: 15px !important; 
+            font-weight: 600 !important; 
+            letter-spacing: 0.5px !important;
+            border-radius: 50px !important; 
+            padding: 14px 28px !important; 
+            border: 1px solid rgba(56, 189, 248, 0.4) !important; 
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2), inset 0 0 20px rgba(56, 189, 248, 0.1) !important; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
+            animation: premiumPulse 3.5s infinite alternate !important;
+        }
+        .st-key-floating_copilot_btn > button:hover { 
+            transform: translateY(-6px) scale(1.04) !important; 
+            background: rgba(15, 23, 42, 0.98) !important; 
+            border: 1px solid rgba(56, 189, 248, 0.9) !important;
+            box-shadow: 0 12px 30px rgba(56, 189, 248, 0.4), 0 0 20px rgba(56, 189, 248, 0.3) !important; 
+            color: #FFFFFF !important; 
+        }
+        
+        @keyframes premiumPulse {
+            0% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.2), inset 0 0 20px rgba(56, 189, 248, 0.1); }
+            100% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.5), inset 0 0 25px rgba(56, 189, 248, 0.2); }
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    if st.button("✨ Copilot AI", key="floating_copilot_btn"):
+    if st.button("✨ Ask Copilot", key="floating_copilot_btn"):
         render_copilot_modal()
