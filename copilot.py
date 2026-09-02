@@ -159,7 +159,7 @@ def build_live_context(query: str) -> str:
     if raw_df.empty:
         return "System Notice: Live inventory dataset is unreachable."
 
-    # CRITICAL: Deep copy and enforce numeric types regardless of upstream string formatting
+    # Force numeric conversion on all analytics columns
     df_s = raw_df.copy()
     num_cols = [
         "Current_Stock", "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi",
@@ -179,31 +179,32 @@ def build_live_context(query: str) -> str:
     query_upper = query.upper()
     sections = []
 
-    # Detect Route Filters in user query (e.g. "from Sharjah to Abu Dhabi")
-    src_branch = None
-    dest_branch = None
-    for wh in ["Sharjah", "Abu Dhabi", "Al Quoz", "DIP"]:
-        if f"FROM {wh.upper()}" in query_upper:
-            src_branch = wh
-        if f"TO {wh.upper()}" in query_upper:
-            dest_branch = wh
+    # 1. BRANCH-SPECIFIC TOP MOVERS (Solves the Abu Dhabi / Sharjah / DIP / Al Quoz ranking)
+    branch_focus_map = {
+        "ABU DHABI": ("Stock_Abu_Dhabi", "Velocity_Abu_Dhabi", "Abu Dhabi"),
+        "SHARJAH": ("Stock_Sharjah", "Velocity_Sharjah", "Sharjah"),
+        "AL QUOZ": ("Stock_Al_Quoz", "Velocity_Al_Quoz", "Al Quoz"),
+        "DIP": ("Stock_DIP", "Velocity_DIP", "DIP")
+    }
 
-    # 1. RUN TRANSFER ENGINE (Exact Stock_Transfer.py match)
-    all_transfer_routes = calculate_dashboard_transfer_routes(df_s, source_filter=src_branch, dest_filter=dest_branch)
-    
-    if all_transfer_routes:
-        t_lines = []
-        for r in all_transfer_routes[:15]:
-            t_lines.append(
-                f"- SKU {r['SKU']} ({r['Name']}): Move {r['Transfer_Qty']} units from {r['Donor']} ({r['Donor_Stock']} on hand, {r['Donor_Type']}) "
-                f"to {r['Destination']} (Has {r['Dest_Stock']} units, Runway: {r['Dest_Runway']}d, Burn: {r['Dest_Burn']}/d). "
-                f"Command: `{r['ERP_Command']}`"
-            )
-        sections.append(f"=== DASHBOARD VERIFIED TRANSFER ROUTES (Source: {src_branch or 'Any'}, Dest: {dest_branch or 'Any'}) ===\n" + "\n".join(t_lines))
-    else:
-        sections.append(f"=== DASHBOARD VERIFIED TRANSFER ROUTES ===\nNo transfer deficits detected matching routes (Source: {src_branch or 'Any'} -> Dest: {dest_branch or 'Any'}).")
+    detected_branch = None
+    for b_key, (s_col, v_col, b_name) in branch_focus_map.items():
+        if b_key in query_upper:
+            detected_branch = b_name
+            top_branch_df = df_s.sort_values(by=v_col, ascending=False).head(10)
+            b_lines = []
+            for rank, (_, r) in enumerate(top_branch_df.iterrows(), 1):
+                b_stock = int(float(r[s_col]))
+                b_vel = float(r[v_col])
+                b_runway = round(b_stock / b_vel, 1) if b_vel > 0 else 999.0
+                b_lines.append(
+                    f"{rank}. SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | "
+                    f"Local {b_name} Burn: {b_vel:.2f} units/day | Local Stock: {b_stock} units | Runway: {b_runway} days"
+                )
+            sections.append(f"=== VERIFIED TOP 10 BEST-MOVING ITEMS IN {b_name.upper()} ===\n" + "\n".join(b_lines))
+            break
 
-    # 2. RUN FAST-MOVERS / BEST-MOVERS (Ranked by Baseline Velocity)
+    # 2. NETWORK-WIDE TOP 10 BEST-MOVING ITEMS
     top_movers_df = df_s.sort_values(by='Baseline_Velocity', ascending=False).head(10)
     mover_lines = []
     for rank, (_, r) in enumerate(top_movers_df.iterrows(), 1):
@@ -215,40 +216,59 @@ def build_live_context(query: str) -> str:
         )
     sections.append("=== VERIFIED TOP 10 BEST-MOVING ITEMS (NETWORK-WIDE) ===\n" + "\n".join(mover_lines))
 
-    # 3. RUN CRITICAL REORDER CANDIDATES (< 7 Days Coverage matching Sales_&_Stock_Tracking.py)
+    # 3. INTER-BRANCH TRANSFER ROUTES (Exact Stock_Transfer.py match)
+    src_branch = None
+    dest_branch = None
+    for wh in ["Sharjah", "Abu Dhabi", "Al Quoz", "DIP"]:
+        if f"FROM {wh.upper()}" in query_upper:
+            src_branch = wh
+        if f"TO {wh.upper()}" in query_upper:
+            dest_branch = wh
+
+    all_transfer_routes = calculate_dashboard_transfer_routes(df_s, source_filter=src_branch, dest_filter=dest_branch)
+    if all_transfer_routes:
+        t_lines = []
+        for r in all_transfer_routes[:12]:
+            t_lines.append(
+                f"- SKU {r['SKU']} ({r['Name']}): Move {r['Transfer_Qty']} units from {r['Donor']} ({r['Donor_Stock']} on hand, {r['Donor_Type']}) "
+                f"to {r['Destination']} (Has {r['Dest_Stock']} units, Runway: {r['Dest_Runway']}d, Burn: {r['Dest_Burn']}/d). "
+                f"Command: `{r['ERP_Command']}`"
+            )
+        sections.append(f"=== DASHBOARD VERIFIED TRANSFER ROUTES ===\n" + "\n".join(t_lines))
+
+    # 4. CRITICAL REORDER CANDIDATES (< 7 Days Coverage matching Sales_&_Stock_Tracking.py)
     reorders_df = df_s[
         (df_s['Baseline_Velocity'] > 0.05) & 
         (df_s['Days_of_Coverage'] <= 7.0)
-    ].sort_values(by='Days_of_Coverage').head(12)
+    ].sort_values(by='Days_of_Coverage').head(10)
     
-    reorder_lines = []
-    for _, r in reorders_df.iterrows():
-        reorder_lines.append(
-            f"- SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Stock: {int(float(r['Current_Stock']))} units | "
-            f"Burn Rate: {float(r['Baseline_Velocity']):.2f}/day | Runway: {float(r['Days_of_Coverage']):.1f} days | Class: {r.get('ABC_Category', 'N/A')}"
-        )
-    if reorder_lines:
+    if not reorders_df.empty:
+        reorder_lines = []
+        for _, r in reorders_df.iterrows():
+            reorder_lines.append(
+                f"- SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Stock: {int(float(r['Current_Stock']))} units | "
+                f"Burn Rate: {float(r['Baseline_Velocity']):.2f}/day | Runway: {float(r['Days_of_Coverage']):.1f} days"
+            )
         sections.append("=== VERIFIED HIGH-RISK REORDER CANDIDATES (RUNWAY <= 7 DAYS) ===\n" + "\n".join(reorder_lines))
 
-    # 4. TARGETED SKU LOOKUP
+    # 5. TARGETED SKU LOOKUP
     sku_matches = df_s[
         df_s['Item_Code'].astype(str).str.upper().apply(lambda x: x in query_upper if x else False) |
         df_s['Item_Name'].astype(str).str.upper().apply(lambda x: any(word in query_upper for word in str(x).split() if len(word) > 3))
     ]
     if not sku_matches.empty:
         sku_lines = []
-        for _, r in sku_matches.head(4).iterrows():
+        for _, r in sku_matches.head(3).iterrows():
             sku_lines.append(
-                f"- SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Category: {r.get('Product_Category')} | "
-                f"Total Stock: {int(float(r['Current_Stock']))} | Run-Rate: {float(r['Baseline_Velocity']):.2f}/day | Runway: {float(r['Days_of_Coverage']):.1f}d | "
-                f"Locations: [SHJ: {int(float(r.get('Stock_Sharjah', 0)))}, AQ: {int(float(r.get('Stock_Al_Quoz', 0)))}, DIP: {int(float(r.get('Stock_DIP', 0)))}, AD: {int(float(r.get('Stock_Abu_Dhabi', 0)))}]"
+                f"- SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Total Stock: {int(float(r['Current_Stock']))} | "
+                f"Run-Rate: {float(r['Baseline_Velocity']):.2f}/day | Locations: [SHJ: {int(float(r.get('Stock_Sharjah', 0)))}, AQ: {int(float(r.get('Stock_Al_Quoz', 0)))}, DIP: {int(float(r.get('Stock_DIP', 0)))}, AD: {int(float(r.get('Stock_Abu_Dhabi', 0)))}]"
             )
         sections.append("=== SPECIFIC SKU TELEMETRY ===\n" + "\n".join(sku_lines))
 
-    # 5. DISPATCH QUEUE OVERVIEW
+    # 6. DISPATCH QUEUE OVERVIEW
     if not df_do.empty and "Status" in df_do.columns:
         pending_dos = df_do[df_do['Status'].astype(str).str.upper() == 'PENDING']
-        sections.append(f"=== DISPATCH QUEUE ===\nTotal Pending DO Backlog Count: {len(pending_dos)} orders.")
+        sections.append(f"=== DISPATCH QUEUE ===\nPending Delivery Orders Backlog: {len(pending_dos)} orders.")
 
     return "\n\n".join(sections)
 
@@ -261,15 +281,17 @@ You communicate exact, verified calculations from our enterprise warehouse track
 
 Directives:
 1. Grounding: Answer strictly using facts in the 'LOCAL CONTEXT' section. The numbers in the context were generated by our production transfer and demand equations. Never recompute or alter these numbers.
-2. Inter-Branch Stock Transfers:
+2. Top Movers & Rankings:
+   - When asked for best-moving items, output a clean Markdown Table with columns: `Rank`, `SKU`, `Item Name`, `Burn Rate (Units/Day)`, and `Current Stock`.
+3. Inter-Branch Stock Transfers:
    - Present recommendations in a clean Markdown Table with columns: `SKU`, `Item Description`, `Donor Warehouse`, `Destination Warehouse`, `Suggested Transfer Qty`, and `Destination Runway (Days)`.
    - Provide the exact Focus ERP command formatted in a code block:
      `SRTS: Move [Qty] units of SKU [SKU] from [Donor Warehouse] to [Destination Warehouse]`
-3. Reorders & Best Movers:
-   - Present best-moving items or reorder recommendations using clean Markdown Tables with bold SKU codes and exact run-rates.
-4. Output Rules:
+4. Reorders:
+   - Present reorder recommendations using clean Markdown Tables with bold SKU codes and exact run-rates.
+5. Output Rules:
    - Start directly with the answer in sentence 1.
-   - Never output internal thinking tags, reasoning monologues, or greetings.
+   - Do not output internal thinking tags, reasoning monologues, or greetings.
 """
 
 # =====================================================
@@ -457,8 +479,8 @@ def render_copilot_modal():
     # Action Chips
     c1, c2, c3 = st.columns(3)
     quick_query = None
-    if c1.button("🏆 Top 10 Best Moving Items", use_container_width=True): 
-        quick_query = "Which are the top 10 best moving items across our warehouses?"
+    if c1.button("🏆 Abu Dhabi Best Movers", use_container_width=True): 
+        quick_query = "Which is the top moving SKU in Abu Dhabi?"
     if c2.button("🚨 High-Risk Reorders (<7d)", use_container_width=True): 
         quick_query = "Which items do we need to reorder within 7 days based on current burn rate?"
     if c3.button("🔄 Proportional Transfer Routes", use_container_width=True): 
@@ -504,40 +526,61 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Strict Model Filter: Exclude all reasoning/thinking models
+                # Fetch active models on this key
                 live_models = client.models.list().data
-                non_reasoning_models = [
-                    m.id for m in live_models 
-                    if not any(k in m.id.lower() for k in ["deepseek", "r1", "distill", "qwq", "guard", "whisper", "vision"])
-                ]
+                active_ids = [m.id for m in live_models]
                 
+                # Preferred production hierarchy:
+                # 1. Flagship GPT-OSS 120B / 20B
+                # 2. Qwen 3.6 27B
+                # 3. Llama models
                 target_model = None
-                for pref in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
-                    if pref in non_reasoning_models:
+                for pref in [
+                    "openai/gpt-oss-120b",
+                    "openai/gpt-oss-20b",
+                    "qwen/qwen3.6-27b",
+                    "llama-3.3-70b-versatile",
+                    "llama-3.1-8b-instant"
+                ]:
+                    if pref in active_ids:
                         target_model = pref
                         break
                 
                 if not target_model:
-                    target_model = non_reasoning_models[0] if non_reasoning_models else "llama-3.3-70b-versatile"
+                    # Fallback to any non-whisper/non-guard model
+                    candidates = [m for m in active_ids if "whisper" not in m.lower() and "guard" not in m.lower()]
+                    target_model = candidates[0] if candidates else "openai/gpt-oss-120b"
 
-                chat_completion = client.chat.completions.create(
-                    messages=[
+                # Request completion with reasoning suppressed at API level
+                api_kwargs = {
+                    "messages": [
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": final_prompt}
                     ],
-                    model=target_model,
-                    temperature=0.0,
-                    max_tokens=2048
-                )
-                raw_response = chat_completion.choices[0].message.content
+                    "model": target_model,
+                    "temperature": 0.0,
+                    "max_tokens": 4096
+                }
+                
+                # Suppress thinking traces directly via API parameters if supported
+                try:
+                    chat_completion = client.chat.completions.create(
+                        **api_kwargs,
+                        extra_body={"reasoning_format": "hidden"}
+                    )
+                except Exception:
+                    chat_completion = client.chat.completions.create(**api_kwargs)
 
-                # Multi-stage thought cleaner
+                raw_response = chat_completion.choices[0].message.content or ""
+
+                # Robust multi-pass thought remover
                 cleaned_answer = re.sub(r"<think>[\s\S]*?</think>", "", raw_response).strip()
                 cleaned_answer = re.sub(r"<think>[\s\S]*$", "", cleaned_answer).strip()
                 cleaned_answer = re.sub(r"^Here's a thinking process:[\s\S]*?(?=\n\n|\n[A-Z0-9#|])", "", cleaned_answer).strip()
 
+                # If token limit truncated inside a thought, generate a graceful response rather than printing the scratchpad
                 if not cleaned_answer:
-                    cleaned_answer = raw_response.strip()
+                    cleaned_answer = "⚠️ Telemetry synthesized successfully, but the output exceeded buffer limits. Please refine your query or specify an individual SKU."
 
         except Exception as err:
             if "429" in str(err):
