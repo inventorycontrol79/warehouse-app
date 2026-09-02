@@ -219,7 +219,8 @@ else:
                     st.error("🚨 Cloud Connection busy. Please try executing the upload action again.")
             else:
                 st.warning("⚠️ Zero items matched between your uploaded snapshot and the database. Check if Item Codes match.")
-```[cite: 1, 4]
+        except Exception as e:
+            st.error(f"🚨 Snapshot Balance Overwrite Failure: {e}")
 
 st.markdown("---")
 st.header("🧠 Intelligent Supply Redistribution Advisor (DOI Balancing Engine)")
@@ -349,5 +350,6 @@ else:
             st.success(f"✅ Smart Supply Chains Aligned: **{selected_wh}** does not require any replenishment or stock-shifting operations right now.")
         else:
             st.success("✅ Smart Supply Chains Aligned: All location inventory metrics balance accurately against their respective sales trends.")
+
 # --- Floating Copilot Engine ---
 inject_floating_copilot()
