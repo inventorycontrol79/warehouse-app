@@ -348,7 +348,7 @@ def evaluate_and_queue_branch_alerts(updated_stock, fresh_sh, target_branch, rec
                 last_alert_date = recently_alerted_skus[sku]
                 days_since = (today_normalized - last_alert_date).days
 
-                if days_since < 30:
+                if days_since < 10:
                     cooldown_broken = False
                     
                     if not df_log_copy.empty:
