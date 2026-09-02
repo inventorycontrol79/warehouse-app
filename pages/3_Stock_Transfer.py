@@ -210,12 +210,17 @@ else:
                     fresh_ws_stock.append_rows([MASTER_TRACKING_COLS] + clean_rows)
                     st.success(f"🎉 Snapshot successfully matched and overwritten for {matched_count} SKUs!")
                     st.cache_data.clear()
+                    
+                    # Update in-memory session cache so Copilot and Page 2 sync immediately
+                    st.session_state.df_stock_live = updated_master_df
+                    
                     st.rerun()
-                else: st.error("🚨 Cloud Connection busy. Please try executing the upload action again.")
+                else: 
+                    st.error("🚨 Cloud Connection busy. Please try executing the upload action again.")
             else:
                 st.warning("⚠️ Zero items matched between your uploaded snapshot and the database. Check if Item Codes match.")
-        except Exception as e:
-            st.error(f"🚨 Snapshot Balance Overwrite Failure: {e}")
+```[cite: 1, 4]
+
 
 st.markdown("---")
 st.header("🧠 Intelligent Supply Redistribution Advisor (DOI Balancing Engine)")
