@@ -30,23 +30,6 @@ def get_or_fetch_stock_data(force_reload=False):
             df = pd.DataFrame(raw_data[1:], columns=headers)
             if "" in df.columns:
                 df = df.drop(columns=[""])
-            
-            # Clean numeric columns across the entire inventory matching dashboard standards
-            num_cols = [
-                "Current_Stock", "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi",
-                "Avg_Daily_Sales", "Baseline_Velocity", "Consistency_Score", "Total_Lifetime_Sales",
-                "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
-            ]
-            for c in num_cols:
-                if c in df.columns:
-                    df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0.0)
-                else:
-                    df[c] = 0.0
-            
-            df["Days_of_Coverage"] = df.apply(
-                lambda r: 999.0 if r["Baseline_Velocity"] <= 0 else round(r["Current_Stock"] / r["Baseline_Velocity"], 1), axis=1
-            )
-            
             st.session_state.df_stock_live = df
             return df
     except Exception:
@@ -100,19 +83,19 @@ def calculate_dashboard_transfer_routes(df, source_filter=None, dest_filter=None
     for _, row in df.iterrows():
         sku = str(row.get("Item_Code", "")).strip()
         name = str(row.get("Item_Name", "")).strip()
-        total_system_stock = float(row.get("Current_Stock", 0.0))
+        total_system_stock = float(pd.to_numeric(row.get("Current_Stock", 0.0), errors="coerce") or 0.0)
         
         if sku_filter and (sku_filter.upper() not in sku.upper() and sku_filter.upper() not in name.upper()):
             continue
             
-        total_net_vel = sum(float(row.get(w["vel_col"], 0.0)) for w in WAREHOUSE_MAPPINGS)
+        total_net_vel = sum(float(pd.to_numeric(row.get(w["vel_col"], 0.0), errors="coerce") or 0.0) for w in WAREHOUSE_MAPPINGS)
         if total_net_vel <= 0 or total_system_stock <= 0:
             continue
 
         branch_needs = []
         for w in WAREHOUSE_MAPPINGS:
-            b_vel = float(row.get(w["vel_col"], 0.0))
-            b_stock = float(row.get(w["stock_col"], 0.0))
+            b_vel = float(pd.to_numeric(row.get(w["vel_col"], 0.0), errors="coerce") or 0.0)
+            b_stock = float(pd.to_numeric(row.get(w["stock_col"], 0.0), errors="coerce") or 0.0)
             
             demand_share = b_vel / total_net_vel if total_net_vel > 0 else 0.25
             target_stock = total_system_stock * demand_share
@@ -135,7 +118,6 @@ def calculate_dashboard_transfer_routes(df, source_filter=None, dest_filter=None
                 if dest["label"] == src["label"]:
                     continue
                 
-                # Apply source/destination filters if requested
                 if source_filter and source_filter.lower() not in src["label"].lower():
                     continue
                 if dest_filter and dest_filter.lower() not in dest["label"].lower():
@@ -143,7 +125,7 @@ def calculate_dashboard_transfer_routes(df, source_filter=None, dest_filter=None
 
                 if src["vel"] > 0:
                     src_safe_donor_limit = max(0, int(src["stock"] - (10.0 * src["vel"])))
-                    donor_type = f"Surplus (~{src['runway']:.1f}d runway)"
+                    donor_type = f"Surplus (~{float(src['runway']):.1f}d runway)"
                 else:
                     src_safe_donor_limit = int(src["stock"])
                     donor_type = "IDLE (0 local sales)"
@@ -156,31 +138,48 @@ def calculate_dashboard_transfer_routes(df, source_filter=None, dest_filter=None
                         "Name": name,
                         "Destination": dest["label"],
                         "Dest_Stock": int(dest["stock"]),
-                        "Dest_Burn": round(dest["vel"], 2),
-                        "Dest_Runway": round(dest["runway"], 1),
+                        "Dest_Burn": round(float(dest["vel"]), 2),
+                        "Dest_Runway": round(float(dest["runway"]), 1),
                         "Donor": src["label"],
                         "Donor_Stock": int(src["stock"]),
                         "Donor_Type": donor_type,
                         "Transfer_Qty": int(optimal_transfer),
                         "ERP_Command": f"SRTS: Move {int(optimal_transfer)} units of SKU {sku} from {src['label']} to {dest['label']}"
                     })
-                    break  # Match one donor per deficit branch per SKU
+                    break
     return routes
 
 # =====================================================
-# TELEMETRY PAYLOAD BUILDER (DETERMINISTIC DATA INJECTION)
+# DETERMINISTIC DATA ENGINE (PRE-CALCULATED ANALYTICS)
 # =====================================================
 def build_live_context(query: str) -> str:
     """Pre-calculates exact figures using the dashboard's internal code logic."""
-    df_s = get_or_fetch_stock_data()
+    raw_df = get_or_fetch_stock_data()
     df_do = get_or_fetch_do_ledger()
-    if df_s.empty:
+    if raw_df.empty:
         return "System Notice: Live inventory dataset is unreachable."
+
+    # CRITICAL: Deep copy and enforce numeric types regardless of upstream string formatting
+    df_s = raw_df.copy()
+    num_cols = [
+        "Current_Stock", "Stock_Sharjah", "Stock_Al_Quoz", "Stock_DIP", "Stock_Abu_Dhabi",
+        "Avg_Daily_Sales", "Baseline_Velocity", "Consistency_Score", "Total_Lifetime_Sales",
+        "Velocity_Al_Quoz", "Velocity_Sharjah", "Velocity_DIP", "Velocity_Abu_Dhabi"
+    ]
+    for c in num_cols:
+        if c in df_s.columns:
+            df_s[c] = pd.to_numeric(df_s[c], errors='coerce').fillna(0.0)
+        else:
+            df_s[c] = 0.0
+
+    df_s["Days_of_Coverage"] = df_s.apply(
+        lambda r: 999.0 if r["Baseline_Velocity"] <= 0 else round(r["Current_Stock"] / r["Baseline_Velocity"], 1), axis=1
+    )
 
     query_upper = query.upper()
     sections = []
 
-    # Detect Route Filters in user's prompt (e.g., "Sharjah to Abu Dhabi")
+    # Detect Route Filters in user query (e.g. "from Sharjah to Abu Dhabi")
     src_branch = None
     dest_branch = None
     for wh in ["Sharjah", "Abu Dhabi", "Al Quoz", "DIP"]:
@@ -210,9 +209,9 @@ def build_live_context(query: str) -> str:
     for rank, (_, r) in enumerate(top_movers_df.iterrows(), 1):
         mover_lines.append(
             f"{rank}. SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | "
-            f"Daily Run-Rate: {r['Baseline_Velocity']:.2f} units/day | Total Stock: {int(r['Current_Stock'])} | "
-            f"Runway: {r['Days_of_Coverage']:.1f} days [SHJ: {int(r.get('Stock_Sharjah', 0))}, AQ: {int(r.get('Stock_Al_Quoz', 0))}, "
-            f"DIP: {int(r.get('Stock_DIP', 0))}, AD: {int(r.get('Stock_Abu_Dhabi', 0))}]"
+            f"Daily Run-Rate: {float(r['Baseline_Velocity']):.2f} units/day | Total Stock: {int(float(r['Current_Stock']))} | "
+            f"Runway: {float(r['Days_of_Coverage']):.1f} days [SHJ: {int(float(r.get('Stock_Sharjah', 0)))}, AQ: {int(float(r.get('Stock_Al_Quoz', 0)))}, "
+            f"DIP: {int(float(r.get('Stock_DIP', 0)))}, AD: {int(float(r.get('Stock_Abu_Dhabi', 0)))}]"
         )
     sections.append("=== VERIFIED TOP 10 BEST-MOVING ITEMS (NETWORK-WIDE) ===\n" + "\n".join(mover_lines))
 
@@ -225,13 +224,13 @@ def build_live_context(query: str) -> str:
     reorder_lines = []
     for _, r in reorders_df.iterrows():
         reorder_lines.append(
-            f"- SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Stock: {int(r['Current_Stock'])} units | "
-            f"Burn Rate: {r['Baseline_Velocity']:.2f}/day | Runway: {r['Days_of_Coverage']:.1f} days | Class: {r.get('ABC_Category', 'N/A')}"
+            f"- SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Stock: {int(float(r['Current_Stock']))} units | "
+            f"Burn Rate: {float(r['Baseline_Velocity']):.2f}/day | Runway: {float(r['Days_of_Coverage']):.1f} days | Class: {r.get('ABC_Category', 'N/A')}"
         )
     if reorder_lines:
         sections.append("=== VERIFIED HIGH-RISK REORDER CANDIDATES (RUNWAY <= 7 DAYS) ===\n" + "\n".join(reorder_lines))
 
-    # 4. TARGETED SKU LOOKUP (If user asked about specific product)
+    # 4. TARGETED SKU LOOKUP
     sku_matches = df_s[
         df_s['Item_Code'].astype(str).str.upper().apply(lambda x: x in query_upper if x else False) |
         df_s['Item_Name'].astype(str).str.upper().apply(lambda x: any(word in query_upper for word in str(x).split() if len(word) > 3))
@@ -241,8 +240,8 @@ def build_live_context(query: str) -> str:
         for _, r in sku_matches.head(4).iterrows():
             sku_lines.append(
                 f"- SKU: {r.get('Item_Code')} | Name: {r.get('Item_Name')} | Category: {r.get('Product_Category')} | "
-                f"Total Stock: {int(r['Current_Stock'])} | Run-Rate: {r['Baseline_Velocity']:.2f}/day | Runway: {r['Days_of_Coverage']:.1f}d | "
-                f"Locations: [SHJ: {int(r.get('Stock_Sharjah', 0))}, AQ: {int(r.get('Stock_Al_Quoz', 0))}, DIP: {int(r.get('Stock_DIP', 0))}, AD: {int(r.get('Stock_Abu_Dhabi', 0))}]"
+                f"Total Stock: {int(float(r['Current_Stock']))} | Run-Rate: {float(r['Baseline_Velocity']):.2f}/day | Runway: {float(r['Days_of_Coverage']):.1f}d | "
+                f"Locations: [SHJ: {int(float(r.get('Stock_Sharjah', 0)))}, AQ: {int(float(r.get('Stock_Al_Quoz', 0)))}, DIP: {int(float(r.get('Stock_DIP', 0)))}, AD: {int(float(r.get('Stock_Abu_Dhabi', 0)))}]"
             )
         sections.append("=== SPECIFIC SKU TELEMETRY ===\n" + "\n".join(sku_lines))
 
@@ -505,7 +504,7 @@ def render_copilot_modal():
                 local_context = build_live_context(query_to_process)
                 final_prompt = f"LOCAL CONTEXT:\n{local_context}\n\nUSER QUESTION:\n{query_to_process}"
                 
-                # Strict Model Filter: Filter out any reasoning models to prevent <think> tags
+                # Strict Model Filter: Exclude all reasoning/thinking models
                 live_models = client.models.list().data
                 non_reasoning_models = [
                     m.id for m in live_models 
