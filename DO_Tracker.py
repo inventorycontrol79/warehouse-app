@@ -72,9 +72,12 @@ def load_inventory_from_sheets():
     if not sh: return pd.DataFrame()
     try:
         worksheet = sh.get_worksheet(0)
-        # numericise_data=False preserves '0000', '0012' as literal strings
-        data = worksheet.get_all_records(numericise_data=False)
-        return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
+        # Pulls raw values without type conversion or kwarg errors
+        rows = worksheet.get_all_values()
+        if not rows or len(rows) < 2:
+            return pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
+        headers = [h.strip() for h in rows[0]]
+        return pd.DataFrame(rows[1:], columns=headers)
     except Exception as e:
         st.error(f"🛑 Error reading main sheet: {e}")
         return pd.DataFrame()
@@ -83,8 +86,12 @@ def load_historical_returns_log():
     sh = get_google_sheet_connection()
     if not sh: return pd.DataFrame()
     try:
-        data = sh.get_worksheet(2).get_all_records(numericise_data=False)
-        return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Voucher_Number","Return_Date","Match_Status","Return_Type","Return_Remarks","Logged_By","Timestamp"])
+        worksheet = sh.get_worksheet(2)
+        rows = worksheet.get_all_values()
+        if not rows or len(rows) < 2:
+            return pd.DataFrame(columns=["DO_Number","Voucher_Number","Return_Date","Match_Status","Return_Type","Return_Remarks","Logged_By","Timestamp"])
+        headers = [h.strip() for h in rows[0]]
+        return pd.DataFrame(rows[1:], columns=headers)
     except Exception as e:
         return pd.DataFrame()
 
@@ -132,7 +139,7 @@ if not df.empty:
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
     
-    # Enforce zero-padded 4 digits on Last_4 for display
+    # Enforce zero-padded 4 digits on Last_4
     if "Last_4" in df.columns:
         df["Last_4"] = df["Last_4"].astype(str).str.strip().apply(
             lambda x: str(x).split('.')[0].zfill(4) if x and x.lower() != 'nan' else ''
@@ -179,7 +186,6 @@ else:
                 "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(),
                 "Created_By": raw_erp[chosen_user].astype(str).str.strip()
             })
-            # Strictly pad with zeros up to 4 digits
             new_df["Last_4"] = clean_do_series.apply(lambda x: str(x)[-4:].zfill(4))
             new_df["Status"] = "Pending"
             new_df["Remarks"] = ""
