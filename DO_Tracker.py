@@ -72,7 +72,8 @@ def load_inventory_from_sheets():
     if not sh: return pd.DataFrame()
     try:
         worksheet = sh.get_worksheet(0)
-        data = worksheet.get_all_records()
+        # numericise_data=False preserves '0000', '0012' as literal strings
+        data = worksheet.get_all_records(numericise_data=False)
         return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Last_4","Status","Date_Issued","Warehouse_Name","Remarks","Created_By","Last_Modified"])
     except Exception as e:
         st.error(f"🛑 Error reading main sheet: {e}")
@@ -82,7 +83,7 @@ def load_historical_returns_log():
     sh = get_google_sheet_connection()
     if not sh: return pd.DataFrame()
     try:
-        data = sh.get_worksheet(2).get_all_records()
+        data = sh.get_worksheet(2).get_all_records(numericise_data=False)
         return pd.DataFrame(data) if data else pd.DataFrame(columns=["DO_Number","Voucher_Number","Return_Date","Match_Status","Return_Type","Return_Remarks","Logged_By","Timestamp"])
     except Exception as e:
         return pd.DataFrame()
@@ -100,8 +101,14 @@ def save_inventory_to_sheets(dataframe):
             df_to_save["Date_Issued"] = df_to_save["Date_Issued"].apply(
                 lambda x: x.strftime('%d/%m/%Y') if pd.notna(x) and hasattr(x, 'strftime') else str(x)
             )
+            
+        if "Last_4" in df_to_save.columns:
+            df_to_save["Last_4"] = df_to_save["Last_4"].astype(str).str.strip().apply(
+                lambda x: str(x).split('.')[0].zfill(4) if x and x.lower() != 'nan' else ''
+            )
+
         rows = df_to_save.fillna("").astype(str).values.tolist()
-        worksheet.append_rows([headers] + rows)
+        worksheet.append_rows([headers] + rows, value_input_option='USER_ENTERED')
         return True
     except Exception as e:
         st.error(f"🚨 Main Data backup failed: {e}")
@@ -124,6 +131,12 @@ if not df.empty:
     df["DO_Number"] = df["DO_Number"].astype(str).str.strip()
     df["Warehouse_Name"] = df["Warehouse_Name"].astype(str).str.strip()
     df["Date_Issued"] = pd.to_datetime(df["Date_Issued"], format="%d/%m/%Y", errors="coerce")
+    
+    # Enforce zero-padded 4 digits on Last_4 for display
+    if "Last_4" in df.columns:
+        df["Last_4"] = df["Last_4"].astype(str).str.strip().apply(
+            lambda x: str(x).split('.')[0].zfill(4) if x and x.lower() != 'nan' else ''
+        )
 
 url_warehouse = url_params.get("warehouse", None)
 if url_warehouse: url_warehouse = url_warehouse.strip()
@@ -159,13 +172,15 @@ else:
         chosen_user = st.sidebar.selectbox("Match [Created By]:", available_cols, index=available_cols.index(guess_user) if guess_user in available_cols else 0)
         
         if st.sidebar.button("⚡ EXECUTE PIPELINE ALIGNMENT"):
+            clean_do_series = raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip()
             new_df = pd.DataFrame({
-                "DO_Number": raw_erp[chosen_do].astype(str).str.replace("DLNS:","", regex=False).str.strip(),
+                "DO_Number": clean_do_series,
                 "Date_Issued": pd.to_datetime(raw_erp[chosen_date], errors="coerce"),
                 "Warehouse_Name": raw_erp[chosen_wh].astype(str).str.strip(),
                 "Created_By": raw_erp[chosen_user].astype(str).str.strip()
             })
-            new_df["Last_4"] = new_df["DO_Number"].str[-4:]
+            # Strictly pad with zeros up to 4 digits
+            new_df["Last_4"] = clean_do_series.apply(lambda x: str(x)[-4:].zfill(4))
             new_df["Status"] = "Pending"
             new_df["Remarks"] = ""
             new_df["Last_Modified"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -361,6 +376,7 @@ else:
         hide_index=True, 
         column_config={
             "DO_Number": st.column_config.TextColumn("DO Number"),
+            "Last_4": st.column_config.TextColumn("Last 4"),
             "Status": st.column_config.SelectboxColumn("Status", options=["Pending","Dispatched","Return"], required=True),
             "Remarks": st.column_config.TextColumn("Operational Notes & Exceptions"),
             "Last_Modified": st.column_config.TextColumn("System Timestamp", disabled=True)
@@ -400,5 +416,5 @@ else:
         
     st.markdown("###")
     st.download_button("📥 DOWNLOAD SECURE LEDGER (XLSX)", buffer.getvalue(), "SABIN_Enterprise_Logistics.xlsx")
-# --- Floating Copilot Engine ---
+
 inject_floating_copilot()
