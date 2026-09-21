@@ -198,7 +198,7 @@ SP-26-20019,0019,Dispatched,02/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20022,0022,Dispatched,02/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20025,0025,Dispatched,02/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20028,0028,Dispatched,02/09/2026,Al Quoz,,jay,09/16/2026 9:59
-SP-26-20029,0029,Dispatched,02/09/2026,Al Quoz,,jay,09/16/2026 9:59
+SP-26-20029,0029,Return,02/09/2026,Al Quoz,[Partial] 5MM Clear AN removed,jay,2026-09-21 10:22:53
 SP-26-20032,0032,Dispatched,02/09/2026,Al Quoz,,Rajendran,09/16/2026 9:59
 SP-26-20033,0033,Dispatched,02/09/2026,Al Quoz,,Rajendran,09/16/2026 9:59
 SP-26-20035,0035,Dispatched,02/09/2026,Al Quoz,,jay,09/16/2026 9:59
@@ -597,8 +597,8 @@ SP-26-20479,0479,Dispatched,07/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20480,0480,Dispatched,07/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20483,0483,Dispatched,07/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20484,0484,Dispatched,07/09/2026,Al Quoz,,jay,09/16/2026 9:59
-SP-26-20485,0485,Dispatched,07/09/2026,Al Quoz,,Melvin,09/16/2026 9:59
-SP-26-20487,0487,Dispatched,07/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
+SP-26-20485,0485,Return,07/09/2026,Al Quoz,[Full] Full Return Entry,Melvin,2026-09-21 10:22:53
+SP-26-20487,0487,Return,07/09/2026,Al Quoz,[Partial] Reduced 1 pc,jay,2026-09-21 10:22:53
 SP-26-20492,0492,Dispatched,07/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20493,0493,Dispatched,07/09/2026,Al Quoz,,jay,09/16/2026 9:59
 SP-26-20494,0494,Dispatched,07/09/2026,Al Quoz,,jay,09/16/2026 9:59
@@ -680,7 +680,7 @@ SP-26-20544,0544,Dispatched,08/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-20545,0545,Dispatched,08/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-20546,0546,Dispatched,08/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-20551,0551,Dispatched,08/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
-SP-26-20552,0552,Dispatched,08/09/2026,Al Quoz,,Anand,2026-09-16 9:59:21
+SP-26-20552,0552,Return,08/09/2026,Al Quoz,[Full] Full Return Entry,Anand,2026-09-21 10:22:53
 SP-26-20553,0553,Dispatched,08/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-20554,0554,Dispatched,08/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-20555,0555,Dispatched,08/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
@@ -801,7 +801,7 @@ SP-26-20645,0645,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20651,0651,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20652,0652,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20654,0654,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
-SP-26-20655,0655,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
+SP-26-20655,0655,Return,09/09/2026,Sharjah,[Partial] Reduced 6 pcs,Melvin,2026-09-21 10:22:53
 SP-26-20657,0657,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20658,0658,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20663,0663,Dispatched,09/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
@@ -919,7 +919,7 @@ SP-26-20772,0772,Dispatched,10/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20773,0773,Dispatched,10/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20774,0774,Dispatched,10/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20775,0775,Dispatched,10/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
-SP-26-20778,0778,Dispatched,10/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
+SP-26-20778,0778,Return,10/09/2026,Sharjah,[Partial] 1 pcs reduced,Melvin,2026-09-21 10:22:53
 SP-26-20779,0779,Return,10/09/2026,Sharjah,[Full] Full Return Entry,Rajendran,2026-09-16 9:59:21
 SP-26-20785,0785,Dispatched,10/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20786,0786,Dispatched,10/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
@@ -994,7 +994,7 @@ SP-26-21004,1004,Dispatched,11/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-21006,1006,Dispatched,11/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-21007,1007,Dispatched,11/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-20875,0875,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
-SP-26-20881,0881,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
+SP-26-20881,0881,Return,11/09/2026,Sharjah,[Full] Full Return Entry,Melvin,2026-09-21 10:22:53
 SP-26-20884,0884,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20885,0885,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20886,0886,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
@@ -1012,7 +1012,7 @@ SP-26-20912,0912,Return,11/09/2026,Sharjah,[Full] Full Return Entry,kalpesh,2026
 SP-26-20919,0919,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20928,0928,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20933,0933,Return,11/09/2026,Sharjah,[Full] Full Return Entry,Melvin,2026-09-16 9:59:21
-SP-26-20940,0940,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
+SP-26-20940,0940,Return,11/09/2026,Abu Dhabi,[Full] Full Return Entry,Anand,2026-09-21 10:22:53
 SP-26-20942,0942,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20944,0944,Dispatched,11/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-20947,0947,Dispatched,11/09/2026,Sharjah,,kalpesh,2026-09-16 9:59:21
@@ -1028,7 +1028,6 @@ SP-26-20992,0992,Dispatched,11/09/2026,Sharjah,,kalpesh,2026-09-16 9:59:21
 SP-26-21000,1000,Dispatched,11/09/2026,Sharjah,,kalpesh,2026-09-16 9:59:21
 SP-26-21003,1003,Dispatched,11/09/2026,Sharjah,,kalpesh,2026-09-16 9:59:21
 SP-26-21005,1005,Dispatched,11/09/2026,Sharjah,,kalpesh,2026-09-16 9:59:21
-Grand Total,otal,Pending,NaT,,,,2026-09-14 7:46:17
 SP-26-20876,0876,Dispatched,11/09/2026,DIP,,Rajendran,2026-09-16 9:59:21
 SP-26-20893,0893,Dispatched,11/09/2026,DIP,,Rajendran,2026-09-16 9:59:21
 SP-26-20897,0897,Dispatched,11/09/2026,DIP,,Rajendran,2026-09-16 9:59:21
@@ -1058,7 +1057,7 @@ SP-26-20927,0927,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-20929,0929,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-20949,0949,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-20950,0950,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
-SP-26-20961,0961,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
+SP-26-20961,0961,Return,11/09/2026,Abu Dhabi,[Full] Full Return Entry,Anand,2026-09-21 10:22:53
 SP-26-20967,0967,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-20969,0969,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-18 5:48:44
 SP-26-20970,0970,Dispatched,11/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
@@ -1077,7 +1076,7 @@ SP-26-21047,1047,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21048,1048,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21056,1056,Dispatched,12/09/2026,Sharjah,,jay,2026-09-16 9:59:21
 SP-26-21061,1061,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
-SP-26-21075,1075,Pending,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
+SP-26-21075,1075,Return,12/09/2026,Sharjah,[Full] Full Return Entry,Melvin,2026-09-21 10:22:53
 SP-26-21076,1076,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21078,1078,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21092,1092,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
@@ -1092,7 +1091,7 @@ SP-26-21112,1112,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21115,1115,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21116,1116,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21117,1117,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
-SP-26-21120,1120,Dispatched,12/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
+SP-26-21120,1120,Return,12/09/2026,Sharjah,[Partial] 1 pc reduced,Melvin,2026-09-21 10:22:53
 SP-26-21021,1021,Dispatched,12/09/2026,DIP,,Rajendran,2026-09-16 9:59:21
 SP-26-21024,1024,Dispatched,12/09/2026,DIP,,Rajendran,2026-09-16 9:59:21
 SP-26-21025,1025,Dispatched,12/09/2026,DIP,,Rajendran,2026-09-16 9:59:21
@@ -1120,7 +1119,7 @@ SP-26-21067,1067,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-21080,1080,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-21081,1081,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-21084,1084,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
-SP-26-21089,1089,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
+SP-26-21089,1089,Return,12/09/2026,Abu Dhabi,[Partial] CV3003HM 1.37 * Grey Back removed,Anand,2026-09-21 10:22:53
 SP-26-21098,1098,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-21100,1100,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
 SP-26-21101,1101,Dispatched,12/09/2026,Abu Dhabi,,Anand,2026-09-16 9:59:21
@@ -1139,7 +1138,7 @@ SP-26-21043,1043,Dispatched,12/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-21045,1045,Dispatched,12/09/2026,Al Quoz,,Melvin,2026-09-16 9:59:21
 SP-26-21049,1049,Dispatched,12/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-21050,1050,Dispatched,12/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
-SP-26-21053,1053,Dispatched,12/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
+SP-26-21053,1053,Return,12/09/2026,Al Quoz,[Partial] Reduced 1 pc each,jay,2026-09-21 10:22:53
 SP-26-21057,1057,Dispatched,12/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-21059,1059,Dispatched,12/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
 SP-26-21060,1060,Dispatched,12/09/2026,Al Quoz,,jay,2026-09-16 9:59:21
@@ -1179,7 +1178,7 @@ SP-26-21183,1183,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21184,1184,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21185,1185,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21187,1187,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
-SP-26-21192,1192,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
+SP-26-21192,1192,Return,14/09/2026,Sharjah,[Full] Full Return Entry,Melvin,2026-09-21 10:22:53
 SP-26-21193,1193,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21207,1207,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
 SP-26-21211,1211,Dispatched,14/09/2026,Sharjah,,Melvin,2026-09-16 9:59:21
@@ -1252,7 +1251,7 @@ SP-26-21201,1201,Dispatched,14/09/2026,Al Quoz,,jay,2026-09-16 9:59:50
 SP-26-21206,1206,Dispatched,14/09/2026,Al Quoz,,jay,2026-09-16 9:59:50
 SP-26-21209,1209,Dispatched,14/09/2026,Al Quoz,,jay,2026-09-16 9:59:50
 SP-26-21214,1214,Dispatched,14/09/2026,Al Quoz,,Anand,2026-09-16 9:59:50
-SP-26-21218,1218,Dispatched,14/09/2026,Al Quoz,,jay,2026-09-16 9:59:50
+SP-26-21218,1218,Return,14/09/2026,Al Quoz,[Full] Full Return Entry,jay,2026-09-21 10:22:53
 SP-26-21226,1226,Dispatched,14/09/2026,Al Quoz,,jay,2026-09-16 9:59:50
 SP-26-21231,1231,Dispatched,14/09/2026,Al Quoz,,jay,2026-09-16 9:59:50
 SP-26-21233,1233,Dispatched,14/09/2026,Al Quoz,,jay,2026-09-16 9:59:50
@@ -1274,7 +1273,7 @@ SP-26-21296,1296,Dispatched,15/09/2026,Sharjah,,Rajendran,2026-09-16 10:37:53
 SP-26-21301,1301,Dispatched,15/09/2026,Sharjah,,Anand,2026-09-16 10:37:53
 SP-26-21310,1310,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
 SP-26-21311,1311,Dispatched,15/09/2026,Sharjah,,Rajendran,2026-09-16 10:37:53
-SP-26-21312,1312,Pending,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
+SP-26-21312,1312,Return,15/09/2026,Sharjah,[Full] Full Return Entry,kalpesh,2026-09-21 10:22:53
 SP-26-21314,1314,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
 SP-26-21325,1325,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
 SP-26-21326,1326,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
@@ -1287,7 +1286,7 @@ SP-26-21339,1339,Dispatched,15/09/2026,Sharjah,,Rajendran,2026-09-16 10:37:53
 SP-26-21340,1340,Dispatched,15/09/2026,Sharjah,,Rajendran,2026-09-16 10:37:53
 SP-26-21341,1341,Dispatched,15/09/2026,Sharjah,,Rajendran,2026-09-16 10:37:53
 SP-26-21343,1343,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
-SP-26-21345,1345,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
+SP-26-21345,1345,Return,15/09/2026,Sharjah,[Full] Full Return Entry,kalpesh,2026-09-21 10:22:53
 SP-26-21359,1359,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
 SP-26-21374,1374,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
 SP-26-21378,1378,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
@@ -1296,7 +1295,7 @@ SP-26-21382,1382,Dispatched,15/09/2026,Sharjah,,kalpesh,2026-09-16 10:37:53
 SP-26-21254,1254,Dispatched,15/09/2026,Abu Dhabi,,Anand,2026-09-16 10:38:20
 SP-26-21260,1260,Dispatched,15/09/2026,Abu Dhabi,,Anand,2026-09-16 10:38:20
 SP-26-21270,1270,Dispatched,15/09/2026,Abu Dhabi,,Anand,2026-09-16 10:38:20
-SP-26-21278,1278,Dispatched,15/09/2026,Abu Dhabi,,Anand,2026-09-16 10:38:20
+SP-26-21278,1278,Return,15/09/2026,Abu Dhabi,[Full] Full Return Entry,Anand,2026-09-21 10:22:53
 SP-26-21289,1289,Dispatched,15/09/2026,Abu Dhabi,,Anand,2026-09-16 10:38:20
 SP-26-21290,1290,Dispatched,15/09/2026,Abu Dhabi,,Anand,2026-09-16 10:38:20
 SP-26-21295,1295,Dispatched,15/09/2026,Abu Dhabi,,Anand,2026-09-16 10:38:20
@@ -1360,7 +1359,7 @@ SP-26-21350,1350,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21351,1351,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21352,1352,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21354,1354,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
-SP-26-21355,1355,Pending,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
+SP-26-21355,1355,Return,15/09/2026,Al Quoz,[Full] Full Return Entry,jay,2026-09-21 10:22:53
 SP-26-21356,1356,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21357,1357,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21360,1360,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
@@ -1374,11 +1373,11 @@ SP-26-21375,1375,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21377,1377,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21379,1379,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
 SP-26-21381,1381,Dispatched,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
-SP-26-21383,1383,Pending,15/09/2026,Al Quoz,,jay,2026-09-18 11:42:32
+SP-26-21383,1383,Return,15/09/2026,Al Quoz,[Full] Full Return Entry,jay,2026-09-21 10:22:53
 SP-26-21388,1388,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21392,1392,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21393,1393,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
-SP-26-21394,1394,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
+SP-26-21394,1394,Return,16/09/2026,DIP,[Full] Full Return Entry,Rajendran,2026-09-21 10:22:53
 SP-26-21399,1399,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21402,1402,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21414,1414,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
@@ -1390,8 +1389,8 @@ SP-26-21497,1497,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21515,1515,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21516,1516,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21518,1518,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
-SP-26-21520,1520,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
-SP-26-21521,1521,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
+SP-26-21520,1520,Return,16/09/2026,DIP,[Full] Full Return Entry,Rajendran,2026-09-21 10:22:53
+SP-26-21521,1521,Return,16/09/2026,DIP,[Full] Full Return Entry,Rajendran,2026-09-21 10:22:53
 SP-26-21528,1528,Dispatched,16/09/2026,DIP,,Rajendran,2026-09-17 7:42:38
 SP-26-21397,1397,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
 SP-26-21410,1410,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
@@ -1403,7 +1402,7 @@ SP-26-21436,1436,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
 SP-26-21437,1437,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
 SP-26-21439,1439,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
 SP-26-21448,1448,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
-SP-26-21449,1449,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
+SP-26-21449,1449,Return,16/09/2026,Abu Dhabi,[Full] Full Return Entry,Anand,2026-09-21 10:22:53
 SP-26-21461,1461,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
 SP-26-21468,1468,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
 SP-26-21480,1480,Dispatched,16/09/2026,Abu Dhabi,,Anand,2026-09-17 12:58:16
@@ -1436,7 +1435,7 @@ SP-26-21475,1475,Dispatched,16/09/2026,Sharjah,,Melvin,2026-09-18 7:40:12
 SP-26-21476,1476,Dispatched,16/09/2026,Sharjah,,Melvin,2026-09-18 7:40:12
 SP-26-21477,1477,Dispatched,16/09/2026,Sharjah,,Melvin,2026-09-18 7:40:12
 SP-26-21478,1478,Dispatched,16/09/2026,Sharjah,,Melvin,2026-09-18 7:40:12
-SP-26-21485,1485,Dispatched,16/09/2026,Sharjah,,kalpesh,2026-09-18 7:40:12
+SP-26-21485,1485,Return,16/09/2026,Sharjah,[Full] Full Return Entry,kalpesh,2026-09-21 10:22:53
 SP-26-21487,1487,Dispatched,16/09/2026,Sharjah,,Melvin,2026-09-18 7:40:12
 SP-26-21488,1488,Pending,16/09/2026,Sharjah,,Melvin,2026-09-18 7:40:12
 SP-26-21490,1490,Dispatched,16/09/2026,Sharjah,,Melvin,2026-09-18 7:40:12
@@ -1496,7 +1495,7 @@ SP-26-21506,1506,Dispatched,16/09/2026,Al Quoz,,jay,2026-09-18 7:40:29
 SP-26-21509,1509,Dispatched,16/09/2026,Al Quoz,,jay,2026-09-18 7:40:29
 SP-26-21510,1510,Dispatched,16/09/2026,Al Quoz,,jay,2026-09-18 7:40:29
 SP-26-21511,1511,Dispatched,16/09/2026,Al Quoz,,jay,2026-09-18 7:40:29
-SP-26-21512,1512,Pending,16/09/2026,Al Quoz,,Rajendran,2026-09-18 7:40:29
+SP-26-21512,1512,Return,16/09/2026,Al Quoz,[Full] Full Return Entry,Rajendran,2026-09-21 10:22:53
 SP-26-21513,1513,Dispatched,16/09/2026,Al Quoz,,Rajendran,2026-09-18 7:40:29
 SP-26-21514,1514,Dispatched,16/09/2026,Al Quoz,,Anand,2026-09-18 7:40:29
 SP-26-21522,1522,Dispatched,16/09/2026,Al Quoz,,jay,2026-09-18 7:40:29
@@ -1534,7 +1533,7 @@ SP-26-21597,1597,Dispatched,17/09/2026,DIP,,Rajendran,2026-09-18 7:43:09
 SP-26-21598,1598,Dispatched,17/09/2026,DIP,,jay,2026-09-18 7:43:09
 SP-26-21605,1605,Dispatched,17/09/2026,DIP,,Rajendran,2026-09-18 7:43:09
 SP-26-21628,1628,Dispatched,17/09/2026,DIP,,Rajendran,2026-09-18 7:43:09
-SP-26-21629,1629,Dispatched,17/09/2026,DIP,,Rajendran,2026-09-18 7:43:09
+SP-26-21629,1629,Return,17/09/2026,DIP,[Partial] 300MM Tube removed,Rajendran,2026-09-21 10:22:53
 SP-26-21635,1635,Dispatched,17/09/2026,DIP,,Anand,2026-09-18 7:43:09
 SP-26-21638,1638,Dispatched,17/09/2026,DIP,,Rajendran,2026-09-18 7:43:09
 SP-26-21649,1649,Dispatched,17/09/2026,DIP,,Rajendran,2026-09-18 7:43:09
@@ -1586,10 +1585,10 @@ SP-26-21659,1659,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
 SP-26-21660,1660,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
 SP-26-21661,1661,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
 SP-26-21662,1662,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
-SP-26-21663,1663,Pending,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
+SP-26-21663,1663,Return,17/09/2026,Al Quoz,[Partial] 10MM 1 pc removed,jay,2026-09-21 10:22:53
 SP-26-21664,1664,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
 SP-26-21667,1667,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
-SP-26-21668,1668,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
+SP-26-21668,1668,Return,17/09/2026,Al Quoz,[Full] Full Return Entry,jay,2026-09-21 10:22:53
 SP-26-21669,1669,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
 SP-26-21670,1670,Dispatched,17/09/2026,Al Quoz,,jay,2026-09-19 6:08:28
 SP-26-21538,1538,Dispatched,17/09/2026,Sharjah,,Melvin,2026-09-19 6:12:43
@@ -1642,7 +1641,7 @@ SP-26-21735,1735,Dispatched,18/09/2026,DIP,,Anand,2026-09-21 5:51:18
 SP-26-21744,1744,Dispatched,18/09/2026,DIP,,Rajendran,2026-09-21 5:51:18
 SP-26-21762,1762,Dispatched,18/09/2026,DIP,,Rajendran,2026-09-21 5:51:18
 SP-26-21765,1765,Dispatched,18/09/2026,DIP,,Rajendran,2026-09-21 5:51:18
-SP-26-21766,1766,Dispatched,18/09/2026,DIP,,Rajendran,2026-09-21 5:51:18
+SP-26-21766,1766,Return,18/09/2026,DIP,[Full] Full Return Entry,Rajendran,2026-09-21 10:22:53
 SP-26-21769,1769,Dispatched,18/09/2026,DIP,,Rajendran,2026-09-21 5:51:18
 SP-26-21770,1770,Dispatched,18/09/2026,DIP,,Rajendran,2026-09-21 5:51:18
 SP-26-21771,1771,Dispatched,18/09/2026,DIP,,Rajendran,2026-09-21 5:51:18
@@ -1688,20 +1687,20 @@ SP-26-21787,1787,Dispatched,18/09/2026,Al Quoz,,jay,2026-09-21 5:51:45
 SP-26-21788,1788,Dispatched,18/09/2026,Al Quoz,,jay,2026-09-21 5:51:45
 SP-26-21793,1793,Dispatched,18/09/2026,Al Quoz,,Rajendran,2026-09-21 5:51:45
 SP-26-21794,1794,Dispatched,18/09/2026,Al Quoz,,Rajendran,2026-09-21 5:51:45
-SP-26-21693,1693,Pending,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
+SP-26-21693,1693,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21704,1704,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21725,1725,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21731,1731,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21750,1750,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
-SP-26-21751,1751,Pending,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
+SP-26-21751,1751,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21752,1752,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
-SP-26-21755,1755,Pending,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
+SP-26-21755,1755,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21768,1768,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21775,1775,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
 SP-26-21776,1776,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
-SP-26-21781,1781,Pending,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
-SP-26-21786,1786,Pending,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
-SP-26-21792,1792,Pending,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
+SP-26-21781,1781,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
+SP-26-21786,1786,Dispatched,18/09/2026,Abu Dhabi,,Anand,2026-09-21 5:53:13
+SP-26-21792,1792,Return,18/09/2026,Abu Dhabi,[Full] Full Return Entry,Anand,2026-09-21 10:22:53
 SP-26-21673,1673,Dispatched,18/09/2026,Sharjah,,Melvin,2026-09-21 5:53:42
 SP-26-21677,1677,Dispatched,18/09/2026,Sharjah,,Melvin,2026-09-21 5:53:42
 SP-26-21690,1690,Dispatched,18/09/2026,Sharjah,,Melvin,2026-09-21 5:53:42
@@ -1737,7 +1736,7 @@ SP-26-21782,1782,Dispatched,18/09/2026,Sharjah,,kalpesh,2026-09-21 5:53:42
 SP-26-21784,1784,Dispatched,18/09/2026,Sharjah,,kalpesh,2026-09-21 5:53:42
 SP-26-21795,1795,Dispatched,18/09/2026,Sharjah,,Rajendran,2026-09-21 5:53:42
 SP-26-21803,1803,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
-SP-26-21812,1812,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
+SP-26-21812,1812,Return,19/09/2026,DIP,[Partial] 2.8 AN Opaque removed,Rajendran,2026-09-21 10:22:53
 SP-26-21826,1826,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
 SP-26-21828,1828,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
 SP-26-21829,1829,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
@@ -1758,7 +1757,7 @@ SP-26-21918,1918,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
 SP-26-21919,1919,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
 SP-26-21923,1923,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
 SP-26-21925,1925,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
-SP-26-21931,1931,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
+SP-26-21931,1931,Return,19/09/2026,DIP,[Full] Full Return Entry,Rajendran,2026-09-21 10:22:53
 SP-26-21932,1932,Dispatched,19/09/2026,DIP,,Rajendran,2026-09-21 5:56:01
 SP-26-21797,1797,Dispatched,19/09/2026,Sharjah,,Melvin,2026-09-21 6:51:40
 SP-26-21804,1804,Dispatched,19/09/2026,Sharjah,,Melvin,2026-09-21 6:51:40
@@ -1803,3 +1802,18 @@ SP-26-21915,1915,Dispatched,19/09/2026,Sharjah,,Melvin,2026-09-21 6:51:40
 SP-26-21921,1921,Dispatched,19/09/2026,Sharjah,,Melvin,2026-09-21 6:51:40
 SP-26-21928,1928,Pending,19/09/2026,Sharjah,,Melvin,2026-09-21 6:51:40
 SP-26-21929,1929,Dispatched,19/09/2026,Sharjah,,Melvin,2026-09-21 6:51:40
+SP-26-21799,1799,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21800,1800,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21801,1801,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21802,1802,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21806,1806,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21808,1808,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21819,1819,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21864,1864,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21866,1866,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21868,1868,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21872,1872,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21890,1890,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21891,1891,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21900,1900,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
+SP-26-21924,1924,Pending,19/09/2026,Abu Dhabi,,Anand,2026-09-21 13:08:55
